@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { 
-  Cpu, 
-  Wrench, 
-  ShieldAlert, 
-  Compass, 
+  Sparkles,
   Activity, 
-  Lock, 
   Database,
   ChevronRight,
   ChevronLeft,
   Download,
-  Mail,
   Search,
   CheckCircle2,
   CircleDashed,
@@ -20,27 +15,20 @@ import {
   ArrowRight,
   Brain,
   ScrollText,
-  MessageSquare
+  MessageSquare,
+  Globe2,
+  Moon,
+  Sun,
+  Layout
 } from 'lucide-react';
-import { SYSTEM_INSTRUCTION } from './constants';
-import { AppMode, UserInput, AnalysisResult, AnalysisType } from './types';
+import { SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
+import { AppMode, UserInput, AnalysisResult, AnalysisType, Language } from './types';
 import RadialChart from './components/RadialChart';
 import PlanetaryTable from './components/PlanetaryTable';
 import CosmicLoader from './components/CosmicLoader';
 
-const PROCESSING_STEPS = [
-  "INICIANDO MOTOR GEM CORE (PROTOCOLO DECANO)...",
-  "TRIANGULANDO COORDENADAS ESPACIO-TEMPORALES...",
-  "CALCULANDO EFEMÉRIDES (CSV INTERNO)...",
-  "EJECUTANDO BLOQUES 0-4 (ESTRUCTURA BASE)...",
-  "AUDITANDO ASPECTOS TENSOS (SOL/LUNA/SATURNO)...",
-  "CONSULTANDO BIBLIOGRAFÍA (JUNG, CARUTTI, GREENE)...",
-  "SINTETIZANDO VOCES MAESTRAS...",
-  "TRADUCIENDO A LENGUAJE NATURAL...",
-  "GENERANDO INFORME FINAL..."
-];
-
 const App: React.FC = () => {
+  const [lang, setLang] = useState<Language>('es');
   const [mode, setMode] = useState<AppMode>(AppMode.INPUT);
   const [analysisType, setAnalysisType] = useState<AnalysisType>(AnalysisType.PSYCHOLOGICAL);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -62,6 +50,9 @@ const App: React.FC = () => {
   
   const stepIntervalRef = useRef<number | null>(null);
 
+  // Translations convenience
+  const t = TRANSLATIONS[lang];
+
   const startProgressSimulation = () => {
     setCurrentStepIndex(0);
     setErrorMsg('');
@@ -69,10 +60,10 @@ const App: React.FC = () => {
 
     stepIntervalRef.current = window.setInterval(() => {
       setCurrentStepIndex(prev => {
-        if (prev < PROCESSING_STEPS.length - 1) return prev + 1;
+        if (prev < t.processingSteps.length - 1) return prev + 1;
         return prev;
       });
-    }, 2000); 
+    }, 2500); 
   };
 
   const stopProgressSimulation = () => {
@@ -97,6 +88,13 @@ const App: React.FC = () => {
         ? `CONTEXTO ADICIONAL DEL USUARIO: "${userInput.context}". Asegúrate de responder a esto dentro de los bloques pertinentes.`
         : "Sin contexto adicional.";
 
+      // Map language code to full language name for prompt
+      const langMap: Record<Language, string> = {
+        es: "ESPAÑOL (CASTELLANO)",
+        ca: "CATALÁN (CATALÀ)",
+        eu: "EUSKERA (BASQUE)"
+      };
+
       const prompt = `
         EJECUTAR PROTOCOLO "DECANO" PARA:
         Sujeto: ${userInput.name}
@@ -106,11 +104,14 @@ const App: React.FC = () => {
         ${typePrompt}
         ${contextPrompt}
         
-        INSTRUCCIONES DE FORMATO JSON (CRÍTICO):
-        1. Genera un informe agrupando los 28 bloques lógicos en MÁXIMO 5 "MEGA-BLOQUES" temáticos para asegurar que la respuesta quepa en el límite de tokens y el JSON cierre correctamente.
-        2. IMPORTANTE: USA COMILLAS SIMPLES (') para cualquier énfasis dentro de los textos. NUNCA uses comillas dobles (") dentro de los valores de string.
-        3. NO incluyas markdown (nada de \`\`\`json).
-        4. Asegúrate de cerrar correctamente el array "blocks" y el objeto principal.
+        INSTRUCCIÓN DE IDIOMA (CRÍTICO):
+        EL JSON DE SALIDA DEBE ESTAR COMPLETAMENTE TRADUCIDO AL: ${langMap[lang]}.
+        ESTO INCLUYE TÍTULOS DE BLOQUES, CONTENIDO (TESIS/AUDITORÍA/SÍNTESIS), SIGNOS DEL ZODÍACO, NOMBRES DE PLANETAS Y ELEMENTOS.
+        
+        INSTRUCCIONES DE FORMATO JSON:
+        1. Genera un informe agrupando los 28 bloques lógicos en MÁXIMO 5 "MEGA-BLOQUES".
+        2. IMPORTANTE: USA COMILLAS SIMPLES (') para énfasis.
+        3. NO incluyas markdown.
       `;
 
       const response = await ai.models.generateContent({
@@ -127,31 +128,17 @@ const App: React.FC = () => {
       if (!text) throw new Error("La API no devolvió texto.");
       
       let cleanText = text.trim();
-      
-      // Limpieza agresiva de Markdown
       cleanText = cleanText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
       const startIndex = cleanText.indexOf('{');
       const endIndex = cleanText.lastIndexOf('}');
       
-      if (startIndex === -1 || endIndex === -1) {
-        console.error("Respuesta cruda:", text);
-        throw new Error("No se encontró un objeto JSON válido en la respuesta.");
-      }
+      if (startIndex === -1 || endIndex === -1) throw new Error("Error en formato JSON.");
       
       const jsonString = cleanText.substring(startIndex, endIndex + 1);
+      const data = JSON.parse(jsonString);
 
-      let data;
-      try {
-        data = JSON.parse(jsonString);
-      } catch (parseError: any) {
-        console.error("JSON Error:", parseError);
-        console.error("Snippet start:", jsonString.substring(0, 200));
-        console.error("Snippet end:", jsonString.substring(jsonString.length - 200));
-        throw new Error(`Error de sintaxis JSON en la respuesta de la IA. Inténtalo de nuevo (el modelo generó caracteres inválidos).`);
-      }
-
-      if (!data.positions || !data.blocks) throw new Error("Estructura JSON incompleta.");
+      if (!data.positions || !data.blocks) throw new Error("Estructura incompleta.");
 
       setAnalysisResult({
         metadata: {
@@ -164,7 +151,7 @@ const App: React.FC = () => {
       });
       
       stopProgressSimulation();
-      setCurrentStepIndex(PROCESSING_STEPS.length); 
+      setCurrentStepIndex(t.processingSteps.length); 
       
       setTimeout(() => {
         setMode(AppMode.RESULTS);
@@ -181,387 +168,38 @@ const App: React.FC = () => {
   const downloadHTML = () => {
     if (!analysisResult) return;
     
-    // Helper to find specific planets for the "Trinidad" section
-    const findPos = (name: string) => analysisResult.positions.find(p => p.name.toLowerCase().includes(name.toLowerCase()));
-    const sun = findPos('Sol');
-    const moon = findPos('Luna');
-    const asc = findPos('Ascendente') || findPos('AC') || findPos('Asc');
-
+    // Helper simple replacement logic
     const htmlContent = `
 <!DOCTYPE html>
-<html lang="es">
+<html lang="${lang}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expediente Astrológico: ${analysisResult.metadata.name.toUpperCase()}</title>
+    <title>Report: ${analysisResult.metadata.name}</title>
     <style>
-        :root {
-            --space-black: #050505;
-            --deep-blue: #0f172a;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --accent-gold: #fbbf24;
-            --accent-red: #ef4444;
-            --accent-purple: #8b5cf6;
-            --glass: rgba(30, 41, 59, 0.7);
-        }
-
-        * {
-            box-sizing: border-box;
-            scroll-behavior: smooth;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--space-black);
-            color: var(--text-primary);
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            overflow-x: hidden;
-            line-height: 1.6;
-        }
-
-        #starfield {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-        }
-
-        header {
-            min-height: 80vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.4), var(--space-black));
-            padding: 20px;
-        }
-
-        h1 {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            margin: 0;
-            background: linear-gradient(to right, var(--text-primary), var(--accent-gold));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            animation: fadeIn 2s ease-in;
-        }
-
-        .subtitle {
-            font-size: 1.2rem;
-            color: var(--accent-purple);
-            margin-top: 20px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .meta-data {
-            margin-top: 40px;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .data-pill {
-            background: rgba(255,255,255,0.1);
-            padding: 10px 20px;
-            border-radius: 50px;
-            border: 1px solid var(--accent-gold);
-            font-size: 0.9rem;
-        }
-
-        nav {
-            position: sticky;
-            top: 0;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            padding: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        nav a {
-            color: var(--text-primary);
-            text-decoration: none;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            transition: color 0.3s;
-        }
-
-        nav a:hover {
-            color: var(--accent-gold);
-        }
-
-        main {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 50px 20px;
-        }
-
-        section {
-            margin-bottom: 80px;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 1s ease-out;
-        }
-
-        section.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        h2 {
-            font-size: 2.5rem;
-            border-left: 5px solid var(--accent-gold);
-            padding-left: 20px;
-            margin-bottom: 40px;
-            color: var(--text-primary);
-        }
-
-        .planet-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-        }
-
-        .card {
-            background: var(--glass);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 15px;
-            padding: 30px;
-            transition: transform 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-purple);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .planet-orb {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-
-        .orb-sun { background: radial-gradient(circle at 30%, #ffd700, #b8860b); }
-        .orb-moon { background: radial-gradient(circle at 30%, #ef4444, #450a0a); animation: pulse 3s infinite; }
-        .orb-asc { background: radial-gradient(circle at 30%, #e0f2fe, #38bdf8); }
-        .orb-generic { background: radial-gradient(circle at 30%, #a8a29e, #44403c); border: 2px solid #57534e; }
-
-        .card h3 { margin: 0; color: var(--accent-gold); }
-        .card .position { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
-
-        .thesis-box {
-            border-left: 4px solid var(--accent-purple);
-            padding: 20px;
-            background: rgba(139, 92, 246, 0.1);
-            margin-bottom: 20px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .synthesis-text {
-            font-size: 1.1rem;
-            line-height: 1.8;
-            color: #e2e8f0;
-            background: rgba(255,255,255,0.03);
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        .audit-tag {
-            display: inline-block;
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        footer {
-            text-align: center;
-            padding: 50px;
-            border-top: 1px solid var(--accent-gold);
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        body { font-family: 'Georgia', serif; background: #0f172a; color: #e2e8f0; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+        h1 { color: #fbbf24; border-bottom: 1px solid #334155; padding-bottom: 20px; }
+        h2 { color: #818cf8; margin-top: 40px; }
+        .box { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.1); }
+        .meta { font-family: monospace; color: #94a3b8; font-size: 0.9em; }
+        .quote { font-style: italic; text-align: center; margin-top: 50px; color: #fbbf24; }
     </style>
 </head>
 <body>
-
-<canvas id="starfield"></canvas>
-
-<header>
-    <div style="font-size: 3rem; color: var(--accent-gold); margin-bottom: 20px;">♄</div>
-    <h1>Expediente ${analysisResult.metadata.name}</h1>
-    <div class="subtitle">Análisis Estructural y Arquetípico</div>
-    
-    <div class="meta-data">
-        <div class="data-pill">📅 ${analysisResult.metadata.birthDate}</div>
-        <div class="data-pill">🕗 ${analysisResult.metadata.birthTime}</div>
-        <div class="data-pill">📍 ${analysisResult.metadata.birthPlace}</div>
-        <div class="data-pill">⚠️ RECTIFICADO (IA)</div>
+    <h1>${analysisResult.metadata.name}</h1>
+    <div class="meta">
+        ${analysisResult.metadata.birthDate} | ${analysisResult.metadata.birthTime} | ${analysisResult.metadata.birthPlace}
     </div>
-</header>
-
-<nav>
-    <a href="#trinidad">La Estructura</a>
-    ${analysisResult.blocks.map((block, i) => `<a href="#block-${i}">${block.id.split(' ')[0]}</a>`).join('')}
-    <a href="#sintesis">Síntesis</a>
-</nav>
-
-<main>
-
-    <section id="trinidad" class="scroll-trigger">
-        <h2>I. La Estructura Nuclear</h2>
-        <p>Configuración base del sujeto analizado.</p>
-
-        <div class="planet-grid">
-            ${sun ? `
-            <div class="card">
-                <div class="card-header">
-                    <div class="planet-orb orb-sun"></div>
-                    <div>
-                        <h3>El Rey (Sol)</h3>
-                        <div class="position">${sun.sign} (${sun.degree}) | Casa ${sun.house}</div>
-                    </div>
-                </div>
-                <p>Núcleo de la identidad consciente.</p>
-            </div>` : ''}
-
-            ${moon ? `
-            <div class="card">
-                <div class="card-header">
-                    <div class="planet-orb orb-moon"></div>
-                    <div>
-                        <h3>La Madre (Luna)</h3>
-                        <div class="position">${moon.sign} (${moon.degree}) | Casa ${moon.house}</div>
-                    </div>
-                </div>
-                <p>Mecanismo emocional y reactivo.</p>
-            </div>` : ''}
-
-            ${asc ? `
-            <div class="card">
-                <div class="card-header">
-                    <div class="planet-orb orb-asc"></div>
-                    <div>
-                        <h3>El Guardián (Asc)</h3>
-                        <div class="position">${asc.sign} (${asc.degree})</div>
-                    </div>
-                </div>
-                <p>Interfaz de contacto con la realidad.</p>
-            </div>` : ''}
-        </div>
-    </section>
-
-    <!-- BLOQUES DINÁMICOS -->
-    ${analysisResult.blocks.map((block, i) => `
-    <section id="block-${i}" class="scroll-trigger">
+    
+    ${analysisResult.blocks.map(block => `
         <h2>${block.title}</h2>
-        
-        <div class="audit-tag">AUDITORÍA: ${block.audit}</div>
-
-        <div class="thesis-box">
-            <strong>TESIS TÉCNICA:</strong><br>
-            ${block.thesis.replace(/\n/g, '<br>')}
+        <div class="box">
+            <strong>${t.blockThesis}:</strong><br/>${block.thesis}<br/><br/>
+            <strong>${t.blockAudit}:</strong> ${block.audit}<br/><br/>
+            <em>${t.blockSynthesis}:</em><br/>${block.synthesis}
         </div>
-
-        <div class="synthesis-text">
-            ${block.synthesis.replace(/\n/g, '<br>')}
-        </div>
-    </section>
     `).join('')}
-
-    <section id="sintesis" class="scroll-trigger">
-        <h2>Sentencia Final</h2>
-        <div class="thesis-box" style="border-left-color: var(--accent-gold); text-align: center; font-size: 1.2rem; font-style: italic;">
-            "${analysisResult.footerQuote}"
-        </div>
-    </section>
-
-    <footer>
-        <div style="font-size: 2rem; color: var(--accent-gold); margin-bottom: 20px;">♆</div>
-        <p>DECANATO DE ESTUDIOS SUPERIORES ASTROLÓGICOS</p>
-        <p>Expediente Cerrado | ${new Date().getFullYear()}</p>
-        <p style="opacity: 0.5; margin-top: 20px;">Generado por GEM CORE v4.0</p>
-    </footer>
-
-</main>
-
-<script>
-    const canvas = document.getElementById('starfield');
-    const ctx = canvas.getContext('2d');
-    let width, height, stars = [];
-
-    function init() {
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvas.width = width;
-        canvas.height = height;
-        stars = [];
-        for(let i = 0; i < 200; i++) {
-            stars.push({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                size: Math.random() * 2,
-                speed: Math.random() * 0.5
-            });
-        }
-    }
-
-    function animate() {
-        ctx.fillStyle = '#050505';
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#ffffff';
-        stars.forEach(star => {
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            ctx.fill();
-            star.y -= star.speed;
-            if(star.y < 0) star.y = height;
-        });
-        requestAnimationFrame(animate);
-    }
-
-    window.addEventListener('resize', init);
-    init();
-    animate();
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('visible');
-        });
-    }, { threshold: 0.1 });
-
-    document.querySelectorAll('.scroll-trigger').forEach((el) => observer.observe(el));
-</script>
-
+    
+    <div class="quote">"${analysisResult.footerQuote}"</div>
 </body>
 </html>
     `;
@@ -570,47 +208,99 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `EXPEDIENTE_${analysisResult.metadata.name.replace(/\s+/g, '_').toUpperCase()}.html`;
+    a.download = `REPORT_${analysisResult.metadata.name.replace(/\s+/g, '_').toUpperCase()}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   };
 
-  // --- VISTAS ---
+  // --- COMPONENTS ---
+
+  const Header = () => (
+    <div className="flex justify-between items-center mb-8 px-2">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+          <Sparkles size={20} />
+        </div>
+        <div>
+          <h1 className="text-xl font-serif text-white tracking-wide">{t.appTitle}</h1>
+          <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{t.appSubtitle}</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {(['es', 'ca', 'eu'] as Language[]).map((l) => (
+          <button
+            key={l}
+            onClick={() => setLang(l)}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+              lang === l 
+              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' 
+              : 'text-gray-500 border-transparent hover:bg-white/5'
+            }`}
+          >
+            {l.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   const renderInput = () => (
-    <div className="min-h-screen bg-gem-dark flex items-center justify-center p-6 font-mono relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50"></div>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[100px]"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]"></div>
+      </div>
       
-      <div className="max-w-md w-full bg-gem-panel border border-white/10 p-8 rounded-xl shadow-2xl relative z-10">
-        <div className="flex items-center gap-3 mb-8">
-           <div className="w-10 h-10 bg-indigo-500/20 rounded flex items-center justify-center text-indigo-400"><Activity /></div>
-           <div><h1 className="text-xl font-bold text-white tracking-widest">GEM CORE</h1><p className="text-xs text-gray-400">PROTOCOLO DECANO v4.0</p></div>
-        </div>
+      <div className="glass-panel w-full max-w-lg p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
+        <Header />
 
-        <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-5">
-          <div><label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Nombre del Sujeto</label><input required type="text" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded px-4 py-2 text-white focus:border-indigo-500 outline-none" placeholder="Nombre completo" /></div>
-          
-          <div className="grid grid-cols-2 gap-4">
-             <div><label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Fecha Nac.</label><input required type="date" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded px-4 py-2 text-white focus:border-indigo-500 outline-none" /></div>
-             <div><label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Hora Exacta</label><input required type="time" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded px-4 py-2 text-white focus:border-indigo-500 outline-none" /></div>
+        <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputName}</label>
+              <input required type="text" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} 
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-gray-600" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputDate}</label>
+                 <input required type="date" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} 
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all text-sm" />
+               </div>
+               <div>
+                 <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputTime}</label>
+                 <input required type="time" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} 
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all text-sm" />
+               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputPlace}</label>
+              <div className="relative">
+                <input required type="text" value={userInput.place} onChange={e => setUserInput({...userInput, place: e.target.value})} 
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-gray-600" />
+                <Search className="absolute left-3 top-3.5 text-gray-500" size={16} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1 flex items-center gap-2">
+                {t.inputContext}
+              </label>
+              <textarea 
+                rows={2}
+                value={userInput.context}
+                onChange={e => setUserInput({...userInput, context: e.target.value})}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none resize-none placeholder:text-gray-600"
+                placeholder={t.inputContextPlaceholder}
+              />
+            </div>
           </div>
 
-          <div><label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Lugar de Nacimiento</label><div className="relative"><input required type="text" value={userInput.place} onChange={e => setUserInput({...userInput, place: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded px-4 py-2 text-white pl-10 focus:border-indigo-500 outline-none" placeholder="Ciudad, País" /><Search className="absolute left-3 top-2.5 text-gray-600" size={14} /></div></div>
-
-          <div>
-            <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider flex items-center gap-2"><MessageSquare size={12}/> Contexto / Pregunta (Opcional)</label>
-            <textarea 
-              rows={2}
-              value={userInput.context}
-              onChange={e => setUserInput({...userInput, context: e.target.value})}
-              className="w-full bg-black/30 border border-white/10 rounded px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none resize-none"
-              placeholder="Ej: Crisis vocacional, problemas de pareja..."
-            />
-          </div>
-
-          <button type="submit" className="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]">
-            SIGUIENTE: DEFINIR PROTOCOLO <ChevronRight size={16} />
+          <button type="submit" className="w-full mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 group">
+            {t.btnNext} <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
           </button>
         </form>
       </div>
@@ -618,55 +308,87 @@ const App: React.FC = () => {
   );
 
   const renderModeSelection = () => (
-    <div className="min-h-screen bg-gem-dark flex items-center justify-center p-6 font-mono">
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="min-h-screen flex items-center justify-center p-6 relative">
+      <div className="w-full max-w-4xl animate-fade-in z-10">
+        <div className="mb-8 flex justify-center">
+             <h2 className="text-xl text-white/80 font-serif border-b border-white/10 pb-2 px-8">{t.selectProtocol}</h2>
+        </div>
         
-        {/* Opción Psicológica */}
-        <button 
-          onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
-          className="group relative bg-gem-panel border border-white/10 hover:border-indigo-500/50 p-8 rounded-xl text-left transition-all hover:shadow-[0_0_30px_rgba(99,102,241,0.2)] flex flex-col h-full"
-        >
-          <div className="w-12 h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
-            <Brain size={24} />
-          </div>
-          <h3 className="text-xl text-white font-bold mb-2">ANÁLISIS PSICOLÓGICO</h3>
-          <p className="text-gray-400 text-sm leading-relaxed mb-6">
-            Deconstrucción de la psique basada en Jung y Naranjo. Enfocado en:
-            <br/><br/>
-            • Estructura del Ego y Sombra.
-            <br/>
-            • Patrones de trauma y talento.
-            <br/>
-            • Propósito evolutivo (Nodos).
-          </p>
-          <div className="mt-auto flex items-center text-indigo-400 text-xs font-bold uppercase tracking-widest">
-            Seleccionar Protocolo <ArrowRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform"/>
-          </div>
-        </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Opción Psicológica */}
+          <button 
+            onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
+            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-indigo-500/40 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+              <Brain size={28} />
+            </div>
+            <h3 className="text-2xl text-white font-serif mb-3">{t.modePsyTitle}</h3>
+            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">
+              {t.modePsyDesc}
+            </p>
+            <div className="flex items-center text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+              {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2 transition-transform"/>
+            </div>
+          </button>
 
-        {/* Opción Técnica */}
-        <button 
-          onClick={() => { setAnalysisType(AnalysisType.TECHNICAL); handleAnalyze(); }}
-          className="group relative bg-gem-panel border border-white/10 hover:border-emerald-500/50 p-8 rounded-xl text-left transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] flex flex-col h-full"
-        >
-          <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
-            <ScrollText size={24} />
-          </div>
-          <h3 className="text-xl text-white font-bold mb-2">AUDITORÍA TÉCNICA</h3>
-          <p className="text-gray-400 text-sm leading-relaxed mb-6">
-            Análisis riguroso de la mecánica celeste. Enfocado en:
-            <br/><br/>
-            • Dignidades y Debilidades.
-            <br/>
-            • Aspectos mayores y orbes.
-            <br/>
-            • Derivación de casas y regencias.
-          </p>
-          <div className="mt-auto flex items-center text-emerald-400 text-xs font-bold uppercase tracking-widest">
-            Seleccionar Protocolo <ArrowRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform"/>
-          </div>
-        </button>
+          {/* Opción Técnica */}
+          <button 
+            onClick={() => { setAnalysisType(AnalysisType.TECHNICAL); handleAnalyze(); }}
+            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-emerald-500/40 relative overflow-hidden"
+          >
+             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <Layout size={28} />
+            </div>
+            <h3 className="text-2xl text-white font-serif mb-3">{t.modeTechTitle}</h3>
+            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">
+               {t.modeTechDesc}
+            </p>
+            <div className="flex items-center text-emerald-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+              {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2 transition-transform"/>
+            </div>
+          </button>
+        </div>
 
+        <button onClick={() => setMode(AppMode.INPUT)} className="mt-8 mx-auto flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-sm">
+            <ChevronLeft size={16}/> {t.btnNew}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderProcessing = () => (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative font-mono">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-4xl items-center z-10">
+        <div className="flex flex-col items-center justify-center order-2 md:order-1">
+          <div className="scale-125 mb-10"><CosmicLoader /></div>
+          <h2 className="text-xl text-white font-bold mb-2 tracking-[0.2em] text-center">
+            {t.processingSteps[Math.min(currentStepIndex, t.processingSteps.length - 1)]}
+          </h2>
+        </div>
+        
+        <div className="glass-panel rounded-xl p-8 order-1 md:order-2 shadow-2xl relative overflow-hidden">
+           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse"></div>
+          <div className="space-y-5">
+            {t.processingSteps.map((step, idx) => {
+              const isCompleted = idx < currentStepIndex; const isActive = idx === currentStepIndex;
+              if (idx > currentStepIndex + 2 || idx < currentStepIndex - 2) return null; // Focus view
+              return (
+                <div key={idx} className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'translate-x-4 opacity-100 scale-105' : 'opacity-40'}`}>
+                  <div className="shrink-0">
+                    {isCompleted ? <CheckCircle2 size={16} className="text-emerald-400" /> : 
+                     isActive ? <CircleDashed size={16} className="text-indigo-400 animate-spin" /> : 
+                     <div className="w-4 h-4 rounded-full border border-gray-700" />}
+                  </div>
+                  <span className={`text-xs ${isActive ? 'text-indigo-200 font-bold' : 'text-gray-400'}`}>{step}</span>
+                </div>
+              );
+            })}
+          </div>
+          {errorMsg && <div className="mt-6 p-4 bg-red-900/20 border border-red-500/20 rounded text-red-200 text-xs flex gap-3 items-center"><AlertCircle size={20}/> {errorMsg} <button onClick={() => setMode(AppMode.INPUT)} className="ml-auto underline font-bold">RETRY</button></div>}
+        </div>
       </div>
     </div>
   );
@@ -674,32 +396,37 @@ const App: React.FC = () => {
   const renderDashboardTechnical = () => {
     if (!analysisResult) return null;
     return (
-      <div className="animate-fade-in space-y-8">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl text-white font-bold tracking-widest mb-2">
-            {analysisType === AnalysisType.PSYCHOLOGICAL ? 'PERFIL PSICOLÓGICO GENERADO' : 'AUDITORÍA TÉCNICA COMPLETADA'}
+      <div className="animate-fade-in space-y-8 pb-12">
+        <div className="text-center mb-10 pt-4">
+          <h2 className="text-3xl font-serif text-white mb-2">
+            {t.resultsTitle}
           </h2>
-          <p className="text-indigo-400 font-mono text-sm">BASE DE DATOS RADIX ESTABLECIDA</p>
+          <p className="text-gem-accent font-mono text-xs uppercase tracking-widest">{t.resultsSubtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-gem-panel border border-white/5 rounded-xl p-6">
-            <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex gap-2 items-center"><Database size={14}/> Posiciones Planetarias</h3>
-            <PlanetaryTable positions={analysisResult.positions} />
+          <div className="glass-panel rounded-2xl p-1 overflow-hidden">
+            <div className="bg-white/5 px-6 py-4 flex items-center gap-2">
+               <Database size={16} className="text-gem-gold"/>
+               <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{t.tabStructure}</span>
+            </div>
+            <div className="p-6">
+                <PlanetaryTable positions={analysisResult.positions} lang={lang} />
+            </div>
           </div>
-          <div className="bg-gem-panel border border-white/5 rounded-xl p-6 flex items-center justify-center relative">
-             <RadialChart data={analysisResult.elementalBalance} />
+          
+          <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-[300px]">
+             <RadialChart data={analysisResult.elementalBalance} title={t.chartTitle} />
           </div>
         </div>
 
         <div className="flex justify-center mt-12">
           <button 
             onClick={() => setResultStep(1)}
-            className="group relative px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center gap-3 overflow-hidden"
+            className="group relative px-10 py-5 bg-white text-black font-bold rounded-xl transition-all hover:bg-indigo-50 shadow-[0_0_40px_rgba(255,255,255,0.15)] flex items-center gap-4 overflow-hidden"
           >
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            <Binary size={20} />
-            <span>ABRIR EXPEDIENTE (BLOQUE 1)</span>
+            <Binary size={20} className="text-indigo-900"/>
+            <span className="tracking-widest">{t.btnNext.toUpperCase()}</span>
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -713,65 +440,65 @@ const App: React.FC = () => {
     const isLastBlock = blockIndex === analysisResult.blocks.length - 1;
 
     return (
-      <div className="animate-fade-in max-w-4xl mx-auto pb-20">
+      <div className="animate-fade-in max-w-4xl mx-auto pb-20 pt-4">
         {/* Header del Bloque */}
-        <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
-          <div className="flex items-center gap-4">
-             <div className="w-10 h-10 bg-white/5 rounded flex items-center justify-center text-gray-400 font-mono text-sm border border-white/10">
-               {blockIndex + 1}/{analysisResult.blocks.length}
+        <div className="flex items-center gap-4 mb-8">
+             <div className="w-12 h-12 glass-panel rounded-xl flex items-center justify-center text-white font-mono text-lg border border-white/10 shadow-lg">
+               {blockIndex + 1}
              </div>
              <div>
-               <h3 className="text-xs text-indigo-400 font-mono tracking-widest mb-1">{block.id.toUpperCase()}</h3>
-               <h2 className="text-xl md:text-2xl text-white font-bold">{block.title}</h2>
+               <h3 className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-1">{block.id}</h3>
+               <h2 className="text-2xl md:text-3xl text-white font-serif">{block.title}</h2>
              </div>
-          </div>
         </div>
 
-        {/* 1. TESIS TÉCNICA (Academic) */}
-        <div className="bg-[#1a1c2e] border-l-4 border-indigo-500 p-6 md:p-8 rounded-r-xl mb-6 shadow-lg">
-          <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Brain size={14}/> Tesis Técnica (El Decano)
-          </h4>
-          <div className="prose prose-invert prose-sm md:prose-base max-w-none text-gray-300 leading-relaxed font-serif text-justify">
-             {block.thesis}
-          </div>
-        </div>
+        <div className="space-y-8">
+            {/* 1. TESIS TÉCNICA (Academic) */}
+            <div className="glass-panel p-8 rounded-2xl border-l-4 border-indigo-500">
+            <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Brain size={16}/> {t.blockThesis}
+            </h4>
+            <div className="prose prose-invert prose-p:text-slate-300 prose-p:leading-relaxed max-w-none font-serif text-justify text-lg">
+                {block.thesis}
+            </div>
+            </div>
 
-        {/* 2. AUDITORÍA (Validation) */}
-        <div className="bg-black/40 border border-white/5 p-4 rounded-lg mb-6 flex items-start gap-3">
-          <ShieldAlert size={16} className="text-emerald-500 mt-1 shrink-0" />
-          <div>
-            <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Auditoría Forense</h4>
-            <p className="text-sm text-emerald-400/80 font-mono">{block.audit}</p>
-          </div>
-        </div>
+            {/* 2. AUDITORÍA (Validation) */}
+            <div className="bg-emerald-900/10 border border-emerald-500/20 p-5 rounded-xl flex items-start gap-4">
+            <Activity size={20} className="text-emerald-500 mt-0.5 shrink-0" />
+            <div>
+                <h4 className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">{t.blockAudit}</h4>
+                <p className="text-sm text-emerald-100/80 font-mono leading-relaxed">{block.audit}</p>
+            </div>
+            </div>
 
-        {/* 3. SÍNTESIS HUMANA (Translation) */}
-        <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <MessageSquare size={14}/> Traducción Humana
-          </h4>
-          <div className="prose prose-invert prose-base max-w-none text-white leading-relaxed">
-             {block.synthesis}
-          </div>
+            {/* 3. SÍNTESIS HUMANA (Translation) */}
+            <div className="glass-panel p-8 rounded-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <MessageSquare size={16}/> {t.blockSynthesis}
+            </h4>
+            <div className="prose prose-invert prose-p:text-slate-200 prose-p:leading-8 max-w-none text-lg">
+                {block.synthesis}
+            </div>
+            </div>
         </div>
 
         {/* Controles */}
-        <div className="flex justify-between mt-12">
+        <div className="flex justify-between mt-16 border-t border-white/5 pt-8">
           <button 
             onClick={() => setResultStep(prev => prev - 1)}
-            className="flex items-center gap-2 px-6 py-3 text-gray-500 hover:text-white transition-colors"
+            className="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition-colors uppercase text-xs font-bold tracking-widest"
           >
-            <ChevronLeft size={20} /> ANTERIOR
+            <ChevronLeft size={16} /> {t.btnNew}
           </button>
 
           <button 
             onClick={() => setResultStep(prev => prev + 1)}
-            className="flex items-center gap-3 px-8 py-3 bg-white text-black hover:bg-gray-200 font-bold rounded transition-colors shadow-lg shadow-white/10"
+            className="flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/25"
           >
-            {isLastBlock ? 'CONCLUSIONES FINALES' : 'SIGUIENTE BLOQUE'} 
-            <ChevronRight size={20} />
+            {isLastBlock ? t.btnNext : t.btnNext} 
+            <ChevronRight size={18} />
           </button>
         </div>
       </div>
@@ -782,62 +509,67 @@ const App: React.FC = () => {
     if (!analysisResult) return null;
     return (
       <div className="animate-fade-in text-center max-w-3xl mx-auto py-12">
-        <div className="w-20 h-20 mx-auto bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 mb-8 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
-          <CheckCircle2 size={40} />
+        <div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white mb-10 shadow-[0_0_50px_rgba(99,102,241,0.4)]">
+          <Sparkles size={40} />
         </div>
         
-        <h2 className="text-3xl font-bold text-white mb-4">INFORME DECANO FINALIZADO</h2>
-        <p className="text-gray-400 mb-12">El análisis de {analysisResult.blocks.length} bloques ha sido compilado exitosamente.</p>
-
-        <div className="bg-white/5 rounded-xl p-8 mb-12 border border-white/10 relative">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gem-dark px-4 text-xs text-gray-500 uppercase tracking-widest">
-            Aforismo Final
+        <h2 className="text-4xl font-serif text-white mb-6">{t.resultsTitle}</h2>
+        
+        <div className="glass-panel rounded-xl p-10 mb-12 relative mx-4">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#020617] px-4 text-xs text-indigo-400 uppercase tracking-widest border border-indigo-900/50 rounded-full py-1">
+            Gem Core V4.0
           </div>
-          <p className="text-xl font-serif italic text-indigo-200">
+          <p className="text-2xl font-serif italic text-indigo-200 leading-relaxed">
             "{analysisResult.footerQuote}"
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <button onClick={downloadHTML} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold flex items-center justify-center gap-2 transition-colors">
-            <Download size={18} /> DESCARGAR INFORME (HTML)
+        <div className="flex flex-col sm:flex-row justify-center gap-4 px-4">
+          <button onClick={downloadHTML} className="px-8 py-4 bg-white text-black hover:bg-gray-100 rounded-lg font-bold flex items-center justify-center gap-3 transition-colors shadow-lg">
+            <Download size={20} /> {t.btnDownload}
           </button>
-          <button onClick={() => setMode(AppMode.INPUT)} className="px-6 py-3 border border-white/20 hover:bg-white/5 text-gray-300 rounded font-medium transition-colors">
-            NUEVA CONSULTA
+          <button onClick={() => setMode(AppMode.INPUT)} className="px-8 py-4 border border-white/10 hover:bg-white/5 text-slate-300 rounded-lg font-medium transition-colors">
+            {t.btnNew}
           </button>
         </div>
       </div>
     );
   };
 
-  // --- RENDER PRINCIPAL ---
-
   const renderResults = () => {
     if (!analysisResult) return null;
 
     return (
-      <div className="min-h-screen bg-gem-dark text-slate-200 font-sans selection:bg-indigo-500/30 flex flex-col">
-        <header className="sticky top-0 z-50 backdrop-blur-md bg-gem-dark/90 border-b border-white/5">
-          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="min-h-screen text-slate-200 flex flex-col font-sans">
+        <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#020617]/80 border-b border-white/5">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Activity size={18} className="text-indigo-400" />
-              <span className="text-xs font-bold tracking-widest text-white">GEM CORE v4.0</span>
+              <div className="w-8 h-8 rounded bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <Activity size={16} />
+              </div>
+              <span className="text-xs font-bold tracking-[0.2em] text-white hidden sm:block">ASISTENTE PSICOLÓGICO</span>
             </div>
-            <div className="text-[10px] font-mono text-gray-500 hidden sm:block">
-              SUJETO: {analysisResult.metadata.name.toUpperCase()}
+            <div className="flex items-center gap-4">
+                <div className="text-[10px] font-mono text-gray-500 uppercase border border-white/10 px-2 py-1 rounded">
+                {analysisResult.metadata.name}
+                </div>
+                <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">
+                    {lang.toUpperCase()}
+                </div>
             </div>
           </div>
+          {/* Progress Bar */}
           {resultStep > 0 && resultStep <= analysisResult.blocks.length && (
             <div className="h-0.5 bg-gray-800 w-full">
               <div 
-                className="h-full bg-indigo-500 transition-all duration-500" 
+                className="h-full bg-indigo-500 transition-all duration-700 ease-out box-shadow-[0_0_10px_#6366f1]" 
                 style={{ width: `${(resultStep / analysisResult.blocks.length) * 100}%` }}
               ></div>
             </div>
           )}
         </header>
 
-        <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 flex flex-col justify-center min-h-[600px]">
+        <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col min-h-[600px]">
           {resultStep === 0 && renderDashboardTechnical()}
           {resultStep > 0 && resultStep <= analysisResult.blocks.length && renderAnalysisBlock(resultStep - 1)}
           {resultStep > analysisResult.blocks.length && renderFinalScreen()}
@@ -850,34 +582,7 @@ const App: React.FC = () => {
     <>
       {mode === AppMode.INPUT && renderInput()}
       {mode === AppMode.MODE_SELECTION && renderModeSelection()}
-      
-      {mode === AppMode.PROCESSING && (
-        <div className="min-h-screen bg-gem-dark flex flex-col items-center justify-center font-mono p-6 relative">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 w-full max-w-5xl items-center z-10">
-            <div className="flex flex-col items-center justify-center order-2 lg:order-1">
-              <div className="scale-125 mb-8"><CosmicLoader /></div>
-              <h2 className="text-2xl text-white font-bold mb-2 animate-pulse tracking-widest text-center">PROCESANDO</h2>
-              <p className="text-indigo-400 text-sm font-bold text-center">{userInput.name.toUpperCase()}</p>
-            </div>
-            <div className="bg-gem-panel/80 backdrop-blur border border-white/10 rounded-xl p-6 lg:p-8 order-1 lg:order-2 shadow-2xl">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">SECUENCIA DE INICIALIZACIÓN</h3>
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {PROCESSING_STEPS.map((step, idx) => {
-                  const isCompleted = idx < currentStepIndex; const isActive = idx === currentStepIndex;
-                  return (
-                    <div key={idx} className={`flex items-center gap-3 transition-all ${isActive ? 'translate-x-2' : ''}`}>
-                      <div className="shrink-0">{isCompleted ? <CheckCircle2 size={18} className="text-emerald-500" /> : isActive ? <CircleDashed size={18} className="text-indigo-400 animate-spin" /> : <div className="w-4 h-4 rounded-full border border-gray-700" />}</div>
-                      <span className={`text-xs font-mono ${isCompleted ? 'text-gray-500' : isActive ? 'text-indigo-300 font-bold' : 'text-gray-700'}`}>{step}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {errorMsg && <div className="mt-4 p-3 bg-red-900/30 border border-red-500/30 rounded text-red-200 text-xs flex gap-2 items-center"><AlertCircle size={16}/> {errorMsg} <button onClick={() => setMode(AppMode.INPUT)} className="ml-auto underline">Reintentar</button></div>}
-            </div>
-          </div>
-        </div>
-      )}
-      
+      {mode === AppMode.PROCESSING && renderProcessing()}
       {mode === AppMode.RESULTS && renderResults()}
     </>
   );

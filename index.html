@@ -4,39 +4,40 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GEM CORE | Operativo Benet</title>
+    <title>Asistente Psicológico | Arquitectura Astrológica</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
+              serif: ['Playfair Display', 'serif'],
               mono: ['JetBrains Mono', 'monospace'],
             },
             colors: {
-              'gem-dark': '#0B0C15',
-              'gem-panel': '#151725',
-              'gem-accent': '#6366f1', // Indigo 500
-              'gem-glow': '#a5b4fc',   // Indigo 200
+              'gem-dark': '#0f172a', // Slate 900
+              'gem-panel': 'rgba(30, 41, 59, 0.4)', // Slate 800 with opacity
+              'gem-accent': '#818cf8', // Indigo 400
+              'gem-gold': '#fbbf24',   // Amber 400
+              'gem-highlight': '#c084fc', // Purple 400
             },
             animation: {
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'fade-in': 'fadeIn 0.8s ease-out forwards',
-              'spin-slow': 'spin 8s linear infinite',
-              'spin-reverse': 'spinReverse 12s linear infinite',
+              'slide-up': 'slideUp 0.6s ease-out forwards',
             },
             keyframes: {
               fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               },
-              spinReverse: {
-                from: { transform: 'rotate(360deg)' },
-                to: { transform: 'rotate(0deg)' },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
               }
             }
           }
@@ -45,30 +46,32 @@
     </script>
     <style>
       body {
-        background-color: #0B0C15;
+        background-color: #020617; /* Slate 950 */
+        background-image: 
+          radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.15), transparent 25%), 
+          radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.15), transparent 25%);
         color: #e2e8f0;
       }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #0B0C15;
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #374151;
-        border-radius: 4px;
+        background: #475569;
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #4b5563;
+        background: #64748b;
       }
       
-      /* Cosmic Animations */
-      .orbit-container {
-        perspective: 1000px;
-      }
-      .orbit-ring {
-        transform-style: preserve-3d;
+      .glass-panel {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
     </style>
   <script type="importmap">
