@@ -24,9 +24,26 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# Cliente MongoDB (compat: MONGODB_URL o MONGODB_URI)
+# Cliente MongoDB con opciones SSL configuradas
 MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
-client = AsyncIOMotorClient(MONGODB_URL)
+
+# Opciones para MongoDB Atlas con SSL/TLS
+mongodb_options = {
+    "serverSelectionTimeoutMS": 5000,
+    "connectTimeoutMS": 10000,
+    "socketTimeoutMS": 10000,
+    "maxPoolSize": 10,
+    "minPoolSize": 1,
+}
+
+# Si es MongoDB Atlas (contiene mongodb+srv o mongodb.net), agregar opciones SSL
+if "mongodb+srv://" in MONGODB_URL or "mongodb.net" in MONGODB_URL:
+    mongodb_options.update({
+        "tls": True,
+        "tlsAllowInvalidCertificates": True,  # Necesario para algunos entornos
+    })
+
+client = AsyncIOMotorClient(MONGODB_URL, **mongodb_options)
 db = client.fraktal
 users_collection = db.users
 

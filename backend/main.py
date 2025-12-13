@@ -82,7 +82,21 @@ async def health_db():
     """Verifica conexión a MongoDB"""
     try:
         mongo_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+
+        # Opciones para MongoDB Atlas con SSL/TLS
+        mongodb_options = {
+            "serverSelectionTimeoutMS": 5000,
+            "connectTimeoutMS": 10000,
+        }
+
+        # Si es MongoDB Atlas, agregar opciones SSL
+        if "mongodb+srv://" in mongo_url or "mongodb.net" in mongo_url:
+            mongodb_options.update({
+                "tls": True,
+                "tlsAllowInvalidCertificates": True,
+            })
+
+        client = AsyncIOMotorClient(mongo_url, **mongodb_options)
         # Ping rápido
         await client.admin.command("ping")
         return {"status": "healthy", "db": "connected"}
