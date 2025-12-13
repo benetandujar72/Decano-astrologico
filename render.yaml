@@ -1,0 +1,67 @@
+# Configuración de Render para FRAKTAL API
+# Documentación: https://render.com/docs/blueprint-spec
+
+services:
+  # Backend API (Python/FastAPI)
+  - type: web
+    name: fraktal-api
+    runtime: python
+    region: oregon # o usa 'frankfurt' para Europa
+    plan: free # Cambia a 'starter' si necesitas más recursos
+    branch: main # Rama de GitHub a deployar
+    rootDir: backend # Directorio del backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    # Variables de entorno (configura valores reales en Render Dashboard)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+      - key: MONGODB_URI
+        sync: false # Se configura manualmente en Render Dashboard como Secret
+
+      - key: SECRET_KEY
+        generateValue: true # Render genera automáticamente una clave segura
+
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false # Se configura manualmente
+
+      - key: CORS_ORIGINS
+        value: https://decano-astrologico.vercel.app
+        # ⚠️ ACTUALIZAR con tu URL real de Vercel después del deploy
+
+      - key: PORT
+        value: 10000
+
+    # Health check para verificar que el servicio está corriendo
+    healthCheckPath: /health
+
+    # Auto-deploy cuando hay push a main
+    autoDeploy: true
+
+# INSTRUCCIONES DE DEPLOYMENT:
+#
+# 1. MONGODB ATLAS:
+#    - Crea cluster gratuito en https://cloud.mongodb.com
+#    - Crea usuario de base de datos
+#    - Whitelist IP: 0.0.0.0/0 (permitir todas)
+#    - Copia connection string
+#
+# 2. RENDER:
+#    - Conecta tu repositorio de GitHub
+#    - Render detectará automáticamente este archivo
+#    - En Environment, configura:
+#      * MONGODB_URI (connection string de Atlas)
+#      * ADMIN_BOOTSTRAP_PASSWORD (tu contraseña segura)
+#    - Click en "Create Web Service"
+#
+# 3. VERCEL (Frontend):
+#    - En tu proyecto Vercel, ve a Settings > Environment Variables
+#    - Agrega: VITE_API_URL = https://tu-app.onrender.com
+#    - Redeploy el frontend
+#
+# 4. ACTUALIZAR CORS:
+#    - Una vez desplegado el frontend en Vercel, copia la URL
+#    - Actualiza CORS_ORIGINS en Render con esa URL
+#    - Trigger un redeploy en Render

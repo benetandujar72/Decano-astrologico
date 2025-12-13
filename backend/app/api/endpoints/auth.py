@@ -76,11 +76,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Endpoint de login"""
+    """Endpoint de login - Optimizado con logging"""
+    import time
+    start_time = time.time()
+
+    print(f"[AUTH] Login attempt for user: {form_data.username}")
+
+    # Buscar usuario en la base de datos
     user = await users_collection.find_one({"username": form_data.username})
+    db_query_time = time.time() - start_time
+    print(f"[AUTH] DB query time: {db_query_time:.3f}s")
 
     # Bootstrap admin (demo): si no existe aún, lo creamos automáticamente.
     if not user and form_data.username == "admin@programafraktal.com":
+        print(f"[AUTH] Admin user not found, creating bootstrap admin...")
+        bootstrap_start = time.time()
+
         admin_password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "1234")
         hashed_password = get_password_hash(admin_password)
         admin_user = {
@@ -90,21 +101,53 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             "role": "admin",
             "created_at": datetime.utcnow().isoformat(),
         }
-        await users_collection.insert_one(admin_user)
-        user = await users_collection.find_one({"username": form_data.username})
-    
-    if not user or not verify_password(form_data.password, user.get("hashed_password", "")):
+
+        try:
+            result = await users_collection.insert_one(admin_user)
+            # No hacer segunda query, usar el admin_user que acabamos de crear
+            user = admin_user
+            user["_id"] = result.inserted_id
+            bootstrap_time = time.time() - bootstrap_start
+            print(f"[AUTH] Admin bootstrap completed in {bootstrap_time:.3f}s")
+        except Exception as e:
+            print(f"[AUTH] Error creating admin: {e}")
+            # Tal vez ya existe (race condition), intentar buscar de nuevo
+            user = await users_collection.find_one({"username": form_data.username})
+
+    if not user:
+        print(f"[AUTH] User not found: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # Verificar contraseña
+    verify_start = time.time()
+    password_valid = verify_password(form_data.password, user.get("hashed_password", ""))
+    verify_time = time.time() - verify_start
+    print(f"[AUTH] Password verification time: {verify_time:.3f}s")
+
+    if not password_valid:
+        print(f"[AUTH] Invalid password for user: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Generar token
+    token_start = time.time()
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user["username"]}, expires_delta=access_token_expires
     )
-    
+    token_time = time.time() - token_start
+
+    total_time = time.time() - start_time
+    print(f"[AUTH] Token generation time: {token_time:.3f}s")
+    print(f"[AUTH] Total login time: {total_time:.3f}s - SUCCESS for {form_data.username}")
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
