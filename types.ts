@@ -32,6 +32,7 @@ export interface SavedChart {
 export interface User {
   username: string;
   email: string;
+  role: 'user' | 'admin';
 }
 
 export interface AnalysisResult {
@@ -47,13 +48,21 @@ export interface AnalysisResult {
   footerQuote: string;
 }
 
+export interface SystemPrompt {
+  id?: string;
+  active: boolean;
+  content: string;
+  updated_at: string;
+}
+
 export enum AppMode {
-  AUTH = 'AUTH', // Nuevo modo de autenticación
+  AUTH = 'AUTH', 
   INPUT = 'INPUT',
   MODE_SELECTION = 'MODE_SELECTION',
   PROCESSING = 'PROCESSING',
   RESULTS = 'RESULTS',
-  LISTING = 'LISTING'
+  LISTING = 'LISTING',
+  ADMIN_PANEL = 'ADMIN_PANEL' // Nuevo modo Admin
 }
 
 export enum AnalysisType {

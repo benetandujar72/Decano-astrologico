@@ -23,15 +23,17 @@ import {
   Lock,
   LogOut,
   User as UserIcon,
-  Info
+  Info,
+  ShieldAlert
 } from 'lucide-react';
-import { SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
-import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition } from './types';
+import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
+import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User } from './types';
 import NatalChart from './components/NatalChart'; 
 import PlanetaryTable from './components/PlanetaryTable';
 import CosmicLoader from './components/CosmicLoader';
 import ControlPanel from './components/ControlPanel'; 
-import GenericModal from './components/GenericModal'; // New
+import GenericModal from './components/GenericModal'; 
+import AdminPanel from './components/AdminPanel'; // Nuevo componente
 import { calculateChartData } from './astrologyEngine'; 
 import { api } from './services/api'; 
 
@@ -54,7 +56,12 @@ const App: React.FC = () => {
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false); // Nuevo estado Admin
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
+
+  // System Prompt State (Dynamic)
+  const [systemInstruction, setSystemInstruction] = useState<string>(DEFAULT_SYSTEM_INSTRUCTION);
 
   const [mode, setMode] = useState<AppMode>(AppMode.AUTH); 
   const [analysisType, setAnalysisType] = useState<AnalysisType>(AnalysisType.PSYCHOLOGICAL);
@@ -83,10 +90,20 @@ const App: React.FC = () => {
   // Check token on mount
   useEffect(() => {
     const token = localStorage.getItem('fraktal_token');
+    const savedUser = localStorage.getItem('fraktal_user');
+    
     if (token) {
       setIsAuthenticated(true);
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+        if (user.role === 'admin' || user.username === 'admin@programafraktal.com') {
+            setIsAdmin(true);
+        }
+      }
       setMode(AppMode.INPUT);
       loadChartsFromApi();
+      fetchSystemPrompt(); // Cargar prompt dinámico
     }
   }, []);
 
@@ -100,6 +117,17 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchSystemPrompt = async () => {
+    try {
+      const promptData = await api.getSystemPrompt();
+      if (promptData && promptData.content) {
+        setSystemInstruction(promptData.content);
+      }
+    } catch (e) {
+      console.warn("Usando prompt por defecto (Offline o Error DB)", e);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -107,22 +135,36 @@ const App: React.FC = () => {
       if (isRegistering) {
         await api.register(authForm.username, authForm.password);
         const res = await api.login(authForm.username, authForm.password);
-        localStorage.setItem('fraktal_token', res.access_token);
+        finishLogin(res);
       } else {
         const res = await api.login(authForm.username, authForm.password);
-        localStorage.setItem('fraktal_token', res.access_token);
+        finishLogin(res);
       }
-      setIsAuthenticated(true);
-      setMode(AppMode.INPUT);
-      loadChartsFromApi();
     } catch (err) {
       setErrorMsg('Error en credenciales o conexión.');
     }
   };
 
+  const finishLogin = (res: any) => {
+    localStorage.setItem('fraktal_token', res.access_token);
+    localStorage.setItem('fraktal_user', JSON.stringify(res.user));
+    setCurrentUser(res.user);
+    
+    setIsAuthenticated(true);
+    if (res.user.role === 'admin') {
+        setIsAdmin(true);
+    }
+    setMode(AppMode.INPUT);
+    loadChartsFromApi();
+    fetchSystemPrompt();
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('fraktal_token');
+    localStorage.removeItem('fraktal_user');
     setIsAuthenticated(false);
+    setIsAdmin(false);
+    setCurrentUser(null);
     setMode(AppMode.AUTH);
     setSavedCharts([]);
   };
@@ -182,6 +224,9 @@ const App: React.FC = () => {
   };
 
   const handleAnalyze = async (overrideInput?: UserInput) => {
+    // Refresh prompt just in case it was updated
+    await fetchSystemPrompt();
+
     const inputToUse = overrideInput || userInput;
     setActiveChartParams(inputToUse); 
     setMode(AppMode.PROCESSING);
@@ -230,7 +275,7 @@ const App: React.FC = () => {
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: systemInstruction, // USAMOS EL PROMPT DINÁMICO
           maxOutputTokens: 8192,
           responseMimeType: "application/json",
           responseSchema: analysisSchema
@@ -347,7 +392,6 @@ const App: React.FC = () => {
   };
 
   // --- Modal Content Renderers ---
-  
   const LegendContent = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
@@ -403,8 +447,6 @@ const App: React.FC = () => {
 
   const TransitsContent = () => {
     if (!analysisResult) return null;
-    
-    // Calculate Current Transits on the fly
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
@@ -438,7 +480,6 @@ const App: React.FC = () => {
                         const transitPos = transitData.positions.find(tp => tp.name === natalPos.name);
                         if (!transitPos) return null;
                         
-                        // Calc diff
                         let diff = Math.abs(natalPos.longitude - transitPos.longitude);
                         if (diff > 180) diff = 360 - diff;
                         const isConj = diff < 10;
@@ -465,13 +506,9 @@ const App: React.FC = () => {
                 </tbody>
             </table>
         </div>
-        <div className="mt-4 text-[10px] text-gray-500 text-center">
-            *Cálculo geocéntrico tropical. Orbes aproximados para conjunción, oposición y cuadratura.
-        </div>
       </div>
     );
   };
-
 
   // --- Renderers --- //
 
@@ -487,6 +524,15 @@ const App: React.FC = () => {
         </div>
       </div>
       <div className="flex gap-2">
+        {isAdmin && (
+            <button 
+                onClick={() => setMode(AppMode.ADMIN_PANEL)}
+                className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 flex items-center gap-1 animate-pulse"
+                title="Panel de Administrador"
+            >
+                <ShieldAlert size={14} /> ADMIN
+            </button>
+        )}
         {(['es', 'ca', 'eu'] as Language[]).map((l) => (
           <button
             key={l}
@@ -898,6 +944,12 @@ const App: React.FC = () => {
       {mode === AppMode.PROCESSING && renderProcessing()}
       {mode === AppMode.RESULTS && renderResults()}
       {mode === AppMode.LISTING && renderListing()}
+      {mode === AppMode.ADMIN_PANEL && (
+        <AdminPanel 
+            onBack={() => setMode(AppMode.INPUT)} 
+            onUpdatePrompt={(newPrompt) => setSystemInstruction(newPrompt)}
+        />
+      )}
     </>
   );
 };

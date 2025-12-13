@@ -1,5 +1,5 @@
 
-import { SavedChart, User } from '../types';
+import { SavedChart, User, SystemPrompt } from '../types';
 
 // En producción en Render, cambiar esta URL a la de tu backend
 // Se usa un fallback seguro: si (import.meta as any).env es undefined, usa un objeto vacío.
@@ -16,7 +16,7 @@ const getHeaders = () => {
 
 export const api = {
   // AUTH
-  login: async (username: string, password: string): Promise<{ access_token: string, token_type: string }> => {
+  login: async (username: string, password: string): Promise<{ access_token: string, token_type: string, user: User }> => {
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
@@ -66,5 +66,24 @@ export const api = {
       headers: getHeaders()
     });
     if (!res.ok) throw new Error('Error borrando carta');
+  },
+
+  // ADMIN - PROMPTS
+  getSystemPrompt: async (): Promise<SystemPrompt> => {
+    const res = await fetch(`${API_URL}/config/prompt`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Error cargando configuración del sistema');
+    return res.json();
+  },
+
+  updateSystemPrompt: async (content: string): Promise<SystemPrompt> => {
+    const res = await fetch(`${API_URL}/config/prompt`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error('Error actualizando prompt');
+    return res.json();
   }
 };
