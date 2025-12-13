@@ -7,6 +7,7 @@ import math
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 import pytz
+from app.services.geolocation_service import coordenadas_a_timezone
 
 # Configuración inicial: Usar efemérides analíticas Moshier
 # (precisión suficiente y sin archivos externos)
@@ -33,87 +34,150 @@ PLANETAS = {
 }
 
 
-def grado_a_zodiaco(deg: float) -> Dict[str, any]:
+def grado_a_zodiaco(deg: float, incluir_segundos: bool = True) -> Dict[str, any]:
     """
-    Convierte grados decimales a formato zodiacal
-    
+    Convierte grados decimales a formato zodiacal con precisión profesional
+
     Args:
         deg: Grados decimales (0-360)
-        
+        incluir_segundos: Si True, incluye segundos en el formato (ej: 15°42'18")
+
     Returns:
-        Dict con: signo, grados, minutos, texto_completo
+        Dict con: signo, grados, minutos, segundos, texto_completo, longitud_absoluta
+
+    Ejemplos:
+        >>> grado_a_zodiaco(15.705)
+        {'signo': 'Aries', 'grados': 15, 'minutos': 42, 'segundos': 18,
+         'texto': "15°42'18\" Aries", 'longitud_absoluta': 15.705}
     """
-    deg = deg % 360  # Normalizar
+    # Normalizar a 0-360
+    deg = deg % 360
+
+    # Determinar signo (cada signo = 30°)
     signo_idx = int(deg // 30)
     pos_en_signo = deg % 30
+
+    # Extraer grados, minutos y segundos
     grados = int(pos_en_signo)
-    minutos = int((pos_en_signo - grados) * 60 + 0.5)  # Redondeo estándar
-    
-    # Ajustar overflow de minutos
-    if minutos == 60:
+    minutos_decimales = (pos_en_signo - grados) * 60
+    minutos = int(minutos_decimales)
+    segundos_decimales = (minutos_decimales - minutos) * 60
+    segundos = int(round(segundos_decimales))  # Redondear segundos
+
+    # Ajustar overflow de segundos → minutos → grados
+    if segundos >= 60:
+        segundos = 0
+        minutos += 1
+
+    if minutos >= 60:
         minutos = 0
         grados += 1
-        if grados == 30:
-            grados = 0
-            signo_idx = (signo_idx + 1) % 12
-    
+
+    if grados >= 30:
+        grados = 0
+        signo_idx = (signo_idx + 1) % 12
+
+    # Obtener signo
     signo = SIGNOS[signo_idx]
-    texto = f"{grados:02d}º{minutos:02d}' {signo}"
-    
+
+    # Formatear texto
+    if incluir_segundos:
+        texto = f'{grados:02d}°{minutos:02d}\'{segundos:02d}" {signo}'
+    else:
+        texto = f'{grados:02d}°{minutos:02d}\' {signo}'
+
     return {
         'signo': signo,
         'grados': grados,
         'minutos': minutos,
+        'segundos': segundos,  # ← NUEVO
         'texto': texto,
-        'longitud_absoluta': deg
+        'longitud_absoluta': deg,
+        'decimal_en_signo': pos_en_signo  # ← Útil para cálculos internos
     }
 
 
-def calcular_julian_day(fecha: str, hora: str, zona_horaria: str) -> Tuple[float, datetime]:
+def calcular_julian_day(
+    fecha: str,
+    hora: str,
+    latitud: float,
+    longitud: float,
+    zona_horaria: Optional[str] = None
+) -> Tuple[float, datetime, str]:
     """
-    Calcula el Julian Day para los cálculos astronómicos
-    
+    Calcula el Julian Day para los cálculos astronómicos con detección automática de timezone
+
     Args:
         fecha: Formato "YYYY-MM-DD"
         hora: Formato "HH:MM"
-        zona_horaria: Ej: "Europe/Madrid"
-        
+        latitud: Latitud del lugar
+        longitud: Longitud del lugar
+        zona_horaria: Zona horaria IANA (opcional, se calcula automáticamente si no se provee)
+
     Returns:
-        Tupla (julian_day_et, datetime_utc)
+        Tupla (julian_day_et, datetime_utc, zona_horaria_detectada)
+
+    Ejemplos:
+        >>> # Madrid - Detección automática
+        >>> jd, dt_utc, tz = calcular_julian_day("2023-07-15", "14:30", 40.4168, -3.7038)
+        >>> tz
+        'Europe/Madrid'
     """
+    # Si no se proporcionó zona horaria, calcularla automáticamente
+    if zona_horaria is None or zona_horaria == "UTC":
+        zona_horaria = coordenadas_a_timezone(latitud, longitud)
+        print(f"🌍 Zona horaria detectada: {zona_horaria} (Lat {latitud}, Lon {longitud})")
+
     # Parsear fecha y hora local
     local_dt = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
-    
+
     # Convertir a UTC
     tz = pytz.timezone(zona_horaria)
     dt_aware = tz.localize(local_dt)
     dt_utc = dt_aware.astimezone(pytz.utc)
-    
+
     # Hora decimal para Swiss Ephemeris
     hora_utc_dec = dt_utc.hour + dt_utc.minute/60.0 + dt_utc.second/3600.0
-    
+
     # Calcular Julian Day (UT)
     jd_ut = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, hora_utc_dec)
-    
+
     # Convertir a Ephemeris Time (ET) para mayor precisión
     delta_t = swe.deltat(jd_ut)
     jd_et = jd_ut + delta_t
-    
-    return jd_et, dt_utc
+
+    return jd_et, dt_utc, zona_horaria
 
 
-def calcular_posiciones_planetas(jd_ut: float) -> Dict[str, Dict]:
+def calcular_posiciones_planetas(jd_ut: float, lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Dict]:
     """
-    Calcula las posiciones de todos los planetas
-    
+    Calcula las posiciones de todos los planetas con precisión profesional
+
     Args:
         jd_ut: Julian Day (UT)
-        
+        lat: Latitud (opcional, para corrección topocéntrica)
+        lon: Longitud (opcional, para corrección topocéntrica)
+
     Returns:
         Dict con posiciones de cada planeta
     """
     posiciones = {}
-    flags = swe.FLG_SWIEPH | swe.FLG_SPEED
+
+    # Flags profesionales para máxima precisión
+    if lat is not None and lon is not None:
+        # Si tenemos coordenadas, establecer posición topocéntrica
+        swe.set_topo(lon, lat, 0)  # lon, lat, altura_metros
+        flags = (
+            swe.FLG_SWIEPH |      # Usar archivos Swiss Ephemeris (o Moshier si no están)
+            swe.FLG_SPEED |       # Calcular velocidades planetarias
+            swe.FLG_TOPOCTR       # Corrección topocéntrica (desde ubicación geográfica)
+        )
+    else:
+        # Sin coordenadas, usar cálculo geocéntrico estándar
+        flags = (
+            swe.FLG_SWIEPH |      # Usar archivos Swiss Ephemeris (o Moshier si no están)
+            swe.FLG_SPEED         # Calcular velocidades planetarias
+        )
     
     for nombre, id_cuerpo in PLANETAS.items():
         try:
@@ -136,6 +200,7 @@ def calcular_posiciones_planetas(jd_ut: float) -> Dict[str, Dict]:
                 'signo': pos_zodiacal['signo'],
                 'grados': pos_zodiacal['grados'],
                 'minutos': pos_zodiacal['minutos'],
+                'segundos': pos_zodiacal['segundos'],  # ← NUEVO
                 'texto': pos_zodiacal['texto'] + (' R' if retro else '')
             }
             
@@ -261,27 +326,33 @@ def calcular_carta_completa(
     hora: str,
     latitud: float,
     longitud: float,
-    zona_horaria: str = "UTC"
+    zona_horaria: Optional[str] = None
 ) -> Dict:
     """
-    Calcula la carta astral completa con todos los elementos
-    
+    Calcula la carta astral completa con todos los elementos y detección automática de timezone
+
     Args:
         fecha: Formato "YYYY-MM-DD"
         hora: Formato "HH:MM"
         latitud: Latitud del lugar
         longitud: Longitud del lugar
-        zona_horaria: Zona horaria (ej: "Europe/Madrid", "America/Mexico_City")
-        
+        zona_horaria: Zona horaria IANA (opcional, se detecta automáticamente desde coordenadas)
+
     Returns:
         Dict completo con toda la información astrológica
+
+    Ejemplos:
+        >>> # Madrid - Detección automática
+        >>> carta = calcular_carta_completa("2023-07-15", "14:30", 40.4168, -3.7038)
+        >>> carta['datos_entrada']['zona_horaria']
+        'Europe/Madrid'
     """
-    # 1. Calcular Julian Day
-    jd_et, dt_utc = calcular_julian_day(fecha, hora, zona_horaria)
+    # 1. Calcular Julian Day (ahora con detección automática de timezone)
+    jd_et, dt_utc, zona_horaria_detectada = calcular_julian_day(fecha, hora, latitud, longitud, zona_horaria)
     jd_ut = jd_et - swe.deltat(jd_et - swe.deltat(jd_et))  # Aproximación de UT
-    
-    # 2. Calcular posiciones planetarias
-    posiciones = calcular_posiciones_planetas(jd_ut)
+
+    # 2. Calcular posiciones planetarias (con corrección topocéntrica)
+    posiciones = calcular_posiciones_planetas(jd_ut, latitud, longitud)
     
     # 3. Calcular casas y ángulos
     casas_data = calcular_casas_y_angulos(jd_ut, latitud, longitud)
@@ -303,7 +374,7 @@ def calcular_carta_completa(
             'hora': hora,
             'latitud': latitud,
             'longitud': longitud,
-            'zona_horaria': zona_horaria,
+            'zona_horaria': zona_horaria_detectada,  # ← Usar la zona detectada
             'fecha_utc': dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
         },
         'planetas': posiciones,
