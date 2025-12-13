@@ -257,5 +257,34 @@ python test_login.py
 
 ---
 
+---
+
+## 🆕 Nuevas Características Implementadas
+
+### ✅ Sistema de Prompts Especializados (2025-12-13)
+
+**Implementado:**
+- ✅ Backend API completo con endpoints CRUD para prompts especializados
+- ✅ 13 tipos de prompts diferentes (Carta Natal, Revolución Solar, Tránsitos, etc.)
+- ✅ 4 prompts predefinidos del sistema listos para usar
+- ✅ UI interactiva en AdminDashboard con grid visual
+- ✅ Modal de visualización de prompts
+- ✅ Sistema de contadores de uso y estadísticas
+- ✅ Prompts públicos/privados
+- ✅ Permisos por rol (admin puede crear, usuarios pueden ver)
+
+**Pendiente:**
+- ⏳ Integración con Gemini AI (seleccionar prompt según tipo de carta)
+- ⏳ Función de edición de prompts en UI
+- ⏳ Creación de nuevos prompts desde UI
+- ⏳ Sistema de calificación de prompts
+
+**Documentación:**
+- Ver [SPECIALIZED_PROMPTS.md](SPECIALIZED_PROMPTS.md) para detalles completos
+- Endpoints: `/config/prompts/specialized/*`
+- Modelo: `backend/app/models/prompts.py`
+
+---
+
 **Última actualización**: 2025-12-13
-**Commit**: 36a987a
+**Commit**: (pendiente de subir)

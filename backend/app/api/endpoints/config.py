@@ -9,6 +9,8 @@ import os
 from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user
 from pydantic import BaseModel
+from app.models.prompts import SpecializedPrompt, PromptType, DEFAULT_PROMPTS
+from typing import List, Optional
 
 load_dotenv()
 
@@ -36,6 +38,7 @@ if "mongodb+srv://" in MONGODB_URL or "mongodb.net" in MONGODB_URL:
 client = AsyncIOMotorClient(MONGODB_URL, **mongodb_options)
 db = client.fraktal
 prompts_collection = db.system_prompts
+specialized_prompts_collection = db.specialized_prompts
 
 class PromptUpdate(BaseModel):
     content: str
@@ -117,4 +120,286 @@ async def update_system_prompt(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating system prompt: {str(e)}"
         )
+
+
+# ========================================
+# SPECIALIZED PROMPTS ENDPOINTS
+# ========================================
+
+@router.get("/prompts/specialized", response_model=List[dict])
+async def get_specialized_prompts(
+    current_user: dict = Depends(get_current_user)
+) -> List[dict]:
+    """Obtiene todos los prompts especializados disponibles"""
+    import sys
+
+    try:
+        prompts = []
+        cursor = specialized_prompts_collection.find({})
+
+        async for prompt in cursor:
+            prompts.append({
+                "id": str(prompt["_id"]),
+                "prompt_id": prompt.get("prompt_id"),
+                "name": prompt.get("name"),
+                "type": prompt.get("type"),
+                "description": prompt.get("description"),
+                "content": prompt.get("content"),
+                "house_system": prompt.get("house_system", "placidus"),
+                "orb_config": prompt.get("orb_config"),
+                "is_public": prompt.get("is_public", False),
+                "is_default": prompt.get("is_default", False),
+                "created_by": prompt.get("created_by"),
+                "created_at": prompt.get("created_at"),
+                "usage_count": prompt.get("usage_count", 0),
+                "rating": prompt.get("rating", 0.0)
+            })
+
+        print(f"[CONFIG] Retrieved {len(prompts)} specialized prompts", file=sys.stderr)
+        return prompts
+
+    except Exception as e:
+        print(f"[CONFIG] ERROR retrieving specialized prompts: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving specialized prompts: {str(e)}"
+        )
+
+
+@router.get("/prompts/specialized/{prompt_type}")
+async def get_specialized_prompt_by_type(
+    prompt_type: str,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """Obtiene un prompt especializado por tipo"""
+    import sys
+
+    try:
+        # Buscar primero un prompt personalizado del usuario
+        prompt = await specialized_prompts_collection.find_one({
+            "type": prompt_type,
+            "$or": [
+                {"created_by": current_user.get("username")},
+                {"is_public": True},
+                {"is_default": True}
+            ]
+        }, sort=[("is_default", -1), ("rating", -1)])
+
+        if prompt:
+            return {
+                "id": str(prompt["_id"]),
+                "prompt_id": prompt.get("prompt_id"),
+                "name": prompt.get("name"),
+                "type": prompt.get("type"),
+                "description": prompt.get("description"),
+                "content": prompt.get("content"),
+                "house_system": prompt.get("house_system", "placidus"),
+                "orb_config": prompt.get("orb_config"),
+                "is_default": prompt.get("is_default", False),
+                "created_by": prompt.get("created_by")
+            }
+
+        # Si no existe, retornar el prompt por defecto del código
+        if prompt_type in DEFAULT_PROMPTS:
+            return {
+                "id": None,
+                "prompt_id": f"default_{prompt_type}",
+                "name": f"Prompt {prompt_type.replace('_', ' ').title()}",
+                "type": prompt_type,
+                "description": f"Prompt predefinido para {prompt_type}",
+                "content": DEFAULT_PROMPTS[prompt_type],
+                "house_system": "placidus",
+                "orb_config": None,
+                "is_default": True,
+                "created_by": "system"
+            }
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prompt type '{prompt_type}' not found"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CONFIG] ERROR retrieving prompt {prompt_type}: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving prompt: {str(e)}"
+        )
+
+
+@router.post("/prompts/specialized")
+async def create_specialized_prompt(
+    prompt: SpecializedPrompt,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """Crea un nuevo prompt especializado (solo admin)"""
+    import sys
+
+    # Verificar que el usuario es admin
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can create specialized prompts"
+        )
+
+    try:
+        # Preparar documento para MongoDB
+        prompt_dict = prompt.model_dump()
+        prompt_dict["created_by"] = current_user.get("username", "unknown")
+        prompt_dict["created_at"] = datetime.utcnow().isoformat()
+
+        # Insertar en la base de datos
+        result = await specialized_prompts_collection.insert_one(prompt_dict)
+
+        print(f"[CONFIG] Created specialized prompt '{prompt.name}' (type: {prompt.type}). ID: {result.inserted_id}", file=sys.stderr)
+
+        return {
+            "id": str(result.inserted_id),
+            "prompt_id": prompt.prompt_id,
+            "name": prompt.name,
+            "type": prompt.type,
+            "success": True
+        }
+
+    except Exception as e:
+        print(f"[CONFIG] ERROR creating specialized prompt: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating specialized prompt: {str(e)}"
+        )
+
+
+@router.put("/prompts/specialized/{prompt_id}")
+async def update_specialized_prompt(
+    prompt_id: str,
+    prompt: SpecializedPrompt,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """Actualiza un prompt especializado existente (solo admin o creador)"""
+    import sys
+
+    try:
+        # Buscar el prompt existente
+        existing_prompt = await specialized_prompts_collection.find_one({"_id": ObjectId(prompt_id)})
+
+        if not existing_prompt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Prompt with id '{prompt_id}' not found"
+            )
+
+        # Verificar permisos
+        if current_user.get("role") != "admin" and existing_prompt.get("created_by") != current_user.get("username"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update your own prompts"
+            )
+
+        # Actualizar el prompt
+        prompt_dict = prompt.model_dump(exclude={"prompt_id", "created_by", "created_at"})
+        prompt_dict["updated_at"] = datetime.utcnow().isoformat()
+        prompt_dict["updated_by"] = current_user.get("username", "unknown")
+
+        await specialized_prompts_collection.update_one(
+            {"_id": ObjectId(prompt_id)},
+            {"$set": prompt_dict}
+        )
+
+        print(f"[CONFIG] Updated specialized prompt '{prompt.name}' (ID: {prompt_id})", file=sys.stderr)
+
+        return {
+            "id": prompt_id,
+            "name": prompt.name,
+            "type": prompt.type,
+            "success": True
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CONFIG] ERROR updating specialized prompt: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating specialized prompt: {str(e)}"
+        )
+
+
+@router.delete("/prompts/specialized/{prompt_id}")
+async def delete_specialized_prompt(
+    prompt_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """Elimina un prompt especializado (solo admin o creador)"""
+    import sys
+
+    try:
+        # Buscar el prompt existente
+        existing_prompt = await specialized_prompts_collection.find_one({"_id": ObjectId(prompt_id)})
+
+        if not existing_prompt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Prompt with id '{prompt_id}' not found"
+            )
+
+        # Verificar permisos
+        if current_user.get("role") != "admin" and existing_prompt.get("created_by") != current_user.get("username"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only delete your own prompts"
+            )
+
+        # No permitir eliminar prompts por defecto
+        if existing_prompt.get("is_default", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot delete default prompts"
+            )
+
+        # Eliminar el prompt
+        await specialized_prompts_collection.delete_one({"_id": ObjectId(prompt_id)})
+
+        print(f"[CONFIG] Deleted specialized prompt (ID: {prompt_id})", file=sys.stderr)
+
+        return {
+            "id": prompt_id,
+            "success": True,
+            "message": "Prompt deleted successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CONFIG] ERROR deleting specialized prompt: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting specialized prompt: {str(e)}"
+        )
+
+
+@router.post("/prompts/specialized/{prompt_id}/use")
+async def increment_prompt_usage(
+    prompt_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """Incrementa el contador de uso de un prompt especializado"""
+    import sys
+
+    try:
+        result = await specialized_prompts_collection.update_one(
+            {"_id": ObjectId(prompt_id)},
+            {"$inc": {"usage_count": 1}}
+        )
+
+        if result.modified_count == 0:
+            print(f"[CONFIG] WARNING: Prompt {prompt_id} not found for usage increment", file=sys.stderr)
+
+        return {"success": True}
+
+    except Exception as e:
+        # No fallar si hay error, solo loguear
+        print(f"[CONFIG] ERROR incrementing prompt usage: {e}", file=sys.stderr)
+        return {"success": False}
 
