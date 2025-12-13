@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { 
   Sparkles,
   Activity, 
@@ -23,9 +23,10 @@ import {
 } from 'lucide-react';
 import { SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
 import { AppMode, UserInput, AnalysisResult, AnalysisType, Language } from './types';
-import RadialChart from './components/RadialChart';
+import NatalChart from './components/NatalChart'; // UPDATED COMPONENT
 import PlanetaryTable from './components/PlanetaryTable';
 import CosmicLoader from './components/CosmicLoader';
+import { calculateChartData } from './astrologyEngine'; // NEW IMPORT
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('es');
@@ -42,7 +43,7 @@ const App: React.FC = () => {
     name: '',
     date: '',
     time: '',
-    place: '',
+    place: '', // We should parse lat/lon from here realistically, but assuming string for now or simple "Lat,Lon"
     context: ''
   });
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -78,41 +79,75 @@ const App: React.FC = () => {
     startProgressSimulation();
     
     try {
+      // 1. CALCULATE REAL CHART DATA LOCALLY (Mimicking Python Backend)
+      // Parse Place: Assuming user inputs "40.41,-3.7" or similar for this demo, 
+      // or we default to Madrid/Null Island if parsing fails to avoid crash.
+      let lat = 40.4168, lon = -3.7038; // Default Madrid
+      if (userInput.place.includes(',')) {
+        const [latStr, lonStr] = userInput.place.split(',');
+        lat = parseFloat(latStr) || 40.4168;
+        lon = parseFloat(lonStr) || -3.7038;
+      }
+      
+      const realData = calculateChartData(userInput.date, userInput.time, lat, lon);
+
+      // 2. PREPARE AI PROMPT
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const typePrompt = analysisType === AnalysisType.PSYCHOLOGICAL 
-        ? "ENFOQUE: ANÁLISIS PSICOLÓGICO Y EVOLUTIVO (Prioridad: Jung, Naranjo, Carutti). Profundiza en traumas, talentos y propósito."
-        : "ENFOQUE: AUDITORÍA TÉCNICA DE LA CARTA (Prioridad: Aspectos, Regencias, Casas, Dignidades).";
+        ? "ENFOQUE: ANÁLISIS SISTÉMICO (Módulos 1-4). Prioridad: Coherencia y Estructura."
+        : "ENFOQUE: AUDITORÍA TÉCNICA Y ESTRUCTURAL (Prioridad en orbes y mecánica).";
 
       const contextPrompt = userInput.context 
-        ? `CONTEXTO ADICIONAL DEL USUARIO: "${userInput.context}". Asegúrate de responder a esto dentro de los bloques pertinentes.`
+        ? `CONTEXTO ADICIONAL DEL SISTEMA: "${userInput.context}". Integra esto en el Módulo de Síntesis/Dharma.`
         : "Sin contexto adicional.";
 
-      // Map language code to full language name for prompt
       const langMap: Record<Language, string> = {
         es: "ESPAÑOL (CASTELLANO)",
         ca: "CATALÁN (CATALÀ)",
         eu: "EUSKERA (BASQUE)"
       };
 
+      // Construct planetary data string for the AI so it doesn't hallucinate positions
+      const positionsText = realData.positions.map(p => `${p.name}: ${p.degree} ${p.sign} (Casa ${p.house})`).join('\n');
+
       const prompt = `
-        EJECUTAR PROTOCOLO "DECANO" PARA:
+        EJECUTAR PROTOCOLO "FRAKTAL v1.0" PARA:
         Sujeto: ${userInput.name}
         Nacimiento: ${userInput.date} a las ${userInput.time}
         Lugar: ${userInput.place}
         
+        DATOS ASTRONÓMICOS CALCULADOS (USAR ESTOS VALORES):
+        ${positionsText}
+
         ${typePrompt}
         ${contextPrompt}
         
-        INSTRUCCIÓN DE IDIOMA (CRÍTICO):
-        EL JSON DE SALIDA DEBE ESTAR COMPLETAMENTE TRADUCIDO AL: ${langMap[lang]}.
-        ESTO INCLUYE TÍTULOS DE BLOQUES, CONTENIDO (TESIS/AUDITORÍA/SÍNTESIS), SIGNOS DEL ZODÍACO, NOMBRES DE PLANETAS Y ELEMENTOS.
-        
-        INSTRUCCIONES DE FORMATO JSON:
-        1. Genera un informe agrupando los 28 bloques lógicos en MÁXIMO 5 "MEGA-BLOQUES".
-        2. IMPORTANTE: USA COMILLAS SIMPLES (') para énfasis.
-        3. NO incluyas markdown.
+        IDIOMA OBLIGATORIO DE SALIDA: ${langMap[lang]}.
       `;
+
+      // Define Output Schema
+      const analysisSchema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+          blocks: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                title: { type: Type.STRING },
+                thesis: { type: Type.STRING },
+                audit: { type: Type.STRING },
+                synthesis: { type: Type.STRING },
+              },
+              required: ["id", "title", "thesis", "audit", "synthesis"],
+            },
+          },
+          footerQuote: { type: Type.STRING },
+        },
+        required: ["blocks", "footerQuote"],
+      };
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -120,25 +155,29 @@ const App: React.FC = () => {
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json"
+          responseMimeType: "application/json",
+          responseSchema: analysisSchema
         }
       });
 
       const text = response.text;
       if (!text) throw new Error("La API no devolvió texto.");
       
-      let cleanText = text.trim();
-      cleanText = cleanText.replace(/```json/gi, '').replace(/```/g, '').trim();
-
+      let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       const startIndex = cleanText.indexOf('{');
       const endIndex = cleanText.lastIndexOf('}');
-      
-      if (startIndex === -1 || endIndex === -1) throw new Error("Error en formato JSON.");
-      
       const jsonString = cleanText.substring(startIndex, endIndex + 1);
-      const data = JSON.parse(jsonString);
-
-      if (!data.positions || !data.blocks) throw new Error("Estructura incompleta.");
+      
+      let aiData;
+      try {
+        aiData = JSON.parse(jsonString);
+      } catch (e) {
+         // Fallback basic
+         aiData = {
+           blocks: [{ id: "ERR", title: "Error de Síntesis", thesis: "Error parsing AI", audit: "...", synthesis: "..."}],
+           footerQuote: "Error en matriz."
+         };
+      }
 
       setAnalysisResult({
         metadata: {
@@ -147,7 +186,10 @@ const App: React.FC = () => {
           birthTime: userInput.time,
           birthPlace: userInput.place
         },
-        ...data
+        positions: realData.positions, // Use REAL calculated positions
+        elementalBalance: realData.balance, // Use REAL calculated balance
+        blocks: aiData.blocks || [],
+        footerQuote: aiData.footerQuote || "Fraktal"
       });
       
       stopProgressSimulation();
@@ -174,18 +216,19 @@ const App: React.FC = () => {
 <html lang="${lang}">
 <head>
     <meta charset="UTF-8">
-    <title>Report: ${analysisResult.metadata.name}</title>
+    <title>Expediente FRAKTAL: ${analysisResult.metadata.name}</title>
     <style>
         body { font-family: 'Georgia', serif; background: #0f172a; color: #e2e8f0; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
         h1 { color: #fbbf24; border-bottom: 1px solid #334155; padding-bottom: 20px; }
-        h2 { color: #818cf8; margin-top: 40px; }
-        .box { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.1); }
-        .meta { font-family: monospace; color: #94a3b8; font-size: 0.9em; }
-        .quote { font-style: italic; text-align: center; margin-top: 50px; color: #fbbf24; }
+        h2 { color: #818cf8; margin-top: 40px; text-transform: uppercase; letter-spacing: 0.1em; font-size: 1.2em; }
+        .box { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 4px; margin: 20px 0; border-left: 3px solid #6366f1; }
+        .meta { font-family: monospace; color: #94a3b8; font-size: 0.9em; text-transform: uppercase; }
+        .audit { color: #10b981; font-size: 0.9em; font-family: monospace; margin-top: 15px; display: block; }
+        .quote { font-style: italic; text-align: center; margin-top: 60px; color: #fbbf24; border-top: 1px solid #334155; padding-top: 30px; }
     </style>
 </head>
 <body>
-    <h1>${analysisResult.metadata.name}</h1>
+    <h1>CONFIDENCIAL: ${analysisResult.metadata.name}</h1>
     <div class="meta">
         ${analysisResult.metadata.birthDate} | ${analysisResult.metadata.birthTime} | ${analysisResult.metadata.birthPlace}
     </div>
@@ -193,9 +236,16 @@ const App: React.FC = () => {
     ${analysisResult.blocks.map(block => `
         <h2>${block.title}</h2>
         <div class="box">
-            <strong>${t.blockThesis}:</strong><br/>${block.thesis}<br/><br/>
-            <strong>${t.blockAudit}:</strong> ${block.audit}<br/><br/>
-            <em>${t.blockSynthesis}:</em><br/>${block.synthesis}
+            <strong style="color: #a5b4fc">${t.blockThesis}:</strong><br/>
+            ${block.thesis}<br/>
+            
+            <span class="audit">
+               [AUDIT] ${block.audit}
+            </span>
+            <br/><br/>
+            
+            <strong style="color: #e2e8f0">${t.blockSynthesis}:</strong><br/>
+            ${block.synthesis}
         </div>
     `).join('')}
     
@@ -208,7 +258,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `REPORT_${analysisResult.metadata.name.replace(/\s+/g, '_').toUpperCase()}.html`;
+    a.download = `EXPEDIENTE_${analysisResult.metadata.name.replace(/\s+/g, '_').toUpperCase()}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -280,6 +330,7 @@ const App: React.FC = () => {
               <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputPlace}</label>
               <div className="relative">
                 <input required type="text" value={userInput.place} onChange={e => setUserInput({...userInput, place: e.target.value})} 
+                  placeholder="Ej: 40.41, -3.70 (Lat, Lon)"
                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-gray-600" />
                 <Search className="absolute left-3 top-3.5 text-gray-500" size={16} />
               </div>
@@ -315,7 +366,7 @@ const App: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Opción Psicológica */}
+          {/* Opción Psicológica (Ahora Sistémica) */}
           <button 
             onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
             className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-indigo-500/40 relative overflow-hidden"
@@ -415,8 +466,9 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-[300px]">
-             <RadialChart data={analysisResult.elementalBalance} title={t.chartTitle} />
+          <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-[500px]">
+             {/* REPLACED RADIAL CHART WITH NATAL CHART */}
+             <NatalChart positions={analysisResult.positions} lang={lang} />
           </div>
         </div>
 
@@ -517,7 +569,7 @@ const App: React.FC = () => {
         
         <div className="glass-panel rounded-xl p-10 mb-12 relative mx-4">
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#020617] px-4 text-xs text-indigo-400 uppercase tracking-widest border border-indigo-900/50 rounded-full py-1">
-            Gem Core V4.0
+            CORE CARUTTI v3.0
           </div>
           <p className="text-2xl font-serif italic text-indigo-200 leading-relaxed">
             "{analysisResult.footerQuote}"
@@ -547,7 +599,7 @@ const App: React.FC = () => {
               <div className="w-8 h-8 rounded bg-indigo-500/20 flex items-center justify-center text-indigo-400">
                 <Activity size={16} />
               </div>
-              <span className="text-xs font-bold tracking-[0.2em] text-white hidden sm:block">ASISTENTE PSICOLÓGICO</span>
+              <span className="text-xs font-bold tracking-[0.2em] text-white hidden sm:block">ASISTENTE SISTÉMICO</span>
             </div>
             <div className="flex items-center gap-4">
                 <div className="text-[10px] font-mono text-gray-500 uppercase border border-white/10 px-2 py-1 rounded">

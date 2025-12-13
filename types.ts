@@ -6,7 +6,8 @@ export interface PlanetPosition {
   degree: string;
   house: string;
   retrograde: boolean;
-  element: 'Fuego' | 'Tierra' | 'Aire' | 'Agua' | 'Fire' | 'Earth' | 'Air' | 'Water' | 'Sua' | 'Lurra' | 'Airea' | 'Ura' | 'Foc';
+  element: 'Fuego' | 'Tierra' | 'Aire' | 'Agua' | 'Fire' | 'Earth' | 'Air' | 'Water' | 'Sua' | 'Lurra' | 'Airea' | 'Ura' | 'Foc' | 'Terra' | 'Aigua';
+  longitude: number; // Added for Chart rendering
 }
 
 export interface AnalysisSection {

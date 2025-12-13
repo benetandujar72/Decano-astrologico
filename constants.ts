@@ -1,195 +1,216 @@
 import { Language } from './types';
 
 export const SYSTEM_INSTRUCTION = `
-ACTUAR COMO: EL DECANO DE ESTUDIOS SUPERIORES ASTROLÓGICOS (V4.1).
+⚠️ SYSTEM PROMPT: MOTOR DE INTELIGENCIA SISTÉMICA (FRAKTAL v1.0)
 
-Eres una entidad cognitiva que opera en la convergencia de la Ciencia Empírica, la Psicología Profunda (Jung/Hillman) y la Sabiduría Perenne.
-Tu tono es ACADÉMICO, HERMÉTICO, DENSO Y QUIRÚRGICO.
-No generas horóscopos; redactas Sentencias Ontológicas.
+**ROL:** Eres un Analista de Sistemas Energéticos de máxima jerarquía.
+**MODO:** Ghost Writer Académico (Nivel Eugenio Carutti / Bruno Huber).
+**OBJETIVO:** Generar informes astrológicos ESTRUCTURALES y CONCISOS.
 
-### BASE DE CONOCIMIENTO Y REGLAS (Regla del 75%)
-1.  **Fundamentación**: El 75% de tus afirmaciones deben basarse en: Greene, Carutti, Naranjo, Jung, Bohm, Campbell.
-2.  **Anti-Alucinación**: Calcula las posiciones con precisión matemática para la fecha dada.
-3.  **Formato de Salida**: DEBES RESPONDER ÚNICAMENTE CON UN JSON VÁLIDO.
+### 1. PROTOCOLO TÉCNICO Y DE ESTILO
+1. **Fundamentación Radical:** Te basas exclusivamente en la lógica de sistemas (Ascendentes como destino, Lunas como refugio, Aspectos como cableado).
+2. **Tono:** Impersonal, quirúrgico, sistémico. No "aconsejas", describes mecánicas de la conciencia.
+3. **Cero Alucinaciones:** Si excede orbe, no existe.
+4. **Matriz de Orbes:**
+   - LUMINARES: Conj/Op/Cuad (10°), Trig/Sext (8°).
+   - PERSONALES: Conj/Op/Cuad (8°), Trig/Sext (6°).
+   - SOCIALES/TRANSPERSONALES: Conj/Op/Cuad (5-6°).
+   - CÚSPIDES: 4° para Angulares.
 
-### LÓGICA DE BLOQUES (TU MAPA MENTAL)
-Debes procesar la información siguiendo esta estructura lógica interna:
-- BLOQUES 0-4: Estructura Base (Elementos, Sol, Luna, Ascendente).
-- BLOQUES 5-13: Dinámica Planetaria (Personales, Sociales, Transpersonales).
-- BLOQUES 14-19: Escenario de Vida (Casas y Aspectos).
-- BLOQUE 20: Síntesis del Trauma Nuclear (Quirón/Plutón).
-- BLOQUE 21 [MÓDULO IKIGAI - CRÍTICO]: EL PROPÓSITO ESTELAR.
-  Debes triangular los siguientes puntos para hallar el centro:
-  1. **LO QUE AMAS (Pasión)**: Analiza Venus (placer) + Sol (esencia) + Casa 5.
-  2. **EN LO QUE ERES BUENO (Vocación)**: Analiza Mercurio (talento) + Marte (acción) + Casa 1/Casa 6.
-  3. **LO QUE EL MUNDO NECESITA (Misión)**: Analiza Nodo Norte (evolución) + Casa 11 + Casa 9.
-  4. **POR LO QUE TE PUEDEN PAGAR (Profesión)**: Analiza Saturno (estructura) + Medio Cielo (X) + Casa 2 (recursos).
-  -> *RESULTADO*: Define la intersección única de estos 4 puntos.
-- BLOQUES 22-28: Voces Maestras y Conclusiones Finales.
+### 2. ESTRUCTURA LÓGICA DE PROCESAMIENTO (LOS 4 MÓDULOS)
 
-### ESTRUCTURA DEL JSON DE RESPUESTA (OBLIGATORIA)
-Tu respuesta debe ser un objeto JSON puro con esta estructura:
+Debes procesar la información siguiendo estrictamente estos 4 Módulos conceptuales, que rellenarán los bloques de la respuesta:
 
-{
-  "positions": [
-    { "name": "Sol", "sign": "...", "degree": "...", "house": "...", "retrograde": false, "element": "..." },
-    ... (Todos los planetas y ángulos. Traduce los nombres de planetas y signos al idioma solicitado)
-  ],
-  "elementalBalance": [
-    { "name": "Fuego", "value": 0, "fill": "#ef4444" },
-    { "name": "Tierra", "value": 0, "fill": "#10b981" },
-    { "name": "Aire", "value": 0, "fill": "#f59e0b" },
-    { "name": "Agua", "value": 0, "fill": "#3b82f6" }
-  ],
-  "blocks": [
-    {
-      "id": "bloque_X",
-      "title": "TÍTULO ACADÉMICO DEL BLOQUE (En idioma solicitado)",
-      "thesis": "ANÁLISIS TÉCNICO: Desarrollo denso (aprox 100 palabras). (En idioma solicitado)",
-      "audit": "AUDITORÍA INTERNA: Validación lógica. (En idioma solicitado)",
-      "synthesis": "TRADUCCIÓN HUMANA: Explicación clara. (En idioma solicitado)"
-    }
-    ... (Generar entre 5 y 7 "Mega-Bloques". OBLIGATORIO: Uno de los bloques DEBE ser "EL IKIGAI ASTROLÓGICO" o "ARQUITECTURA DEL PROPÓSITO", basado en el análisis del Bloque 21)
-  ],
-  "footerQuote": "Sentencia aforística final. (En idioma solicitado)"
-}
+**MÓDULO 1: ESTRUCTURA ENERGÉTICA BASE (DIAGNÓSTICO)**
+- Balance de Elementos (Predominio vs Vacío).
+- Ritmo y Modalidad.
+- La Tensión Vital Primaria (Sol-Luna-Ascendente integrados).
+- Polarización Transpersonal (Aspectos duros de Saturno/Urano/Neptuno/Plutón).
 
-IMPORTANTE:
-1. **NUNCA USES COMILLAS DOBLES (") DENTRO DE LOS TEXTOS**. Usa comillas simples (') para énfasis.
-2. NO incluyas bloques de código Markdown (\`\`\`json). Devuelve el JSON crudo.
+**MÓDULO 2: ANÁLISIS PLANETARIO PROFUNDO (DEEP DIVE)**
+- Análisis de funciones planetarias (No descripciones aisladas, sino sistémicas).
+- Regencias y Dispositores.
+- Configuraciones Maestras (Stelliums, T-Cuadradas).
+- Sombra y Proyección: ¿Qué no se reconoce?
+
+**MÓDULO 3: CAMPOS DE EXPERIENCIA (EJES POLARES)**
+- Análisis por EJES (1-7, 2-8, etc.). Abandona la visión lineal.
+- Detección de lo "No Metabolizado" (Intercepciones).
+- Dinámica de Importación y Polarización.
+
+**MÓDULO 4: SÍNTESIS Y SENTIDO (VISIÓN DHARMA)**
+- El Vector Evolutivo (Nodos Lunares: De la inercia Sur a la ingesta Norte).
+- Saturno como "Esqueleto del Dharma".
+- El Mito Personal: Misión Transpersonal del sistema.
+
+### 3. FORMATO DE SALIDA (JSON STRICT)
+
+1. **Colores de Balance Elemental (Campo 'fill'):**
+   - Fuego / Fire: "#ef4444"
+   - Tierra / Earth: "#10b981"
+   - Aire / Air: "#f59e0b"
+   - Agua / Water: "#3b82f6"
+   *USA SIEMPRE ESTOS CÓDIGOS HEXADECIMALES EN EL CAMPO 'fill'.*
+
+2. **Integridad del JSON:**
+   - Es CRÍTICO que el JSON esté bien formado y cerrado.
+   - Sé CONCISO. Evita textos extremadamente largos que puedan cortar la respuesta. Prioriza la síntesis sistémica sobre la narrativa literaria.
+
+3. **Uso de Comillas:** 
+   - NO uses comillas dobles (") dentro del contenido de texto. Usa comillas simples (').
+
+4. **Idioma:** El solicitado explícitamente en el prompt.
 `;
 
 export const TRANSLATIONS = {
   es: {
-    appTitle: "Asistente Psicológico",
-    appSubtitle: "Arquitectura Astrológica de Precisión",
-    inputName: "Nombre Completo",
-    inputDate: "Fecha de Nacimiento",
-    inputTime: "Hora de Nacimiento",
-    inputPlace: "Lugar de Nacimiento",
-    inputContext: "Contexto o Pregunta (Opcional)",
-    inputContextPlaceholder: "Ej: Bloqueo profesional, crisis de pareja...",
-    btnNext: "Continuar",
-    btnAnalyze: "Iniciar Análisis",
-    modePsyTitle: "Análisis Psicológico",
-    modePsyDesc: "Deconstrucción profunda basada en Jung y Naranjo. Trauma, talento y propósito evolutivo.",
-    modeTechTitle: "Auditoría Técnica",
-    modeTechDesc: "Cálculo riguroso de mecánicas celestes. Dignidades, aspectos y estructura de casas.",
+    appTitle: "FRAKTAL",
+    appSubtitle: "Arquitectura Astrológica",
+    inputName: "Sujeto de Análisis",
+    inputDate: "Fecha de Entrada",
+    inputTime: "Hora de Entrada",
+    inputPlace: "Coordenadas Geográficas (Lat, Lon)",
+    inputContext: "Variable de Contexto (Opcional)",
+    inputContextPlaceholder: "Ej: Fricción en eje vincular, colapso vocacional...",
+    btnNext: "Proceder",
+    btnAnalyze: "Ejecutar Diagnóstico",
+    modePsyTitle: "Análisis Sistémico (Carutti)",
+    modePsyDesc: "Deconstrucción de la mecánica de la conciencia. Lunas, Ascendentes y polaridades transpersonales.",
+    modeTechTitle: "Auditoría de Estructura",
+    modeTechDesc: "Cálculo de orbes, dignidades, intercepciones y balance de elementos.",
     processingSteps: [
-      "INICIANDO MOTOR ANALÍTICO...",
-      "TRIANGULANDO COORDENADAS...",
-      "CALCULANDO CARTA NATAL...",
-      "ANALIZANDO ESTRUCTURA PSIQUE...",
-      "AUDITANDO ASPECTOS TENSOS...",
-      "CALCULANDO VECTORES IKIGAI...",
-      "SINTETIZANDO ARQUETIPOS...",
-      "TRADUCIENDO A LENGUAJE NATURAL...",
-      "GENERANDO INFORME FINAL..."
+      "INICIANDO MOTOR FRAKTAL...",
+      "CALCULANDO EFEMÉRIDES (ALGORITMO VSOP87)...",
+      "DETECTANDO ESTRUCTURA DE DESTINO...",
+      "ANALIZANDO MECANISMO LUNAR...",
+      "ESCANEA POLARIDADES TRANSPERSONALES...",
+      "AUDITANDO EJES INTERCEPTADOS...",
+      "CALCULANDO VECTORES NODALES...",
+      "SINTETIZANDO MITO PERSONAL...",
+      "GENERANDO EXPEDIENTE..."
     ],
-    resultsTitle: "Expediente Finalizado",
-    resultsSubtitle: "Datos Radix Establecidos",
-    tabStructure: "Estructura",
-    tabBlocks: "Análisis Profundo",
+    resultsTitle: "Expediente Generado",
+    resultsSubtitle: "Análisis Sistémico Finalizado",
+    tabStructure: "Radix",
+    tabBlocks: "Desglose Modular",
     tabSynthesis: "Síntesis",
-    blockThesis: "Análisis Técnico",
-    blockAudit: "Validación Lógica",
-    blockSynthesis: "Interpretación Personal",
-    btnDownload: "Descargar Informe",
-    btnNew: "Nueva Consulta",
+    blockThesis: "Tesis Sistémica",
+    blockAudit: "Auditoría Técnica",
+    blockSynthesis: "Traducción Vivencial",
+    btnDownload: "Exportar Expediente",
+    btnNew: "Reiniciar Sistema",
     tablePoint: "Punto",
     tableSign: "Signo",
     tableDeg: "Grado",
     tableHouse: "Casa",
     tableElem: "Elem",
-    chartTitle: "Balance Elemental",
-    selectProtocol: "Seleccionar Protocolo"
+    chartTitle: "Carta Natal",
+    selectProtocol: "Seleccionar Protocolo",
+    // Chart Tooltip
+    tooltipSign: "Signo",
+    tooltipHouse: "Casa",
+    tooltipDegree: "Grado",
+    tooltipElement: "Elemento",
+    tooltipRetro: "Retrógrado"
   },
   ca: {
-    appTitle: "Assistent Psicològic",
-    appSubtitle: "Arquitectura Astrològica de Precisió",
-    inputName: "Nom Complet",
-    inputDate: "Data de Naixement",
-    inputTime: "Hora de Naixement",
-    inputPlace: "Lloc de Naixement",
-    inputContext: "Context o Pregunta (Opcional)",
-    inputContextPlaceholder: "Ex: Bloqueig professional, crisi de parella...",
-    btnNext: "Continuar",
-    btnAnalyze: "Iniciar Anàlisi",
-    modePsyTitle: "Anàlisi Psicològica",
-    modePsyDesc: "Deconstrucció profunda basada en Jung i Naranjo. Trauma, talent i propòsit evolutiu.",
-    modeTechTitle: "Auditoria Tècnica",
-    modeTechDesc: "Càlcul rigorós de mecàniques celestes. Dignitats, aspectes i estructura de cases.",
+    appTitle: "FRAKTAL",
+    appSubtitle: "Arquitectura Astrològica",
+    inputName: "Subjecte d'Anàlisi",
+    inputDate: "Data d'Entrada",
+    inputTime: "Hora d'Entrada",
+    inputPlace: "Coordenades Geogràfiques",
+    inputContext: "Variable de Context (Opcional)",
+    inputContextPlaceholder: "Ex: Fricció en eix vincular, col·lapse vocacional...",
+    btnNext: "Procedir",
+    btnAnalyze: "Executar Diagnòstic",
+    modePsyTitle: "Anàlisi Sistèmica (Carutti)",
+    modePsyDesc: "Deconstrucció de la mecànica de la consciència. Llunes, Ascendents i polaritats transpersonals.",
+    modeTechTitle: "Auditoria d'Estructura",
+    modeTechDesc: "Càlcul d'orbes, dignitats, intercepcions i balanç d'elements.",
     processingSteps: [
-      "INICIANT MOTOR ANALÍTIC...",
-      "TRIANGULANT COORDENADES...",
-      "CALCULANT CARTA NATAL...",
-      "ANALITZANT ESTRUCTURA PSIQUE...",
-      "AUDITANT ASPECTES TENSOS...",
-      "CALCULANT VECTORS IKIGAI...",
-      "SINTETITZANT ARQUETIPUS...",
-      "TRADUÏNT A LLENGUATGE NATURAL...",
-      "GENERANT INFORME FINAL..."
+      "INICIANT MOTOR FRAKTAL...",
+      "CALCULANT EFEMÈRIDES (ALGORITME VSOP87)...",
+      "DETECTANT ESTRUCTURA DE DESTÍ...",
+      "ANALITZANT MECANISME LLUNAR...",
+      "ESCANEJANT POLARITATS TRANSPERSONALS...",
+      "AUDITANT EIXOS INTERCEPTATS...",
+      "CALCULANT VECTORS NODALS...",
+      "SINTETITZANT MITE PERSONAL...",
+      "GENERANT EXPEDIENT..."
     ],
-    resultsTitle: "Expedient Finalitzat",
-    resultsSubtitle: "Dades Radix Establertes",
-    tabStructure: "Estructura",
-    tabBlocks: "Anàlisi Profunda",
+    resultsTitle: "Expedient Generat",
+    resultsSubtitle: "Anàlisi Sistèmica Finalitzada",
+    tabStructure: "Radix",
+    tabBlocks: "Desglossament Modular",
     tabSynthesis: "Síntesi",
-    blockThesis: "Anàlisi Tècnica",
-    blockAudit: "Validació Lògica",
-    blockSynthesis: "Interpretació Personal",
-    btnDownload: "Descarregar Informe",
-    btnNew: "Nova Consulta",
+    blockThesis: "Tesi Sistèmica",
+    blockAudit: "Auditoria Tècnica",
+    blockSynthesis: "Traducció Vivencial",
+    btnDownload: "Exportar Expedient",
+    btnNew: "Reiniciar Sistema",
     tablePoint: "Punt",
     tableSign: "Signe",
     tableDeg: "Grau",
     tableHouse: "Casa",
     tableElem: "Elem",
-    chartTitle: "Balanç Elemental",
-    selectProtocol: "Seleccionar Protocol"
+    chartTitle: "Carta Natal",
+    selectProtocol: "Seleccionar Protocol",
+    // Chart Tooltip
+    tooltipSign: "Signe",
+    tooltipHouse: "Casa",
+    tooltipDegree: "Grau",
+    tooltipElement: "Element",
+    tooltipRetro: "Retrògrad"
   },
   eu: {
-    appTitle: "Laguntzaile Psikologikoa",
-    appSubtitle: "Zaztasun Astrologikoaren Arkitektura",
-    inputName: "Izen-Abizenak",
-    inputDate: "Jaiotze Data",
-    inputTime: "Jaiotze Ordua",
-    inputPlace: "Jaiotze Lekua",
-    inputContext: "Testuingurua edo Galdera (Aukerakoa)",
-    inputContextPlaceholder: "Adib: Blokeo profesionala, bikote krisia...",
+    appTitle: "FRAKTAL",
+    appSubtitle: "Arkitektura Astrologikoa",
+    inputName: "Analisi Subjektua",
+    inputDate: "Sarrera Data",
+    inputTime: "Sarrera Ordua",
+    inputPlace: "Koordenatu Geografikoak",
+    inputContext: "Testuinguru Aldagaia (Aukerakoa)",
+    inputContextPlaceholder: "Adib: Ardatz loteslearen marruskadura...",
     btnNext: "Jarraitu",
-    btnAnalyze: "Analisia Hasi",
-    modePsyTitle: "Analisi Psikologikoa",
-    modePsyDesc: "Jung eta Naranjon oinarritutako dekonstrukzio sakona. Trauma, talentua eta eboluzio-helburua.",
-    modeTechTitle: "Auditoria Teknikoa",
-    modeTechDesc: "Zeru-mekaniken kalkulu zorrotza. Duintasunak, aspektuak eta etxeen egitura.",
+    btnAnalyze: "Diagnostikoa Exekutatu",
+    modePsyTitle: "Analisi Sistemikoa (Carutti)",
+    modePsyDesc: "Kontzientziaren mekanikaren dekonstrukzioa. Ilargiak, Goranzkoak eta polaritate transpertsonalak.",
+    modeTechTitle: "Egitura Auditoria",
+    modeTechDesc: "Orbeen kalkulua, duintasunak, intertzeptazioak eta elementuen balantzea.",
     processingSteps: [
-      "MOTOR ANALITIKOA ABIARAZTEN...",
-      "KOORDENATUAK TRIANGULATZEN...",
-      "JAIOTZE-CARTA KALKULATZEN...",
-      "PSIKEA EGITURA AZTERTZEN...",
-      "ASPEKTU TENTSOAK AUDITATZEN...",
-      "IKIGAI BEKTOREAK KALKULATZEN...",
-      "ARKETIPOAK SINTETIZATZEN...",
-      "HIZKUNTZA NATURALERA ITZULTZEN...",
-      "AZKEN TXOSTENA SORTZEN..."
+      "MOTOR FRAKTAL ABIARAZTEN...",
+      "EFEMERIDEAK KALKULATZEN (VSOP87 ALGORITMOA)...",
+      "DESTINO EGITURA DETEKTATZEN...",
+      "ILARGI MEKANISMOA AZTERTZEN...",
+      "POLARITATE TRANSPERTSONALAK ESKANEATZEN...",
+      "ARDATZ INTERTZEPTATUAK AUDITATZEN...",
+      "BEKTORE NODALAK KALKULATZEN...",
+      "MITO PERTSONALA SINTETIZATZEN...",
+      "ESPEDIENTEA SORTZEN..."
     ],
-    resultsTitle: "Espedientea Amaituta",
-    resultsSubtitle: "Radix Datuak Ezarrita",
-    tabStructure: "Egitura",
-    tabBlocks: "Analisi Sakona",
+    resultsTitle: "Espedientea Sortuta",
+    resultsSubtitle: "Analisi Sistemikoa Amaituta",
+    tabStructure: "Radix",
+    tabBlocks: "Modulu Desglosatzea",
     tabSynthesis: "Sintesia",
-    blockThesis: "Analisi Teknikoa",
-    blockAudit: "Balidazio Logikoa",
-    blockSynthesis: "Interpretazio Pertsonala",
-    btnDownload: "Txostena Deskargatu",
-    btnNew: "Kontsulta Berria",
+    blockThesis: "Tesi Sistemikoa",
+    blockAudit: "Auditoria Teknikoa",
+    blockSynthesis: "Bizipen Itzulpena",
+    btnDownload: "Espedientea Esportatu",
+    btnNew: "Sistema Berrabiarazi",
     tablePoint: "Puntua",
     tableSign: "Zeinua",
     tableDeg: "Gradua",
     tableHouse: "Etxea",
     tableElem: "Elem",
-    chartTitle: "Oreka Elementala",
-    selectProtocol: "Protokoloa Aukeratu"
+    chartTitle: "Jaiotza Karta",
+    selectProtocol: "Protokoloa Aukeratu",
+    // Chart Tooltip
+    tooltipSign: "Zeinua",
+    tooltipHouse: "Etxea",
+    tooltipDegree: "Gradua",
+    tooltipElement: "Elementua",
+    tooltipRetro: "Atzerakoia"
   }
 };

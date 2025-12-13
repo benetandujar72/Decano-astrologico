@@ -33,9 +33,9 @@ const PlanetaryTable: React.FC<PlanetaryTableProps> = ({ positions, lang }) => {
               <td className="px-4 py-3">
                 <span className={`px-2 py-1 rounded-full text-[10px] font-semibold
                   ${(pos.element === 'Fuego' || pos.element === 'Fire' || pos.element === 'Sua' || pos.element === 'Foc') ? 'bg-red-500/10 text-red-400 border border-red-500/20' : ''}
-                  ${(pos.element === 'Tierra' || pos.element === 'Earth' || pos.element === 'Lurra') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : ''}
+                  ${(pos.element === 'Tierra' || pos.element === 'Earth' || pos.element === 'Lurra' || pos.element === 'Terra') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : ''}
                   ${(pos.element === 'Aire' || pos.element === 'Air' || pos.element === 'Airea') ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : ''}
-                  ${(pos.element === 'Agua' || pos.element === 'Water' || pos.element === 'Ura') ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : ''}
+                  ${(pos.element === 'Agua' || pos.element === 'Water' || pos.element === 'Ura' || pos.element === 'Aigua') ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : ''}
                 `}>
                   {pos.element}
                 </span>
