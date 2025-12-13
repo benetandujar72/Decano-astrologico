@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -28,6 +29,11 @@ MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb:/
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client.fraktal
 users_collection = db.users
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica una contraseña"""
@@ -72,6 +78,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """Endpoint de login"""
     user = await users_collection.find_one({"username": form_data.username})
+
+    # Bootstrap admin (demo): si no existe aún, lo creamos automáticamente.
+    if not user and form_data.username == "admin@programafraktal.com":
+        admin_password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "1234")
+        hashed_password = get_password_hash(admin_password)
+        admin_user = {
+            "username": "admin@programafraktal.com",
+            "email": "admin@programafraktal.com",
+            "hashed_password": hashed_password,
+            "role": "admin",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        await users_collection.insert_one(admin_user)
+        user = await users_collection.find_one({"username": form_data.username})
     
     if not user or not verify_password(form_data.password, user.get("hashed_password", "")):
         raise HTTPException(
@@ -96,10 +116,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     }
 
 @router.post("/register")
-async def register(username: str, password: str):
+async def register(payload: RegisterRequest):
     """Endpoint de registro"""
     # Verificar si el usuario ya existe
-    existing_user = await users_collection.find_one({"username": username})
+    existing_user = await users_collection.find_one({"username": payload.username})
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,12 +127,12 @@ async def register(username: str, password: str):
         )
     
     # Crear nuevo usuario
-    hashed_password = get_password_hash(password)
+    hashed_password = get_password_hash(payload.password)
     user = {
-        "username": username,
-        "email": username,  # Usar username como email si no se proporciona
+        "username": payload.username,
+        "email": payload.username,  # Usar username como email si no se proporciona
         "hashed_password": hashed_password,
-        "role": "admin" if username == "admin@programafraktal.com" else "user",
+        "role": "admin" if payload.username == "admin@programafraktal.com" else "user",
         "created_at": datetime.utcnow().isoformat()
     }
     
