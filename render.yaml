@@ -13,6 +13,9 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
 
+    # Forzar Python 3.11 (CRÍTICO para compatibilidad con MongoDB)
+    runtimeVersion: "3.11"
+
     # Variables de entorno (configura valores reales en Render Dashboard)
     envVars:
       - key: PYTHON_VERSION
