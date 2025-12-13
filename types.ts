@@ -1,3 +1,4 @@
+
 export type Language = 'es' | 'ca' | 'eu';
 
 export interface PlanetPosition {
@@ -7,7 +8,7 @@ export interface PlanetPosition {
   house: string;
   retrograde: boolean;
   element: 'Fuego' | 'Tierra' | 'Aire' | 'Agua' | 'Fire' | 'Earth' | 'Air' | 'Water' | 'Sua' | 'Lurra' | 'Airea' | 'Ura' | 'Foc' | 'Terra' | 'Aigua';
-  longitude: number; // Added for Chart rendering
+  longitude: number; 
 }
 
 export interface AnalysisSection {
@@ -16,6 +17,21 @@ export interface AnalysisSection {
   thesis: string;
   audit: string;
   synthesis: string;
+}
+
+export interface SavedChart {
+  id: string;
+  user_id?: string;
+  name: string;
+  date: string;
+  time: string;
+  place: string;
+  timestamp: number;
+}
+
+export interface User {
+  username: string;
+  email: string;
 }
 
 export interface AnalysisResult {
@@ -32,10 +48,12 @@ export interface AnalysisResult {
 }
 
 export enum AppMode {
+  AUTH = 'AUTH', // Nuevo modo de autenticación
   INPUT = 'INPUT',
   MODE_SELECTION = 'MODE_SELECTION',
   PROCESSING = 'PROCESSING',
-  RESULTS = 'RESULTS'
+  RESULTS = 'RESULTS',
+  LISTING = 'LISTING'
 }
 
 export enum AnalysisType {

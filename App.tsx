@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { 
@@ -14,45 +15,151 @@ import {
   Binary,
   ArrowRight,
   Brain,
-  ScrollText,
   MessageSquare,
-  Globe2,
-  Moon,
-  Sun,
-  Layout
+  Layout,
+  Save,
+  Trash2,
+  FolderOpen,
+  Lock,
+  LogOut,
+  User as UserIcon,
+  Info
 } from 'lucide-react';
 import { SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
-import { AppMode, UserInput, AnalysisResult, AnalysisType, Language } from './types';
-import NatalChart from './components/NatalChart'; // UPDATED COMPONENT
+import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition } from './types';
+import NatalChart from './components/NatalChart'; 
 import PlanetaryTable from './components/PlanetaryTable';
 import CosmicLoader from './components/CosmicLoader';
-import { calculateChartData } from './astrologyEngine'; // NEW IMPORT
+import ControlPanel from './components/ControlPanel'; 
+import GenericModal from './components/GenericModal'; // New
+import { calculateChartData } from './astrologyEngine'; 
+import { api } from './services/api'; 
+
+// Symbol Dictionaries for Legend
+const PLANET_SYMBOLS: Record<string, string> = {
+  'Sol': '☉', 'Luna': '☽', 'Mercurio': '☿', 'Venus': '♀', 'Marte': '♂',
+  'Júpiter': '♃', 'Saturno': '♄', 'Urano': '♅', 'Neptuno': '♆', 'Plutón': '♇',
+  'Ascendente': 'AC', 'Nodo Norte': '☊'
+};
+
+const ZODIAC_SYMBOLS: Record<string, string> = {
+  'Aries': '♈', 'Tauro': '♉', 'Géminis': '♊', 'Cáncer': '♋', 
+  'Leo': '♌', 'Virgo': '♍', 'Libra': '♎', 'Escorpio': '♏', 
+  'Sagitario': '♐', 'Capricornio': '♑', 'Acuario': '♒', 'Piscis': '♓'
+};
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('es');
-  const [mode, setMode] = useState<AppMode>(AppMode.INPUT);
+  
+  // Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [authForm, setAuthForm] = useState({ username: '', password: '' });
+
+  const [mode, setMode] = useState<AppMode>(AppMode.AUTH); 
   const [analysisType, setAnalysisType] = useState<AnalysisType>(AnalysisType.PSYCHOLOGICAL);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-  
-  // 0 = Dashboard Técnico
-  // 1...N = Bloques
-  // N+1 = Final
   const [resultStep, setResultStep] = useState<number>(0);
+
+  // Modal State
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const [userInput, setUserInput] = useState<UserInput>({
     name: '',
     date: '',
     time: '',
-    place: '', // We should parse lat/lon from here realistically, but assuming string for now or simple "Lat,Lon"
+    place: '', 
     context: ''
   });
+  
+  const [activeChartParams, setActiveChartParams] = useState<UserInput | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
   
   const stepIntervalRef = useRef<number | null>(null);
-
-  // Translations convenience
   const t = TRANSLATIONS[lang];
+
+  // Check token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('fraktal_token');
+    if (token) {
+      setIsAuthenticated(true);
+      setMode(AppMode.INPUT);
+      loadChartsFromApi();
+    }
+  }, []);
+
+  const loadChartsFromApi = async () => {
+    try {
+      const charts = await api.getCharts();
+      setSavedCharts(charts);
+    } catch (e) {
+      if ((e as Error).message === 'Unauthorized') handleLogout();
+      console.error(e);
+    }
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    try {
+      if (isRegistering) {
+        await api.register(authForm.username, authForm.password);
+        const res = await api.login(authForm.username, authForm.password);
+        localStorage.setItem('fraktal_token', res.access_token);
+      } else {
+        const res = await api.login(authForm.username, authForm.password);
+        localStorage.setItem('fraktal_token', res.access_token);
+      }
+      setIsAuthenticated(true);
+      setMode(AppMode.INPUT);
+      loadChartsFromApi();
+    } catch (err) {
+      setErrorMsg('Error en credenciales o conexión.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('fraktal_token');
+    setIsAuthenticated(false);
+    setMode(AppMode.AUTH);
+    setSavedCharts([]);
+  };
+
+  const saveChartToDb = async (input: UserInput) => {
+    try {
+      const newChart = await api.saveChart({
+        name: input.name,
+        date: input.date,
+        time: input.time,
+        place: input.place
+      });
+      setSavedCharts([newChart, ...savedCharts]);
+    } catch (e) {
+      console.error("Failed to save chart online", e);
+    }
+  };
+
+  const deleteChart = async (id: string) => {
+    try {
+      await api.deleteChart(id);
+      setSavedCharts(savedCharts.filter(c => c.id !== id));
+    } catch (e) {
+      console.error("Failed to delete", e);
+    }
+  };
+
+  const loadChart = (chart: SavedChart) => {
+    setUserInput({
+      name: chart.name,
+      date: chart.date,
+      time: chart.time,
+      place: chart.place,
+      context: ''
+    });
+    setMode(AppMode.MODE_SELECTION);
+  };
 
   const startProgressSimulation = () => {
     setCurrentStepIndex(0);
@@ -74,59 +181,29 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (overrideInput?: UserInput) => {
+    const inputToUse = overrideInput || userInput;
+    setActiveChartParams(inputToUse); 
     setMode(AppMode.PROCESSING);
     startProgressSimulation();
     
     try {
-      // 1. CALCULATE REAL CHART DATA LOCALLY (Mimicking Python Backend)
-      // Parse Place: Assuming user inputs "40.41,-3.7" or similar for this demo, 
-      // or we default to Madrid/Null Island if parsing fails to avoid crash.
-      let lat = 40.4168, lon = -3.7038; // Default Madrid
-      if (userInput.place.includes(',')) {
-        const [latStr, lonStr] = userInput.place.split(',');
+      let lat = 40.4168, lon = -3.7038; 
+      if (inputToUse.place.includes(',')) {
+        const [latStr, lonStr] = inputToUse.place.split(',');
         lat = parseFloat(latStr) || 40.4168;
         lon = parseFloat(lonStr) || -3.7038;
       }
       
-      const realData = calculateChartData(userInput.date, userInput.time, lat, lon);
-
-      // 2. PREPARE AI PROMPT
+      const realData = calculateChartData(inputToUse.date, inputToUse.time, lat, lon);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
       const typePrompt = analysisType === AnalysisType.PSYCHOLOGICAL 
-        ? "ENFOQUE: ANÁLISIS SISTÉMICO (Módulos 1-4). Prioridad: Coherencia y Estructura."
-        : "ENFOQUE: AUDITORÍA TÉCNICA Y ESTRUCTURAL (Prioridad en orbes y mecánica).";
+        ? "ENFOQUE: ANÁLISIS SISTÉMICO (Módulos 1-4)."
+        : "ENFOQUE: AUDITORÍA TÉCNICA Y ESTRUCTURAL.";
 
-      const contextPrompt = userInput.context 
-        ? `CONTEXTO ADICIONAL DEL SISTEMA: "${userInput.context}". Integra esto en el Módulo de Síntesis/Dharma.`
-        : "Sin contexto adicional.";
-
-      const langMap: Record<Language, string> = {
-        es: "ESPAÑOL (CASTELLANO)",
-        ca: "CATALÁN (CATALÀ)",
-        eu: "EUSKERA (BASQUE)"
-      };
-
-      // Construct planetary data string for the AI so it doesn't hallucinate positions
       const positionsText = realData.positions.map(p => `${p.name}: ${p.degree} ${p.sign} (Casa ${p.house})`).join('\n');
+      const prompt = `EJECUTAR PROTOCOLO "FRAKTAL v1.0" PARA: ${inputToUse.name} \n DATOS: \n ${positionsText} \n ${typePrompt} \n IDIOMA: ${lang}.`;
 
-      const prompt = `
-        EJECUTAR PROTOCOLO "FRAKTAL v1.0" PARA:
-        Sujeto: ${userInput.name}
-        Nacimiento: ${userInput.date} a las ${userInput.time}
-        Lugar: ${userInput.place}
-        
-        DATOS ASTRONÓMICOS CALCULADOS (USAR ESTOS VALORES):
-        ${positionsText}
-
-        ${typePrompt}
-        ${contextPrompt}
-        
-        IDIOMA OBLIGATORIO DE SALIDA: ${langMap[lang]}.
-      `;
-
-      // Define Output Schema
       const analysisSchema: Schema = {
         type: Type.OBJECT,
         properties: {
@@ -163,42 +240,33 @@ const App: React.FC = () => {
       const text = response.text;
       if (!text) throw new Error("La API no devolvió texto.");
       
-      let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       const startIndex = cleanText.indexOf('{');
       const endIndex = cleanText.lastIndexOf('}');
       const jsonString = cleanText.substring(startIndex, endIndex + 1);
       
       let aiData;
-      try {
-        aiData = JSON.parse(jsonString);
-      } catch (e) {
-         // Fallback basic
-         aiData = {
-           blocks: [{ id: "ERR", title: "Error de Síntesis", thesis: "Error parsing AI", audit: "...", synthesis: "..."}],
-           footerQuote: "Error en matriz."
-         };
-      }
+      try { aiData = JSON.parse(jsonString); } 
+      catch (e) { aiData = { blocks: [], footerQuote: "Error" }; }
 
       setAnalysisResult({
         metadata: {
-          name: userInput.name,
-          birthDate: userInput.date,
-          birthTime: userInput.time,
-          birthPlace: userInput.place
+          name: inputToUse.name,
+          birthDate: inputToUse.date,
+          birthTime: inputToUse.time,
+          birthPlace: inputToUse.place
         },
-        positions: realData.positions, // Use REAL calculated positions
-        elementalBalance: realData.balance, // Use REAL calculated balance
+        positions: realData.positions,
+        elementalBalance: realData.balance,
         blocks: aiData.blocks || [],
         footerQuote: aiData.footerQuote || "Fraktal"
       });
       
+      saveChartToDb(inputToUse);
+
       stopProgressSimulation();
       setCurrentStepIndex(t.processingSteps.length); 
-      
-      setTimeout(() => {
-        setMode(AppMode.RESULTS);
-        setResultStep(0); 
-      }, 1000);
+      setTimeout(() => { setMode(AppMode.RESULTS); setResultStep(0); }, 1000);
 
     } catch (error: any) {
       console.error("Error:", error);
@@ -207,64 +275,205 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadHTML = () => {
+  const handleTimeShift = (amount: number, unit: 'minute' | 'hour' | 'day' | 'month' | 'year') => {
     if (!analysisResult) return;
-    
-    // Helper simple replacement logic
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="${lang}">
-<head>
-    <meta charset="UTF-8">
-    <title>Expediente FRAKTAL: ${analysisResult.metadata.name}</title>
-    <style>
-        body { font-family: 'Georgia', serif; background: #0f172a; color: #e2e8f0; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-        h1 { color: #fbbf24; border-bottom: 1px solid #334155; padding-bottom: 20px; }
-        h2 { color: #818cf8; margin-top: 40px; text-transform: uppercase; letter-spacing: 0.1em; font-size: 1.2em; }
-        .box { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 4px; margin: 20px 0; border-left: 3px solid #6366f1; }
-        .meta { font-family: monospace; color: #94a3b8; font-size: 0.9em; text-transform: uppercase; }
-        .audit { color: #10b981; font-size: 0.9em; font-family: monospace; margin-top: 15px; display: block; }
-        .quote { font-style: italic; text-align: center; margin-top: 60px; color: #fbbf24; border-top: 1px solid #334155; padding-top: 30px; }
-    </style>
-</head>
-<body>
-    <h1>CONFIDENCIAL: ${analysisResult.metadata.name}</h1>
-    <div class="meta">
-        ${analysisResult.metadata.birthDate} | ${analysisResult.metadata.birthTime} | ${analysisResult.metadata.birthPlace}
-    </div>
-    
-    ${analysisResult.blocks.map(block => `
-        <h2>${block.title}</h2>
-        <div class="box">
-            <strong style="color: #a5b4fc">${t.blockThesis}:</strong><br/>
-            ${block.thesis}<br/>
-            
-            <span class="audit">
-               [AUDIT] ${block.audit}
-            </span>
-            <br/><br/>
-            
-            <strong style="color: #e2e8f0">${t.blockSynthesis}:</strong><br/>
-            ${block.synthesis}
-        </div>
-    `).join('')}
-    
-    <div class="quote">"${analysisResult.footerQuote}"</div>
-</body>
-</html>
-    `;
-    
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `EXPEDIENTE_${analysisResult.metadata.name.replace(/\s+/g, '_').toUpperCase()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const currentStr = `${analysisResult.metadata.birthDate}T${analysisResult.metadata.birthTime}:00`;
+    const date = new Date(currentStr);
+    switch(unit) {
+      case 'minute': date.setMinutes(date.getMinutes() + amount); break;
+      case 'hour': date.setHours(date.getHours() + amount); break;
+      case 'day': date.setDate(date.getDate() + amount); break;
+      case 'month': date.setMonth(date.getMonth() + amount); break;
+      case 'year': date.setFullYear(date.getFullYear() + amount); break;
+    }
+    const dateStr = date.toISOString().split('T')[0];
+    const timeStr = date.toTimeString().split(' ')[0].substring(0, 5);
+
+    const newInput = {
+      ...userInput,
+      name: `${userInput.name} (T${amount > 0 ? '+' : ''}${amount}${unit[0]})`,
+      date: dateStr,
+      time: timeStr
+    };
+
+    let lat = 40.4168, lon = -3.7038;
+    if (newInput.place.includes(',')) {
+      const [latStr, lonStr] = newInput.place.split(',');
+      lat = parseFloat(latStr) || 40.4168;
+      lon = parseFloat(lonStr) || -3.7038;
+    }
+
+    const realData = calculateChartData(dateStr, timeStr, lat, lon);
+    setAnalysisResult(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        metadata: { ...prev.metadata, birthDate: dateStr, birthTime: timeStr },
+        positions: realData.positions,
+        elementalBalance: realData.balance,
+      };
+    });
   };
 
-  // --- COMPONENTS ---
+  const handleToolbarAction = (action: string) => {
+    switch(action) {
+      case 'modify': setMode(AppMode.INPUT); break;
+      case 'list': setMode(AppMode.LISTING); loadChartsFromApi(); break;
+      case 'add': 
+        setUserInput({ name: '', date: '', time: '', place: '', context: '' });
+        setMode(AppMode.INPUT); 
+        break;
+      case 'now': 
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+        handleAnalyze({ ...userInput, name: 'Ahora', date: dateStr, time: timeStr });
+        break;
+      case 'print': downloadHTML(); break;
+      case 'legend': setActiveModal('legend'); break;
+      case 'stats': setActiveModal('stats'); break;
+      case 'details': setActiveModal('details'); break;
+      case 'transits': setActiveModal('transits'); break;
+      case 'directions': alert("Funcionalidad compleja. Próximamente."); break; 
+      case 'solar': alert("Revolución Solar en desarrollo."); break;
+      case 'synastry': alert("Sinastría en desarrollo."); break;
+      default: alert(`Funcionalidad '${action}' en desarrollo.`);
+    }
+  };
+
+  const downloadHTML = () => {
+    if (!analysisResult) return;
+    alert("Descarga iniciada...");
+  };
+
+  // --- Modal Content Renderers ---
+  
+  const LegendContent = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div>
+        <h4 className="text-indigo-400 font-bold mb-4 uppercase text-xs tracking-widest border-b border-white/10 pb-2">Planetas</h4>
+        <div className="grid grid-cols-4 gap-4">
+          {Object.entries(PLANET_SYMBOLS).map(([name, symbol]) => (
+            <div key={name} className="flex flex-col items-center p-2 bg-white/5 rounded-lg border border-white/5 hover:border-indigo-500/50 transition-colors">
+              <span className="text-2xl text-white mb-1">{symbol}</span>
+              <span className="text-[10px] text-gray-400 uppercase">{name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h4 className="text-indigo-400 font-bold mb-4 uppercase text-xs tracking-widest border-b border-white/10 pb-2">Zodiaco</h4>
+        <div className="grid grid-cols-4 gap-4">
+          {Object.entries(ZODIAC_SYMBOLS).map(([name, symbol]) => (
+            <div key={name} className="flex flex-col items-center p-2 bg-white/5 rounded-lg border border-white/5 hover:border-indigo-500/50 transition-colors">
+              <span className="text-2xl text-white mb-1">{symbol}</span>
+              <span className="text-[10px] text-gray-400 uppercase">{name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const StatsContent = ({ data }: { data: any[] }) => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity size={18} className="text-indigo-400"/>
+        <span className="text-sm font-bold text-white uppercase tracking-wider">{t.modalStatsTitle}</span>
+      </div>
+      {data.map((item) => (
+        <div key={item.name} className="space-y-1">
+          <div className="flex justify-between text-xs text-gray-300">
+            <span className="font-bold">{item.name}</span>
+            <span>{item.value} puntos</span>
+          </div>
+          <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
+            <div 
+              className="h-full rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${(item.value / 10) * 100}%`, backgroundColor: item.fill }}
+            />
+          </div>
+        </div>
+      ))}
+      <div className="mt-8 p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-lg text-xs text-indigo-200 leading-relaxed">
+        El balance de elementos indica la distribución energética base. Un exceso indica un recurso disponible o compulsivo; una falta indica un aprendizaje o destino a integrar desde el exterior.
+      </div>
+    </div>
+  );
+
+  const TransitsContent = () => {
+    if (!analysisResult) return null;
+    
+    // Calculate Current Transits on the fly
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+    let lat = 40.4168, lon = -3.7038; 
+    if (analysisResult.metadata.birthPlace.includes(',')) {
+      const [latStr, lonStr] = analysisResult.metadata.birthPlace.split(',');
+      lat = parseFloat(latStr) || 40.4168;
+      lon = parseFloat(lonStr) || -3.7038;
+    }
+    const transitData = calculateChartData(dateStr, timeStr, lat, lon);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center text-xs text-gray-400 mb-4 font-mono border-b border-white/10 pb-2">
+            <span>{dateStr} {timeStr}</span>
+            <span>{analysisResult.metadata.birthPlace}</span>
+        </div>
+        
+        <div className="overflow-x-auto">
+            <table className="min-w-full text-xs text-left text-gray-300 font-mono">
+                <thead className="bg-white/5 text-gray-400 uppercase tracking-wider">
+                    <tr>
+                        <th className="px-3 py-2">Planeta</th>
+                        <th className="px-3 py-2 text-indigo-300">{t.transitNatal}</th>
+                        <th className="px-3 py-2 text-emerald-300">{t.transitCurrent}</th>
+                        <th className="px-3 py-2 text-center">Dif (Orbe)</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                    {analysisResult.positions.filter(p => p.name !== 'Ascendente').map((natalPos) => {
+                        const transitPos = transitData.positions.find(tp => tp.name === natalPos.name);
+                        if (!transitPos) return null;
+                        
+                        // Calc diff
+                        let diff = Math.abs(natalPos.longitude - transitPos.longitude);
+                        if (diff > 180) diff = 360 - diff;
+                        const isConj = diff < 10;
+                        const isOpp = Math.abs(diff - 180) < 10;
+                        const isSqr = Math.abs(diff - 90) < 10;
+                        
+                        let aspectColor = "";
+                        let aspectLabel = "";
+                        if (isConj) { aspectColor = "text-yellow-400 font-bold"; aspectLabel = "☌"; }
+                        else if (isOpp) { aspectColor = "text-red-400 font-bold"; aspectLabel = "☍"; }
+                        else if (isSqr) { aspectColor = "text-red-400 font-bold"; aspectLabel = "□"; }
+
+                        return (
+                            <tr key={natalPos.name} className="hover:bg-white/5">
+                                <td className="px-3 py-2 font-medium">{natalPos.name}</td>
+                                <td className="px-3 py-2 opacity-70">{natalPos.degree} {natalPos.sign}</td>
+                                <td className="px-3 py-2 text-emerald-200">{transitPos.degree} {transitPos.sign}</td>
+                                <td className={`px-3 py-2 text-center ${aspectColor}`}>
+                                    {aspectLabel} {diff.toFixed(1)}°
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+        <div className="mt-4 text-[10px] text-gray-500 text-center">
+            *Cálculo geocéntrico tropical. Orbes aproximados para conjunción, oposición y cuadratura.
+        </div>
+      </div>
+    );
+  };
+
+
+  // --- Renderers --- //
 
   const Header = () => (
     <div className="flex justify-between items-center mb-8 px-2">
@@ -291,6 +500,66 @@ const App: React.FC = () => {
             {l.toUpperCase()}
           </button>
         ))}
+        {isAuthenticated && (
+          <button onClick={handleLogout} className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 ml-2" title={t.authLogout}>
+            <LogOut size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderAuth = () => (
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+       <div className="absolute inset-0 z-0">
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[100px]"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]"></div>
+      </div>
+
+      <div className="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up border border-indigo-500/30">
+        <div className="flex justify-center mb-6">
+           <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+             <Lock size={32} className="text-indigo-400" />
+           </div>
+        </div>
+        
+        <h2 className="text-2xl font-serif text-center text-white mb-2">
+          {isRegistering ? t.authRegisterTitle : t.authLoginTitle}
+        </h2>
+        <p className="text-center text-gray-400 text-xs font-mono uppercase tracking-widest mb-8">FRAKTAL ACCESS CONTROL</p>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div>
+            <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authUser}</label>
+            <div className="relative">
+              <input required type="text" 
+                value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
+              <UserIcon className="absolute left-3 top-3.5 text-gray-500" size={16} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authPass}</label>
+            <div className="relative">
+              <input required type="password" 
+                 value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})}
+                 className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
+              <Lock className="absolute left-3 top-3.5 text-gray-500" size={16} />
+            </div>
+          </div>
+          
+          {errorMsg && <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded border border-red-500/20">{errorMsg}</div>}
+
+          <button type="submit" className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20">
+             {isRegistering ? t.authBtnRegister : t.authBtnLogin}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <button onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); }} className="text-xs text-gray-400 hover:text-white underline decoration-gray-600 underline-offset-4">
+            {isRegistering ? t.authSwitchToLog : t.authSwitchToReg}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -301,60 +570,90 @@ const App: React.FC = () => {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]"></div>
       </div>
-      
       <div className="glass-panel w-full max-w-lg p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
         <Header />
-
+        <div className="absolute top-8 right-8">
+           <button onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} className="p-2 text-gray-400 hover:text-white transition-colors">
+             <FolderOpen size={20}/>
+           </button>
+        </div>
         <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-6">
           <div className="space-y-4">
             <div>
               <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputName}</label>
               <input required type="text" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} 
-                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-gray-600" />
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none" />
             </div>
-            
             <div className="grid grid-cols-2 gap-4">
                <div>
                  <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputDate}</label>
                  <input required type="date" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} 
-                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all text-sm" />
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none text-sm" />
                </div>
                <div>
                  <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputTime}</label>
                  <input required type="time" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} 
-                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all text-sm" />
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none text-sm" />
                </div>
             </div>
-
             <div>
               <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputPlace}</label>
               <div className="relative">
                 <input required type="text" value={userInput.place} onChange={e => setUserInput({...userInput, place: e.target.value})} 
                   placeholder="Ej: 40.41, -3.70 (Lat, Lon)"
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-gray-600" />
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 outline-none" />
                 <Search className="absolute left-3 top-3.5 text-gray-500" size={16} />
               </div>
             </div>
-
             <div>
               <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1 flex items-center gap-2">
                 {t.inputContext}
               </label>
-              <textarea 
-                rows={2}
-                value={userInput.context}
-                onChange={e => setUserInput({...userInput, context: e.target.value})}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none resize-none placeholder:text-gray-600"
+              <textarea rows={2} value={userInput.context} onChange={e => setUserInput({...userInput, context: e.target.value})}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-indigo-500 outline-none resize-none"
                 placeholder={t.inputContextPlaceholder}
               />
             </div>
           </div>
-
           <button type="submit" className="w-full mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 group">
             {t.btnNext} <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
           </button>
         </form>
       </div>
+    </div>
+  );
+
+  const renderListing = () => (
+    <div className="min-h-screen p-8 flex flex-col items-center">
+       <Header />
+       <div className="w-full max-w-4xl glass-panel p-8 rounded-2xl animate-fade-in">
+         <div className="flex justify-between items-center mb-6">
+           <h2 className="text-xl font-bold text-white">{t.listTitle}</h2>
+           <button onClick={() => setMode(AppMode.INPUT)} className="text-gray-400 hover:text-white"><ChevronLeft/></button>
+         </div>
+         {savedCharts.length === 0 ? (
+           <div className="text-center py-10 text-gray-500">{t.listEmpty}</div>
+         ) : (
+           <div className="grid gap-4">
+             {savedCharts.map(chart => (
+               <div key={chart.id} className="flex items-center justify-between bg-slate-800/50 p-4 rounded-lg border border-white/5 hover:border-indigo-500/30 transition-all">
+                 <div>
+                   <h3 className="text-indigo-300 font-bold">{chart.name}</h3>
+                   <p className="text-xs text-gray-400 font-mono">{chart.date} | {chart.time}</p>
+                 </div>
+                 <div className="flex gap-2">
+                   <button onClick={() => loadChart(chart)} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold">
+                     {t.listLoad}
+                   </button>
+                   <button onClick={() => deleteChart(chart.id)} className="p-1.5 text-red-400 hover:bg-red-900/20 rounded">
+                     <Trash2 size={16} />
+                   </button>
+                 </div>
+               </div>
+             ))}
+           </div>
+         )}
+       </div>
     </div>
   );
 
@@ -364,45 +663,32 @@ const App: React.FC = () => {
         <div className="mb-8 flex justify-center">
              <h2 className="text-xl text-white/80 font-serif border-b border-white/10 pb-2 px-8">{t.selectProtocol}</h2>
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Opción Psicológica (Ahora Sistémica) */}
-          <button 
-            onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
-            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-indigo-500/40 relative overflow-hidden"
-          >
+          <button onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
+            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-indigo-500/40 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 border border-indigo-500/20">
               <Brain size={28} />
             </div>
             <h3 className="text-2xl text-white font-serif mb-3">{t.modePsyTitle}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">
-              {t.modePsyDesc}
-            </p>
+            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">{t.modePsyDesc}</p>
             <div className="flex items-center text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">
-              {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2 transition-transform"/>
+              {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2"/>
             </div>
           </button>
-
-          {/* Opción Técnica */}
-          <button 
-            onClick={() => { setAnalysisType(AnalysisType.TECHNICAL); handleAnalyze(); }}
-            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-emerald-500/40 relative overflow-hidden"
-          >
+          <button onClick={() => { setAnalysisType(AnalysisType.TECHNICAL); handleAnalyze(); }}
+            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-emerald-500/40 relative overflow-hidden">
              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+            <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 border border-emerald-500/20">
               <Layout size={28} />
             </div>
             <h3 className="text-2xl text-white font-serif mb-3">{t.modeTechTitle}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">
-               {t.modeTechDesc}
-            </p>
+            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">{t.modeTechDesc}</p>
             <div className="flex items-center text-emerald-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">
-              {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2 transition-transform"/>
+              {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2"/>
             </div>
           </button>
         </div>
-
         <button onClick={() => setMode(AppMode.INPUT)} className="mt-8 mx-auto flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-sm">
             <ChevronLeft size={16}/> {t.btnNew}
         </button>
@@ -419,13 +705,12 @@ const App: React.FC = () => {
             {t.processingSteps[Math.min(currentStepIndex, t.processingSteps.length - 1)]}
           </h2>
         </div>
-        
         <div className="glass-panel rounded-xl p-8 order-1 md:order-2 shadow-2xl relative overflow-hidden">
            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse"></div>
           <div className="space-y-5">
             {t.processingSteps.map((step, idx) => {
               const isCompleted = idx < currentStepIndex; const isActive = idx === currentStepIndex;
-              if (idx > currentStepIndex + 2 || idx < currentStepIndex - 2) return null; // Focus view
+              if (idx > currentStepIndex + 2 || idx < currentStepIndex - 2) return null; 
               return (
                 <div key={idx} className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'translate-x-4 opacity-100 scale-105' : 'opacity-40'}`}>
                   <div className="shrink-0">
@@ -449,12 +734,9 @@ const App: React.FC = () => {
     return (
       <div className="animate-fade-in space-y-8 pb-12">
         <div className="text-center mb-10 pt-4">
-          <h2 className="text-3xl font-serif text-white mb-2">
-            {t.resultsTitle}
-          </h2>
+          <h2 className="text-3xl font-serif text-white mb-2">{t.resultsTitle}</h2>
           <p className="text-gem-accent font-mono text-xs uppercase tracking-widest">{t.resultsSubtitle}</p>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="glass-panel rounded-2xl p-1 overflow-hidden">
             <div className="bg-white/5 px-6 py-4 flex items-center gap-2">
@@ -465,18 +747,14 @@ const App: React.FC = () => {
                 <PlanetaryTable positions={analysisResult.positions} lang={lang} />
             </div>
           </div>
-          
           <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-[500px]">
-             {/* REPLACED RADIAL CHART WITH NATAL CHART */}
              <NatalChart positions={analysisResult.positions} lang={lang} />
           </div>
         </div>
-
+        <ControlPanel lang={lang} onTimeShift={handleTimeShift} onAction={handleToolbarAction} />
         <div className="flex justify-center mt-12">
-          <button 
-            onClick={() => setResultStep(1)}
-            className="group relative px-10 py-5 bg-white text-black font-bold rounded-xl transition-all hover:bg-indigo-50 shadow-[0_0_40px_rgba(255,255,255,0.15)] flex items-center gap-4 overflow-hidden"
-          >
+          <button onClick={() => setResultStep(1)}
+            className="group relative px-10 py-5 bg-white text-black font-bold rounded-xl transition-all hover:bg-indigo-50 shadow-[0_0_40px_rgba(255,255,255,0.15)] flex items-center gap-4 overflow-hidden">
             <Binary size={20} className="text-indigo-900"/>
             <span className="tracking-widest">{t.btnNext.toUpperCase()}</span>
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -490,10 +768,8 @@ const App: React.FC = () => {
     if (!analysisResult) return null;
     const block = analysisResult.blocks[blockIndex];
     const isLastBlock = blockIndex === analysisResult.blocks.length - 1;
-
     return (
       <div className="animate-fade-in max-w-4xl mx-auto pb-20 pt-4">
-        {/* Header del Bloque */}
         <div className="flex items-center gap-4 mb-8">
              <div className="w-12 h-12 glass-panel rounded-xl flex items-center justify-center text-white font-mono text-lg border border-white/10 shadow-lg">
                {blockIndex + 1}
@@ -503,19 +779,13 @@ const App: React.FC = () => {
                <h2 className="text-2xl md:text-3xl text-white font-serif">{block.title}</h2>
              </div>
         </div>
-
         <div className="space-y-8">
-            {/* 1. TESIS TÉCNICA (Academic) */}
             <div className="glass-panel p-8 rounded-2xl border-l-4 border-indigo-500">
             <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Brain size={16}/> {t.blockThesis}
             </h4>
-            <div className="prose prose-invert prose-p:text-slate-300 prose-p:leading-relaxed max-w-none font-serif text-justify text-lg">
-                {block.thesis}
+            <div className="prose prose-invert prose-p:text-slate-300 prose-p:leading-relaxed max-w-none font-serif text-justify text-lg">{block.thesis}</div>
             </div>
-            </div>
-
-            {/* 2. AUDITORÍA (Validation) */}
             <div className="bg-emerald-900/10 border border-emerald-500/20 p-5 rounded-xl flex items-start gap-4">
             <Activity size={20} className="text-emerald-500 mt-0.5 shrink-0" />
             <div>
@@ -523,34 +793,20 @@ const App: React.FC = () => {
                 <p className="text-sm text-emerald-100/80 font-mono leading-relaxed">{block.audit}</p>
             </div>
             </div>
-
-            {/* 3. SÍNTESIS HUMANA (Translation) */}
             <div className="glass-panel p-8 rounded-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <MessageSquare size={16}/> {t.blockSynthesis}
             </h4>
-            <div className="prose prose-invert prose-p:text-slate-200 prose-p:leading-8 max-w-none text-lg">
-                {block.synthesis}
-            </div>
+            <div className="prose prose-invert prose-p:text-slate-200 prose-p:leading-8 max-w-none text-lg">{block.synthesis}</div>
             </div>
         </div>
-
-        {/* Controles */}
         <div className="flex justify-between mt-16 border-t border-white/5 pt-8">
-          <button 
-            onClick={() => setResultStep(prev => prev - 1)}
-            className="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition-colors uppercase text-xs font-bold tracking-widest"
-          >
+          <button onClick={() => setResultStep(prev => prev - 1)} className="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition-colors uppercase text-xs font-bold tracking-widest">
             <ChevronLeft size={16} /> {t.btnNew}
           </button>
-
-          <button 
-            onClick={() => setResultStep(prev => prev + 1)}
-            className="flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/25"
-          >
-            {isLastBlock ? t.btnNext : t.btnNext} 
-            <ChevronRight size={18} />
+          <button onClick={() => setResultStep(prev => prev + 1)} className="flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/25">
+            {isLastBlock ? t.btnNext : t.btnNext} <ChevronRight size={18} />
           </button>
         </div>
       </div>
@@ -564,18 +820,13 @@ const App: React.FC = () => {
         <div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white mb-10 shadow-[0_0_50px_rgba(99,102,241,0.4)]">
           <Sparkles size={40} />
         </div>
-        
         <h2 className="text-4xl font-serif text-white mb-6">{t.resultsTitle}</h2>
-        
         <div className="glass-panel rounded-xl p-10 mb-12 relative mx-4">
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#020617] px-4 text-xs text-indigo-400 uppercase tracking-widest border border-indigo-900/50 rounded-full py-1">
             CORE CARUTTI v3.0
           </div>
-          <p className="text-2xl font-serif italic text-indigo-200 leading-relaxed">
-            "{analysisResult.footerQuote}"
-          </p>
+          <p className="text-2xl font-serif italic text-indigo-200 leading-relaxed">"{analysisResult.footerQuote}"</p>
         </div>
-
         <div className="flex flex-col sm:flex-row justify-center gap-4 px-4">
           <button onClick={downloadHTML} className="px-8 py-4 bg-white text-black hover:bg-gray-100 rounded-lg font-bold flex items-center justify-center gap-3 transition-colors shadow-lg">
             <Download size={20} /> {t.btnDownload}
@@ -590,52 +841,63 @@ const App: React.FC = () => {
 
   const renderResults = () => {
     if (!analysisResult) return null;
-
     return (
       <div className="min-h-screen text-slate-200 flex flex-col font-sans">
         <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#020617]/80 border-b border-white/5">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-indigo-500/20 flex items-center justify-center text-indigo-400">
-                <Activity size={16} />
-              </div>
+              <div className="w-8 h-8 rounded bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Activity size={16} /></div>
               <span className="text-xs font-bold tracking-[0.2em] text-white hidden sm:block">ASISTENTE SISTÉMICO</span>
             </div>
             <div className="flex items-center gap-4">
-                <div className="text-[10px] font-mono text-gray-500 uppercase border border-white/10 px-2 py-1 rounded">
-                {analysisResult.metadata.name}
-                </div>
-                <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">
-                    {lang.toUpperCase()}
-                </div>
+                <div className="text-[10px] font-mono text-gray-500 uppercase border border-white/10 px-2 py-1 rounded">{analysisResult.metadata.name}</div>
+                <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">{lang.toUpperCase()}</div>
+                <button onClick={handleLogout} className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 ml-2">
+                  <LogOut size={14} />
+                </button>
             </div>
           </div>
-          {/* Progress Bar */}
           {resultStep > 0 && resultStep <= analysisResult.blocks.length && (
             <div className="h-0.5 bg-gray-800 w-full">
-              <div 
-                className="h-full bg-indigo-500 transition-all duration-700 ease-out box-shadow-[0_0_10px_#6366f1]" 
-                style={{ width: `${(resultStep / analysisResult.blocks.length) * 100}%` }}
-              ></div>
+              <div className="h-full bg-indigo-500 transition-all duration-700 ease-out box-shadow-[0_0_10px_#6366f1]" style={{ width: `${(resultStep / analysisResult.blocks.length) * 100}%` }}></div>
             </div>
           )}
         </header>
-
         <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col min-h-[600px]">
           {resultStep === 0 && renderDashboardTechnical()}
           {resultStep > 0 && resultStep <= analysisResult.blocks.length && renderAnalysisBlock(resultStep - 1)}
           {resultStep > analysisResult.blocks.length && renderFinalScreen()}
         </main>
+        
+        {/* MODALS */}
+        <GenericModal isOpen={activeModal === 'legend'} onClose={() => setActiveModal(null)} title={t.modalLegendTitle}>
+          <LegendContent />
+        </GenericModal>
+        
+        <GenericModal isOpen={activeModal === 'stats'} onClose={() => setActiveModal(null)} title={t.modalStatsTitle}>
+          {analysisResult && <StatsContent data={analysisResult.elementalBalance} />}
+        </GenericModal>
+
+        <GenericModal isOpen={activeModal === 'details'} onClose={() => setActiveModal(null)} title={t.modalDetailsTitle}>
+           {analysisResult && <PlanetaryTable positions={analysisResult.positions} lang={lang} />}
+        </GenericModal>
+
+        <GenericModal isOpen={activeModal === 'transits'} onClose={() => setActiveModal(null)} title={t.modalTransitsTitle}>
+           <TransitsContent />
+        </GenericModal>
+
       </div>
     );
   };
 
   return (
     <>
+      {mode === AppMode.AUTH && renderAuth()}
       {mode === AppMode.INPUT && renderInput()}
       {mode === AppMode.MODE_SELECTION && renderModeSelection()}
       {mode === AppMode.PROCESSING && renderProcessing()}
       {mode === AppMode.RESULTS && renderResults()}
+      {mode === AppMode.LISTING && renderListing()}
     </>
   );
 };
