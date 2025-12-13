@@ -10,6 +10,7 @@ import {
   Filter, History
 } from 'lucide-react';
 import { ResetPasswordModal, AuditLogsModal } from './UserModals';
+import PromptEditorModal from './PromptEditorModal';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -763,83 +764,65 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 </div>
               </div>
 
-              {/* Prompt Editor Modal */}
-              {showPromptEditor && selectedPrompt && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="mystic-card max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <h3 className="text-2xl font-bold text-white">{selectedPrompt.name}</h3>
-                          <p className="text-gray-400 text-sm mt-1">{selectedPrompt.description}</p>
-                        </div>
-                        <button
-                          onClick={() => setShowPromptEditor(false)}
-                          className="text-gray-400 hover:text-white transition-colors"
-                        >
-                          ✕
-                        </button>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="bg-white/5 rounded-lg p-4 border border-indigo-500/30">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-semibold text-white">Información</span>
-                            {selectedPrompt.is_default && (
-                              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full border border-blue-500/30">
-                                Prompt del Sistema
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 mt-3">
-                            <div>
-                              <span className="text-xs text-gray-400">Tipo:</span>
-                              <div className="text-sm text-white mt-1">{selectedPrompt.type}</div>
-                            </div>
-                            <div>
-                              <span className="text-xs text-gray-400">Usos:</span>
-                              <div className="text-sm text-white mt-1">{selectedPrompt.usage_count || 0}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-semibold text-white mb-2">
-                            Contenido del Prompt
-                          </label>
-                          <textarea
-                            value={selectedPrompt.content || ''}
-                            readOnly
-                            className="mystic-input font-mono text-sm h-96 resize-none"
-                            placeholder="Contenido del prompt..."
-                          />
-                        </div>
-
-                        <div className="flex justify-end gap-3">
-                          <button
-                            onClick={() => setShowPromptEditor(false)}
-                            className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
-                          >
-                            Cerrar
-                          </button>
-                          {!selectedPrompt.is_default && (
-                            <button
-                              className="mystic-button flex items-center gap-2"
-                              onClick={() => {
-                                // TODO: Implementar edición de prompts
-                                alert('Función de edición en desarrollo');
-                              }}
-                            >
-                              <Edit size={16} />
-                              Editar Prompt
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+               {/* Prompt Editor Modal */}
+               {showPromptEditor && selectedPrompt && (
+                 <PromptEditorModal
+                   prompt={selectedPrompt}
+                   onClose={() => {
+                     setShowPromptEditor(false);
+                     setSelectedPrompt(null);
+                   }}
+                   onSave={async (updatedPrompt) => {
+                     try {
+                       const token = localStorage.getItem('fraktal_token');
+                       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                       
+                       // Si es default, crear uno nuevo personalizado
+                       if (selectedPrompt.is_default) {
+                         const response = await fetch(`${API_URL}/config/prompts/specialized`, {
+                           method: 'POST',
+                           headers: {
+                             'Authorization': `Bearer ${token}`,
+                             'Content-Type': 'application/json'
+                           },
+                           body: JSON.stringify(updatedPrompt)
+                         });
+                         
+                         if (response.ok) {
+                           setMessage({ type: 'success', text: 'Prompt personalizado creado exitosamente' });
+                         } else {
+                           const error = await response.json();
+                           setMessage({ type: 'error', text: error.detail || 'Error al crear prompt' });
+                         }
+                       } else {
+                         // Actualizar existente
+                         const response = await fetch(`${API_URL}/config/prompts/specialized/${selectedPrompt.id}`, {
+                           method: 'PUT',
+                           headers: {
+                             'Authorization': `Bearer ${token}`,
+                             'Content-Type': 'application/json'
+                           },
+                           body: JSON.stringify(updatedPrompt)
+                         });
+                         
+                         if (response.ok) {
+                           setMessage({ type: 'success', text: 'Prompt actualizado exitosamente' });
+                         } else {
+                           const error = await response.json();
+                           setMessage({ type: 'error', text: error.detail || 'Error al actualizar prompt' });
+                         }
+                       }
+                       
+                       setShowPromptEditor(false);
+                       setSelectedPrompt(null);
+                       fetchSpecializedPrompts(); // Refrescar lista
+                       
+                     } catch (error) {
+                       setMessage({ type: 'error', text: 'Error de conexión' });
+                     }
+                   }}
+                 />
+               )}
             </div>
           )}
 

@@ -96,6 +96,7 @@ const App: React.FC = () => {
   const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
   const [cartaCompleta, setCartaCompleta] = useState<any>(null); // Datos completos de efemérides
   const [isExporting, setIsExporting] = useState(false); // Estado de exportación
+  const [showAdminPromptEditor, setShowAdminPromptEditor] = useState(false); // Modal de edición de prompt principal
   
   const stepIntervalRef = useRef<number | null>(null);
   const t = TRANSLATIONS[lang];
@@ -1107,12 +1108,18 @@ ${analysisText}
       {mode === AppMode.PROCESSING && renderProcessing()}
       {mode === AppMode.RESULTS && renderResults()}
       {mode === AppMode.LISTING && renderListing()}
-      {mode === AppMode.ADMIN_PANEL && (
+      {mode === AppMode.ADMIN_PANEL && !showAdminPromptEditor && (
         <AdminDashboard
           onBack={() => setMode(AppMode.INPUT)}
-          onEditPrompt={() => {
-            // Aquí puedes abrir un modal o cambiar a modo de edición
-            alert('Abriendo editor de prompts...');
+          onEditPrompt={() => setShowAdminPromptEditor(true)}
+        />
+      )}
+      {mode === AppMode.ADMIN_PANEL && showAdminPromptEditor && (
+        <AdminPanel
+          onBack={() => setShowAdminPromptEditor(false)}
+          onUpdatePrompt={(newPrompt) => {
+            setSystemInstruction(newPrompt);
+            setShowAdminPromptEditor(false);
           }}
         />
       )}
