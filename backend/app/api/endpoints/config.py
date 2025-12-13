@@ -201,23 +201,48 @@ async def get_specialized_prompt_by_type(
 
         # Si no existe, retornar el prompt por defecto del código
         if prompt_type in DEFAULT_PROMPTS:
-            return {
-                "id": None,
-                "prompt_id": f"default_{prompt_type}",
-                "name": f"Prompt {prompt_type.replace('_', ' ').title()}",
-                "type": prompt_type,
-                "description": f"Prompt predefinido para {prompt_type}",
-                "content": DEFAULT_PROMPTS[prompt_type],
-                "house_system": "placidus",
-                "orb_config": None,
-                "is_default": True,
-                "created_by": "system"
-            }
+            content = DEFAULT_PROMPTS[prompt_type]
+        else:
+            # Para tipos sin default, crear un prompt genérico
+            content = f"""⚠️ SYSTEM PROMPT: {prompt_type.replace('_', ' ').upper()} (FRAKTAL v2.0)
 
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Prompt type '{prompt_type}' not found"
-        )
+**ROL:** Analista Astrológico Especializado
+**ENFOQUE:** {prompt_type.replace('_', ' ').title()}
+
+### PROTOCOLO DE ANÁLISIS:
+
+1. **CONTEXTO**
+   - Tipo de análisis: {prompt_type.replace('_', ' ')}
+   - Enfoque profesional y técnico
+   - Interpretación basada en técnicas astrológicas clásicas
+
+2. **METODOLOGÍA**
+   - Análisis de posiciones planetarias
+   - Interpretación de aspectos
+   - Síntesis de casas astrológicas
+   - Relación con carta natal base
+
+3. **RESULTADOS**
+   - Descripción clara y estructurada
+   - Sin predicciones genéricas
+   - Enfoque práctico y aplicable
+
+**ESTILO:** Profesional, técnico, sistémico.
+**IDIOMA:** Español
+"""
+
+        return {
+            "id": None,
+            "prompt_id": f"default_{prompt_type}",
+            "name": f"Prompt {prompt_type.replace('_', ' ').title()}",
+            "type": prompt_type,
+            "description": f"Prompt predefinido para {prompt_type.replace('_', ' ')}",
+            "content": content,
+            "house_system": "placidus",
+            "orb_config": None,
+            "is_default": True,
+            "created_by": "system"
+        }
 
     except HTTPException:
         raise
