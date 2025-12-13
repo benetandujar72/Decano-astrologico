@@ -51,6 +51,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const [specializedPrompts, setSpecializedPrompts] = useState<SpecializedPrompt[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<SpecializedPrompt | null>(null);
   const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [showUserEditor, setShowUserEditor] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     if (activeTab === 'overview') {
@@ -142,6 +148,99 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
       }
     } catch (error) {
       console.error('Error loading prompt:', error);
+    }
+  };
+
+  const handleEditUser = (user: UserData) => {
+    setSelectedUser(user);
+    setShowUserEditor(true);
+  };
+
+  const handleDeleteUser = (user: UserData) => {
+    setUserToDelete(user);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_URL}/admin/users/${userToDelete._id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Usuario eliminado correctamente' });
+        setShowDeleteConfirm(false);
+        setUserToDelete(null);
+        fetchUsers(); // Recargar lista
+      } else {
+        const error = await response.json();
+        setMessage({ type: 'error', text: error.detail || 'Error al eliminar usuario' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error de conexión' });
+    }
+  };
+
+  const handleSaveUser = async (userData: { username?: string; email?: string; role?: string }) => {
+    if (!selectedUser) return;
+
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_URL}/admin/users/${selectedUser._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Usuario actualizado correctamente' });
+        setShowUserEditor(false);
+        setSelectedUser(null);
+        fetchUsers(); // Recargar lista
+      } else {
+        const error = await response.json();
+        setMessage({ type: 'error', text: error.detail || 'Error al actualizar usuario' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error de conexión' });
+    }
+  };
+
+  const handleCreateUser = async (userData: { username: string; email: string; password: string; role: string }) => {
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_URL}/admin/users`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Usuario creado correctamente' });
+        setShowCreateUser(false);
+        fetchUsers(); // Recargar lista
+      } else {
+        const error = await response.json();
+        setMessage({ type: 'error', text: error.detail || 'Error al crear usuario' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error de conexión' });
     }
   };
 
@@ -263,18 +362,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">Gestión de Usuarios</h2>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Buscar usuarios..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && fetchUsers()}
-                    className="mystic-input pl-10 pr-4"
-                  />
-                  <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Buscar usuarios..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && fetchUsers()}
+                      className="mystic-input pl-10 pr-4"
+                    />
+                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                  </div>
+                  <button
+                    onClick={() => setShowCreateUser(true)}
+                    className="mystic-button flex items-center gap-2"
+                  >
+                    <Plus size={18} />
+                    Nuevo Usuario
+                  </button>
                 </div>
               </div>
+
+              {message && (
+                <div className={`p-4 rounded-lg ${
+                  message.type === 'success'
+                    ? 'bg-green-500/20 border border-green-500/30 text-green-400'
+                    : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                }`}>
+                  {message.text}
+                </div>
+              )}
 
               {users.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
@@ -295,17 +413,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          user.role === 'admin' 
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                          user.role === 'admin'
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                             : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                         }`}>
                           {user.role.toUpperCase()}
                         </span>
-                        <button className="p-2 text-gray-400 hover:text-white transition-colors">
-                          <Eye size={18} />
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-indigo-400 transition-colors">
+                        <button
+                          onClick={() => handleEditUser(user)}
+                          className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"
+                          title="Editar usuario"
+                        >
                           <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </div>
@@ -485,6 +611,298 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
               <p className="text-sm">Los endpoints están listos en el backend</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Modal de Edición de Usuario */}
+      {showUserEditor && selectedUser && (
+        <UserEditModal
+          user={selectedUser}
+          onClose={() => {
+            setShowUserEditor(false);
+            setSelectedUser(null);
+            setMessage(null);
+          }}
+          onSave={handleSaveUser}
+        />
+      )}
+
+      {/* Modal de Creación de Usuario */}
+      {showCreateUser && (
+        <UserCreateModal
+          onClose={() => {
+            setShowCreateUser(false);
+            setMessage(null);
+          }}
+          onCreate={handleCreateUser}
+        />
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteConfirm && userToDelete && (
+        <DeleteConfirmModal
+          user={userToDelete}
+          onClose={() => {
+            setShowDeleteConfirm(false);
+            setUserToDelete(null);
+            setMessage(null);
+          }}
+          onConfirm={confirmDeleteUser}
+        />
+      )}
+    </div>
+  );
+};
+
+// ============= MODAL COMPONENTS =============
+
+interface UserEditModalProps {
+  user: UserData;
+  onClose: () => void;
+  onSave: (data: { username?: string; email?: string; role?: string }) => void;
+}
+
+const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    username: user.username,
+    email: user.email,
+    role: user.role
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="mystic-card max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-white">Editar Usuario</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Nombre de Usuario
+              </label>
+              <input
+                type="text"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                className="mystic-input w-full"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="mystic-input w-full"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Rol
+              </label>
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                className="mystic-input w-full"
+              >
+                <option value="user">Usuario</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="mystic-button"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface UserCreateModalProps {
+  onClose: () => void;
+  onCreate: (data: { username: string; email: string; password: string; role: string }) => void;
+}
+
+const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) => {
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'user'
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onCreate(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="mystic-card max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-white">Crear Nuevo Usuario</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Nombre de Usuario
+              </label>
+              <input
+                type="text"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                className="mystic-input w-full"
+                required
+                placeholder="johndoe"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="mystic-input w-full"
+                required
+                placeholder="usuario@ejemplo.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Contraseña
+              </label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="mystic-input w-full"
+                required
+                minLength={4}
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Rol
+              </label>
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                className="mystic-input w-full"
+              >
+                <option value="user">Usuario</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="mystic-button"
+              >
+                Crear Usuario
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface DeleteConfirmModalProps {
+  user: UserData;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ user, onClose, onConfirm }) => {
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="mystic-card max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-red-400">Confirmar Eliminación</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-gray-300">
+              ¿Estás seguro de que quieres eliminar este usuario?
+            </p>
+
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <div className="text-white font-semibold">{user.username}</div>
+              <div className="text-gray-400 text-sm">{user.email}</div>
+              <div className="text-xs text-red-400 mt-2">
+                ⚠️ Esta acción eliminará también todas las cartas, suscripciones y pagos asociados
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onConfirm}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+              >
+                Eliminar Usuario
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

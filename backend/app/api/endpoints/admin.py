@@ -120,36 +120,199 @@ class UpdateUserRequest(BaseModel):
     active: Optional[bool] = None
 
 
+class FullUpdateUserRequest(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str = "user"
+
+
 @router.patch("/users/{user_id}")
 async def update_user(
     user_id: str,
     request: UpdateUserRequest,
     admin: dict = Depends(require_admin)
 ):
-    """Actualiza un usuario"""
+    """Actualiza un usuario parcialmente (solo role y active)"""
     from bson import ObjectId
-    
+
     update_data = {}
     if request.role is not None:
         if request.role not in ["user", "admin"]:
             raise HTTPException(status_code=400, detail="Rol inválido")
         update_data["role"] = request.role
-    
+
     if request.active is not None:
         update_data["active"] = request.active
-    
+
     if not update_data:
         raise HTTPException(status_code=400, detail="Sin cambios")
-    
+
     result = await users_collection.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": update_data}
     )
-    
+
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
+
     return {"success": True, "message": "Usuario actualizado"}
+
+
+@router.put("/users/{user_id}")
+async def full_update_user(
+    user_id: str,
+    request: FullUpdateUserRequest,
+    admin: dict = Depends(require_admin)
+):
+    """Actualiza un usuario completamente"""
+    from bson import ObjectId
+    import sys
+
+    update_data = {}
+
+    if request.username is not None:
+        # Verificar que el username no esté en uso por otro usuario
+        existing = await users_collection.find_one({
+            "username": request.username,
+            "_id": {"$ne": ObjectId(user_id)}
+        })
+        if existing:
+            raise HTTPException(status_code=400, detail="Nombre de usuario ya existe")
+        update_data["username"] = request.username
+
+    if request.email is not None:
+        # Verificar que el email no esté en uso por otro usuario
+        existing = await users_collection.find_one({
+            "email": request.email,
+            "_id": {"$ne": ObjectId(user_id)}
+        })
+        if existing:
+            raise HTTPException(status_code=400, detail="Email ya existe")
+        update_data["email"] = request.email
+
+    if request.role is not None:
+        if request.role not in ["user", "admin"]:
+            raise HTTPException(status_code=400, detail="Rol inválido")
+        update_data["role"] = request.role
+
+    if request.active is not None:
+        update_data["active"] = request.active
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Sin cambios")
+
+    print(f"[ADMIN] Actualizando usuario {user_id}: {update_data}", file=sys.stderr)
+
+    result = await users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": update_data}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    print(f"[ADMIN] Usuario {user_id} actualizado exitosamente", file=sys.stderr)
+
+    return {"success": True, "message": "Usuario actualizado correctamente"}
+
+
+@router.post("/users")
+async def create_user(
+    request: CreateUserRequest,
+    admin: dict = Depends(require_admin)
+):
+    """Crea un nuevo usuario (solo admin)"""
+    from passlib.context import CryptContext
+    import sys
+
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    # Verificar que username y email no existan
+    existing_username = await users_collection.find_one({"username": request.username})
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Nombre de usuario ya existe")
+
+    existing_email = await users_collection.find_one({"email": request.email})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email ya existe")
+
+    if request.role not in ["user", "admin"]:
+        raise HTTPException(status_code=400, detail="Rol inválido")
+
+    # Crear usuario
+    hashed_password = pwd_context.hash(request.password)
+
+    new_user = {
+        "username": request.username,
+        "email": request.email,
+        "hashed_password": hashed_password,
+        "role": request.role,
+        "active": True,
+        "created_at": datetime.utcnow().isoformat()
+    }
+
+    print(f"[ADMIN] Creando nuevo usuario: {request.username} ({request.email})", file=sys.stderr)
+
+    result = await users_collection.insert_one(new_user)
+
+    print(f"[ADMIN] Usuario creado exitosamente. ID: {result.inserted_id}", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": "Usuario creado correctamente",
+        "user_id": str(result.inserted_id),
+        "username": request.username,
+        "email": request.email,
+        "role": request.role
+    }
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    admin: dict = Depends(require_admin)
+):
+    """Elimina un usuario (solo admin)"""
+    from bson import ObjectId
+    import sys
+
+    # Verificar que el usuario existe
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # No permitir eliminar el propio usuario admin
+    if str(user["_id"]) == admin.get("user_id") or user["email"] == admin.get("email"):
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propio usuario")
+
+    print(f"[ADMIN] Eliminando usuario {user_id} ({user.get('username', 'unknown')})", file=sys.stderr)
+
+    # Eliminar usuario
+    result = await users_collection.delete_one({"_id": ObjectId(user_id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Error al eliminar usuario")
+
+    # También eliminar suscripciones, cartas y pagos relacionados
+    await subscriptions_collection.delete_many({"user_id": user_id})
+    await db.charts.delete_many({"user_id": user_id})
+    await payments_collection.delete_many({"user_id": user_id})
+
+    print(f"[ADMIN] Usuario {user_id} y sus datos relacionados eliminados exitosamente", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": "Usuario eliminado correctamente",
+        "deleted_user": user.get("username", "unknown")
+    }
 
 
 # ==================== GESTIÓN DE SUSCRIPCIONES ====================
