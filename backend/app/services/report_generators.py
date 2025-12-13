@@ -6,6 +6,15 @@ from typing import Dict, Optional
 from io import BytesIO
 import json
 from datetime import datetime
+import base64
+
+# Generador de imágenes de carta astral
+try:
+    from app.services.chart_image_generator import generate_chart_image
+    CHART_IMAGE_AVAILABLE = True
+except ImportError:
+    CHART_IMAGE_AVAILABLE = False
+    print("⚠️ Generador de imágenes no disponible")
 
 # PDF Generation
 try:
@@ -50,6 +59,14 @@ class ReportGenerator:
         self.planetas = carta_data.get('planetas', {})
         self.casas = carta_data.get('casas', [])
         self.angulos = carta_data.get('angulos', {})
+        
+        # Generar imagen de carta astral
+        self.chart_image = None
+        if CHART_IMAGE_AVAILABLE:
+            try:
+                self.chart_image = generate_chart_image(carta_data, size=(800, 800))
+            except Exception as e:
+                print(f"⚠️ Error generando imagen de carta: {e}")
     
     # ===================== GENERADOR MARKDOWN =====================
     
@@ -215,7 +232,25 @@ class ReportGenerator:
             <p><strong>Zona Horaria:</strong> {self.datos.get('zona_horaria', 'UTC')}</p>
             <p><strong>Fecha UTC:</strong> {self.datos.get('fecha_utc', 'N/A')}</p>
         </div>
+        """
         
+        # Añadir carta astral visual si está disponible
+        if self.chart_image:
+            try:
+                self.chart_image.seek(0)
+                img_base64 = base64.b64encode(self.chart_image.read()).decode('utf-8')
+                html += f"""
+        <h2>🌟 Carta Astral Visual</h2>
+        <div style="text-align: center; margin: 30px 0;">
+            <img src="data:image/png;base64,{img_base64}" 
+                 alt="Carta Astral" 
+                 style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        </div>
+        """
+            except Exception as e:
+                print(f"⚠️ Error añadiendo imagen al HTML: {e}")
+        
+        html += """
         <h2>🪐 Posiciones Planetarias</h2>
         <table>
             <thead>
@@ -356,6 +391,17 @@ class ReportGenerator:
         """
         story.append(Paragraph(datos_text, normal_style))
         story.append(Spacer(1, 0.2*inch))
+        
+        # Carta Astral Visual
+        if self.chart_image:
+            try:
+                story.append(Paragraph("🌟 Carta Astral Visual", heading_style))
+                self.chart_image.seek(0)
+                img = RLImage(self.chart_image, width=4.5*inch, height=4.5*inch)
+                story.append(img)
+                story.append(Spacer(1, 0.3*inch))
+            except Exception as e:
+                print(f"⚠️ Error añadiendo imagen al PDF: {e}")
         
         # Tabla de Planetas
         story.append(Paragraph("🪐 Posiciones Planetarias", heading_style))
