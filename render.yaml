@@ -16,7 +16,7 @@ services:
     # Variables de entorno (configura valores reales en Render Dashboard)
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.9
 
       - key: MONGODB_URI
         sync: false # Se configura manualmente en Render Dashboard como Secret
