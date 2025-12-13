@@ -17,6 +17,7 @@ class ReportRequest(BaseModel):
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     format: str = Field(..., description="Formato del informe: pdf, docx, markdown, html", example="pdf")
     analysis_text: Optional[str] = Field(None, description="Texto del análisis psico-astrológico")
+    nombre: str = Field(default="", description="Nombre del consultante (para portada)")
     
     class Config:
         json_schema_extra = {
@@ -67,11 +68,12 @@ async def generate_report_endpoint(
                 detail=f"Formato no válido. Use: {', '.join(valid_formats)}"
             )
         
-        # Generar informe
+        # Generar informe (con portada si hay nombre)
         report_content = generate_report(
             carta_data=request.carta_data,
             format=format_lower,
-            analysis_text=request.analysis_text
+            analysis_text=request.analysis_text,
+            nombre=request.nombre
         )
         
         # Determinar tipo MIME y nombre de archivo

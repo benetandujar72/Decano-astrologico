@@ -24,19 +24,29 @@ import {
   LogOut,
   User as UserIcon,
   Info,
-  ShieldAlert
+  ShieldAlert,
+  Crown,
+  Zap
 } from 'lucide-react';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
 import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User } from './types';
 import NatalChart from './components/NatalChart'; 
 import PlanetaryTable from './components/PlanetaryTable';
 import CosmicLoader from './components/CosmicLoader';
+import PlanetaryOrbit from './components/PlanetaryOrbit'; // 🆕 Animaciones mejoradas
 import ControlPanel from './components/ControlPanel'; 
 import GenericModal from './components/GenericModal'; 
-import AdminPanel from './components/AdminPanel'; // Nuevo componente
-import ExportSelector from './components/ExportSelector'; // Selector de formatos de exportación
+import AdminPanel from './components/AdminPanel';
+import AdminDashboard from './components/AdminDashboard'; // 🆕 Dashboard admin mejorado
+import ExportSelector from './components/ExportSelector';
+import MysticBackground from './components/MysticBackground'; // 🆕 Fondo místico
+import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
+import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
+import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técnicas
 import { calculateChartData } from './astrologyEngine'; 
-import { api } from './services/api'; 
+import { api } from './services/api';
+import './styles/mystic-theme.css'; // 🆕 Estilos místicos
+import './components/PlanetaryOrbit.css'; // 🆕 Animaciones 
 
 // Symbol Dictionaries for Legend
 const PLANET_SYMBOLS: Record<string, string> = {
@@ -471,7 +481,8 @@ ${analysisText}
         body: JSON.stringify({
           carta_data: cartaCompleta,
           format: format,
-          analysis_text: fullAnalysis
+          analysis_text: fullAnalysis,
+          nombre: analysisResult.metadata.name // 🆕 Incluir nombre para portada
         }),
       });
       
@@ -739,8 +750,33 @@ ${analysisText}
       </div>
       <div className="glass-panel w-full max-w-lg p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
         <Header />
-        <div className="absolute top-8 right-8">
-           <button onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} className="p-2 text-gray-400 hover:text-white transition-colors">
+        <div className="absolute top-8 right-8 flex gap-2">
+           <button 
+             onClick={() => setMode(AppMode.USER_PROFILE)} 
+             className="p-2 text-gray-400 hover:text-indigo-400 transition-colors mystic-tooltip" 
+             data-tooltip="Mi Perfil"
+           >
+             <UserIcon size={20}/>
+           </button>
+           <button 
+             onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
+             className="p-2 text-gray-400 hover:text-yellow-400 transition-colors mystic-tooltip" 
+             data-tooltip="Planes"
+           >
+             <Crown size={20}/>
+           </button>
+           <button 
+             onClick={() => setMode(AppMode.ADVANCED_TECHNIQUES)} 
+             className="p-2 text-gray-400 hover:text-purple-400 transition-colors mystic-tooltip" 
+             data-tooltip="Técnicas Avanzadas"
+           >
+             <Zap size={20}/>
+           </button>
+           <button 
+             onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
+             className="p-2 text-gray-400 hover:text-white transition-colors mystic-tooltip" 
+             data-tooltip="Mis Cartas"
+           >
              <FolderOpen size={20}/>
            </button>
         </div>
@@ -867,8 +903,10 @@ ${analysisText}
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative font-mono">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-4xl items-center z-10">
         <div className="flex flex-col items-center justify-center order-2 md:order-1">
-          <div className="scale-125 mb-10"><CosmicLoader /></div>
-          <h2 className="text-xl text-white font-bold mb-2 tracking-[0.2em] text-center">
+          <div className="scale-125 mb-10 mystic-glow">
+            <PlanetaryOrbit size="large" />
+          </div>
+          <h2 className="text-xl text-white font-bold mb-2 tracking-[0.2em] text-center mystic-text-glow">
             {t.processingSteps[Math.min(currentStepIndex, t.processingSteps.length - 1)]}
           </h2>
         </div>
@@ -1062,7 +1100,7 @@ ${analysisText}
   };
 
   return (
-    <>
+    <MysticBackground>
       {mode === AppMode.AUTH && renderAuth()}
       {mode === AppMode.INPUT && renderInput()}
       {mode === AppMode.MODE_SELECTION && renderModeSelection()}
@@ -1070,12 +1108,36 @@ ${analysisText}
       {mode === AppMode.RESULTS && renderResults()}
       {mode === AppMode.LISTING && renderListing()}
       {mode === AppMode.ADMIN_PANEL && (
-        <AdminPanel 
-            onBack={() => setMode(AppMode.INPUT)} 
-            onUpdatePrompt={(newPrompt) => setSystemInstruction(newPrompt)}
+        <AdminDashboard
+          onBack={() => setMode(AppMode.INPUT)}
+          onEditPrompt={() => {
+            // Aquí puedes abrir un modal o cambiar a modo de edición
+            alert('Abriendo editor de prompts...');
+          }}
         />
       )}
-    </>
+      {mode === AppMode.USER_PROFILE && (
+        <UserProfilePage onBack={() => setMode(AppMode.INPUT)} />
+      )}
+      {mode === AppMode.SUBSCRIPTION_PLANS && (
+        <SubscriptionPlans 
+          onSelectPlan={(tier, billing) => {
+            alert(`Plan seleccionado: ${tier} (${billing})`);
+            setMode(AppMode.INPUT);
+          }}
+          onClose={() => setMode(AppMode.INPUT)}
+        />
+      )}
+      {mode === AppMode.ADVANCED_TECHNIQUES && (
+        <AdvancedTechniques
+          onSelectTechnique={(technique) => {
+            alert(`Técnica seleccionada: ${technique}`);
+            setMode(AppMode.INPUT);
+          }}
+          onBack={() => setMode(AppMode.INPUT)}
+        />
+      )}
+    </MysticBackground>
   );
 };
 

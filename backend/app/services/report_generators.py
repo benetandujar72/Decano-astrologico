@@ -16,6 +16,14 @@ except ImportError:
     CHART_IMAGE_AVAILABLE = False
     print("⚠️ Generador de imágenes no disponible")
 
+# Generador de portadas
+try:
+    from app.services.report_cover_generator import generate_mystical_cover, add_cover_to_pdf
+    COVER_AVAILABLE = True
+except ImportError:
+    COVER_AVAILABLE = False
+    print("⚠️ Generador de portadas no disponible")
+
 # PDF Generation
 try:
     from reportlab.lib.pagesizes import letter, A4
@@ -47,11 +55,12 @@ except ImportError:
 class ReportGenerator:
     """Generador principal de informes astrológicos"""
     
-    def __init__(self, carta_data: Dict, analysis_text: Optional[str] = None):
+    def __init__(self, carta_data: Dict, analysis_text: Optional[str] = None, nombre: str = ""):
         """
         Args:
             carta_data: Datos completos de la carta astral
             analysis_text: Texto del análisis psico-astrológico (opcional)
+            nombre: Nombre del consultante (para portada)
         """
         self.carta = carta_data
         self.analysis = analysis_text or "Análisis no disponible"
@@ -59,6 +68,7 @@ class ReportGenerator:
         self.planetas = carta_data.get('planetas', {})
         self.casas = carta_data.get('casas', [])
         self.angulos = carta_data.get('angulos', {})
+        self.nombre = nombre
         
         # Generar imagen de carta astral
         self.chart_image = None
@@ -67,6 +77,27 @@ class ReportGenerator:
                 self.chart_image = generate_chart_image(carta_data, size=(800, 800))
             except Exception as e:
                 print(f"⚠️ Error generando imagen de carta: {e}")
+        
+        # Generar portada mística
+        self.cover_image = None
+        if COVER_AVAILABLE and nombre:
+            try:
+                sol_signo = self.planetas.get('Sol', {}).get('signo', '')
+                luna_signo = self.planetas.get('Luna', {}).get('signo', '')
+                asc_signo = self.angulos.get('ascendente', {}).get('signo', '')
+                
+                self.cover_image = generate_mystical_cover(
+                    nombre=nombre,
+                    fecha=self.datos.get('fecha', ''),
+                    hora=self.datos.get('hora', ''),
+                    lugar=f"Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}",
+                    tipo_analisis="Carta Natal Completa",
+                    ascendente=asc_signo,
+                    sol_signo=sol_signo,
+                    luna_signo=luna_signo
+                )
+            except Exception as e:
+                print(f"⚠️ Error generando portada: {e}")
     
     # ===================== GENERADOR MARKDOWN =====================
     
@@ -481,6 +512,16 @@ class ReportGenerator:
         # Construir PDF
         doc.build(story)
         buffer.seek(0)
+        
+        # Añadir portada mística al inicio
+        if self.cover_image and COVER_AVAILABLE:
+            try:
+                final_buffer = add_cover_to_pdf(buffer, self.cover_image)
+                return final_buffer
+            except Exception as e:
+                print(f"⚠️ Error añadiendo portada al PDF: {e}")
+                return buffer
+        
         return buffer
     
     # ===================== GENERADOR DOCX =====================
@@ -581,7 +622,7 @@ class ReportGenerator:
         return buffer
 
 
-def generate_report(carta_data: Dict, format: str, analysis_text: Optional[str] = None):
+def generate_report(carta_data: Dict, format: str, analysis_text: Optional[str] = None, nombre: str = ""):
     """
     Función principal para generar informes en cualquier formato
     
@@ -589,11 +630,12 @@ def generate_report(carta_data: Dict, format: str, analysis_text: Optional[str] 
         carta_data: Datos de la carta astral
         format: Formato deseado ('pdf', 'docx', 'markdown', 'html')
         analysis_text: Texto del análisis (opcional)
+        nombre: Nombre del consultante (para portada)
         
     Returns:
         Contenido del informe en el formato solicitado
     """
-    generator = ReportGenerator(carta_data, analysis_text)
+    generator = ReportGenerator(carta_data, analysis_text, nombre)
     
     format_lower = format.lower()
     

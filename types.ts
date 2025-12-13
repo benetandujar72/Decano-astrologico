@@ -62,7 +62,10 @@ export enum AppMode {
   PROCESSING = 'PROCESSING',
   RESULTS = 'RESULTS',
   LISTING = 'LISTING',
-  ADMIN_PANEL = 'ADMIN_PANEL' // Nuevo modo Admin
+  ADMIN_PANEL = 'ADMIN_PANEL',
+  USER_PROFILE = 'USER_PROFILE', // 🆕 Perfil de usuario
+  SUBSCRIPTION_PLANS = 'SUBSCRIPTION_PLANS', // 🆕 Planes de suscripción
+  ADVANCED_TECHNIQUES = 'ADVANCED_TECHNIQUES' // 🆕 Técnicas avanzadas
 }
 
 export enum AnalysisType {
