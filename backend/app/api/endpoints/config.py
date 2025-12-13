@@ -102,11 +102,15 @@ async def update_system_prompt(
         result = await prompts_collection.insert_one(new_prompt)
         print(f"[CONFIG] System prompt updated successfully. ID: {result.inserted_id}", file=sys.stderr)
 
+        # NO devolver el contenido completo en la respuesta para evitar payloads grandes
+        # El frontend ya lo tiene localmente
         return {
             "id": str(result.inserted_id),
             "active": True,
-            "content": prompt_data.content,
-            "updated_at": new_prompt["updated_at"]
+            "content": prompt_data.content[:100] + "..." if len(prompt_data.content) > 100 else prompt_data.content,
+            "updated_at": new_prompt["updated_at"],
+            "size": len(prompt_data.content),
+            "success": True
         }
     except Exception as e:
         print(f"[CONFIG] ERROR updating prompt: {type(e).__name__}: {e}", file=sys.stderr)

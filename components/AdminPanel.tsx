@@ -36,11 +36,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onUpdatePrompt }) => {
     setMessage(null);
     try {
       const updated = await api.updateSystemPrompt(promptContent);
-      setPromptContent(updated.content);
-      onUpdatePrompt(updated.content); // Actualizar estado global
-      setMessage({ type: 'success', text: 'Protocolo del sistema actualizado correctamente.' });
+      // El backend ya no devuelve el contenido completo, usar el local
+      onUpdatePrompt(promptContent); // Actualizar estado global
+      setMessage({
+        type: 'success',
+        text: `Protocolo del sistema actualizado correctamente. (${(updated.size || promptContent.length)} caracteres)`
+      });
     } catch (e) {
-      setMessage({ type: 'error', text: 'Error al guardar cambios.' });
+      console.error('Error guardando prompt:', e);
+      setMessage({ type: 'error', text: `Error al guardar cambios: ${e instanceof Error ? e.message : 'Unknown error'}` });
     } finally {
       setSaving(false);
     }
