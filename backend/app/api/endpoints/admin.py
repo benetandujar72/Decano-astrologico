@@ -50,32 +50,61 @@ async def get_all_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, le=100),
     search: Optional[str] = None,
+    role: Optional[str] = Query(None, regex="^(user|admin)$"),
+    active: Optional[bool] = None,
+    sort_by: str = Query("created_at", regex="^(username|email|created_at|role)$"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
     admin: dict = Depends(require_admin)
 ):
-    """Lista todos los usuarios (solo admin)"""
+    """Lista todos los usuarios con filtros avanzados (solo admin)"""
+    import sys
+
     query = {}
+
+    # Filtro de búsqueda
     if search:
-        query = {
-            "$or": [
-                {"username": {"$regex": search, "$options": "i"}},
-                {"email": {"$regex": search, "$options": "i"}}
-            ]
-        }
-    
-    users_cursor = users_collection.find(query).skip(skip).limit(limit)
+        query["$or"] = [
+            {"username": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}}
+        ]
+
+    # Filtro por rol
+    if role:
+        query["role"] = role
+
+    # Filtro por estado activo
+    if active is not None:
+        query["active"] = active
+
+    # Orden
+    sort_direction = 1 if sort_order == "asc" else -1
+
+    print(f"[ADMIN] Listando usuarios: query={query}, skip={skip}, limit={limit}, sort={sort_by}:{sort_order}", file=sys.stderr)
+
+    # Obtener usuarios
+    users_cursor = users_collection.find(query).sort(sort_by, sort_direction).skip(skip).limit(limit)
     users = await users_cursor.to_list(length=limit)
     total = await users_collection.count_documents(query)
-    
+
     # Limpiar datos sensibles
     for user in users:
         user["_id"] = str(user["_id"])
         user.pop("hashed_password", None)
-    
+
+    total_pages = (total + limit - 1) // limit  # Ceiling division
+    current_page = (skip // limit) + 1
+
+    print(f"[ADMIN] Encontrados {total} usuarios, página {current_page}/{total_pages}", file=sys.stderr)
+
     return {
         "users": users,
         "total": total,
         "skip": skip,
-        "limit": limit
+        "limit": limit,
+        "page": current_page,
+        "total_pages": total_pages,
+        "has_next": skip + limit < total,
+        "has_prev": skip > 0
     }
 
 
@@ -132,6 +161,10 @@ class CreateUserRequest(BaseModel):
     email: str
     password: str
     role: str = "user"
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
 
 
 @router.patch("/users/{user_id}")
@@ -275,12 +308,117 @@ async def create_user(
     }
 
 
+@router.post("/users/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: str,
+    request: ResetPasswordRequest,
+    admin: dict = Depends(require_admin)
+):
+    """Resetea la contraseña de un usuario (solo admin)"""
+    from bson import ObjectId
+    from passlib.context import CryptContext
+    import sys
+
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    # Verificar que el usuario existe
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Hash de la nueva contraseña
+    hashed_password = pwd_context.hash(request.new_password)
+
+    print(f"[ADMIN] Reseteando contraseña para usuario {user_id} ({user.get('username', 'unknown')})", file=sys.stderr)
+
+    # Actualizar contraseña
+    result = await users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"hashed_password": hashed_password}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Error al resetear contraseña")
+
+    # Log de auditoría
+    await db.audit_logs.insert_one({
+        "action": "password_reset",
+        "target_user_id": user_id,
+        "target_username": user.get("username"),
+        "admin_user": admin.get("username"),
+        "admin_email": admin.get("email"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "details": "Password reset by admin"
+    })
+
+    print(f"[ADMIN] Contraseña reseteada exitosamente para {user_id}", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": "Contraseña reseteada correctamente",
+        "username": user.get("username")
+    }
+
+
+@router.post("/users/{user_id}/toggle-active")
+async def toggle_user_active(
+    user_id: str,
+    admin: dict = Depends(require_admin)
+):
+    """Activa o desactiva un usuario sin eliminarlo (solo admin)"""
+    from bson import ObjectId
+    import sys
+
+    # Verificar que el usuario existe
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # No permitir desactivar el propio usuario admin
+    if str(user["_id"]) == admin.get("user_id") or user["email"] == admin.get("email"):
+        raise HTTPException(status_code=400, detail="No puedes desactivar tu propio usuario")
+
+    # Toggle active status
+    new_active_status = not user.get("active", True)
+
+    print(f"[ADMIN] Cambiando estado de usuario {user_id} a {'activo' if new_active_status else 'inactivo'}", file=sys.stderr)
+
+    result = await users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"active": new_active_status}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Error al cambiar estado del usuario")
+
+    # Log de auditoría
+    await db.audit_logs.insert_one({
+        "action": "toggle_active",
+        "target_user_id": user_id,
+        "target_username": user.get("username"),
+        "admin_user": admin.get("username"),
+        "admin_email": admin.get("email"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "details": f"User {'activated' if new_active_status else 'deactivated'}",
+        "new_status": new_active_status
+    })
+
+    print(f"[ADMIN] Usuario {user_id} ahora está {'activo' if new_active_status else 'inactivo'}", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": f"Usuario {'activado' if new_active_status else 'desactivado'} correctamente",
+        "username": user.get("username"),
+        "active": new_active_status
+    }
+
+
 @router.delete("/users/{user_id}")
 async def delete_user(
     user_id: str,
     admin: dict = Depends(require_admin)
 ):
-    """Elimina un usuario (solo admin)"""
+    """Elimina un usuario permanentemente (solo admin)"""
     from bson import ObjectId
     import sys
 
@@ -306,12 +444,97 @@ async def delete_user(
     await db.charts.delete_many({"user_id": user_id})
     await payments_collection.delete_many({"user_id": user_id})
 
+    # Log de auditoría
+    await db.audit_logs.insert_one({
+        "action": "delete_user",
+        "target_user_id": user_id,
+        "target_username": user.get("username"),
+        "target_email": user.get("email"),
+        "admin_user": admin.get("username"),
+        "admin_email": admin.get("email"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "details": "User permanently deleted with all related data"
+    })
+
     print(f"[ADMIN] Usuario {user_id} y sus datos relacionados eliminados exitosamente", file=sys.stderr)
 
     return {
         "success": True,
         "message": "Usuario eliminado correctamente",
         "deleted_user": user.get("username", "unknown")
+    }
+
+
+# ==================== LOGS DE AUDITORÍA ====================
+
+@router.get("/audit-logs")
+async def get_audit_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, le=100),
+    action: Optional[str] = None,
+    target_user_id: Optional[str] = None,
+    admin: dict = Depends(require_admin)
+):
+    """Obtiene logs de auditoría de acciones administrativas"""
+    import sys
+
+    query = {}
+
+    if action:
+        query["action"] = action
+
+    if target_user_id:
+        query["target_user_id"] = target_user_id
+
+    print(f"[ADMIN] Consultando logs de auditoría: query={query}", file=sys.stderr)
+
+    # Obtener logs ordenados por fecha descendente
+    logs_cursor = db.audit_logs.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+    logs = await logs_cursor.to_list(length=limit)
+    total = await db.audit_logs.count_documents(query)
+
+    # Convertir ObjectId a string
+    for log in logs:
+        log["_id"] = str(log["_id"])
+
+    total_pages = (total + limit - 1) // limit
+    current_page = (skip // limit) + 1
+
+    print(f"[ADMIN] Encontrados {total} logs de auditoría, página {current_page}/{total_pages}", file=sys.stderr)
+
+    return {
+        "logs": logs,
+        "total": total,
+        "page": current_page,
+        "total_pages": total_pages,
+        "has_next": skip + limit < total,
+        "has_prev": skip > 0
+    }
+
+
+@router.get("/audit-logs/user/{user_id}")
+async def get_user_audit_logs(
+    user_id: str,
+    admin: dict = Depends(require_admin)
+):
+    """Obtiene el historial de cambios de un usuario específico"""
+    import sys
+
+    print(f"[ADMIN] Consultando historial de auditoría para usuario {user_id}", file=sys.stderr)
+
+    # Obtener todos los logs relacionados con este usuario
+    logs_cursor = db.audit_logs.find({"target_user_id": user_id}).sort("timestamp", -1)
+    logs = await logs_cursor.to_list(length=100)
+
+    for log in logs:
+        log["_id"] = str(log["_id"])
+
+    print(f"[ADMIN] Encontrados {len(logs)} logs para usuario {user_id}", file=sys.stderr)
+
+    return {
+        "user_id": user_id,
+        "logs": logs,
+        "total": len(logs)
     }
 
 
