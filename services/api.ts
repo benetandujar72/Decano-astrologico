@@ -1,10 +1,14 @@
 
 import { SavedChart, User, SystemPrompt } from '../types';
 
-// En producción en Render, cambiar esta URL a la de tu backend
-// Se usa un fallback seguro: si (import.meta as any).env es undefined, usa un objeto vacío.
-const env = (import.meta as any).env || {};
-const API_URL = env.VITE_API_URL || 'http://localhost:8000';
+// En producción, Vite inyecta las variables de entorno en import.meta.env
+// Las variables deben empezar con VITE_ para ser expuestas al cliente
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Log para debugging (solo en desarrollo)
+if (import.meta.env.DEV) {
+  console.log('API URL:', API_URL);
+}
 
 const getHeaders = () => {
   const token = localStorage.getItem('fraktal_token');
