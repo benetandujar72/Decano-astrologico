@@ -2,19 +2,16 @@
 # Documentación: https://render.com/docs/blueprint-spec
 
 services:
-  # Backend API (Python/FastAPI)
+  # Backend API (Python/FastAPI con Docker)
   - type: web
     name: fraktal-api
-    runtime: python
+    runtime: docker
     region: oregon # o usa 'frankfurt' para Europa
     plan: free # Cambia a 'starter' si necesitas más recursos
     branch: main # Rama de GitHub a deployar
     rootDir: backend # Directorio del backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-
-    # Forzar Python 3.11 (CRÍTICO para compatibilidad con MongoDB)
-    runtimeVersion: "3.11"
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
 
     # Variables de entorno (configura valores reales en Render Dashboard)
     envVars:
