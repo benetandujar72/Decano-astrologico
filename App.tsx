@@ -34,6 +34,7 @@ import CosmicLoader from './components/CosmicLoader';
 import ControlPanel from './components/ControlPanel'; 
 import GenericModal from './components/GenericModal'; 
 import AdminPanel from './components/AdminPanel'; // Nuevo componente
+import ExportSelector from './components/ExportSelector'; // Selector de formatos de exportación
 import { calculateChartData } from './astrologyEngine'; 
 import { api } from './services/api'; 
 
@@ -83,6 +84,8 @@ const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
+  const [cartaCompleta, setCartaCompleta] = useState<any>(null); // Datos completos de efemérides
+  const [isExporting, setIsExporting] = useState(false); // Estado de exportación
   
   const stepIntervalRef = useRef<number | null>(null);
   const t = TRANSLATIONS[lang];
@@ -233,14 +236,48 @@ const App: React.FC = () => {
     startProgressSimulation();
     
     try {
-      let lat = 40.4168, lon = -3.7038; 
+      let lat = 40.4168, lon = -3.7038, timezone = 'UTC';
       if (inputToUse.place.includes(',')) {
-        const [latStr, lonStr] = inputToUse.place.split(',');
-        lat = parseFloat(latStr) || 40.4168;
-        lon = parseFloat(lonStr) || -3.7038;
+        const parts = inputToUse.place.split(',');
+        lat = parseFloat(parts[0]) || 40.4168;
+        lon = parseFloat(parts[1]) || -3.7038;
+        // Si hay tercer parámetro, es la zona horaria
+        timezone = parts[2]?.trim() || 'UTC';
       }
       
+      // Primero calcular con el motor frontend (rápido para visualización)
       const realData = calculateChartData(inputToUse.date, inputToUse.time, lat, lon);
+      
+      // Paralelamente, calcular con Swiss Ephemeris en backend (precisión)
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      try {
+        const ephemerisResponse = await fetch(`${API_URL}/ephemeris/calculate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fecha: inputToUse.date,
+            hora: inputToUse.time,
+            latitud: lat,
+            longitud: lon,
+            zona_horaria: timezone
+          }),
+        });
+        
+        if (ephemerisResponse.ok) {
+          const ephemerisData = await ephemerisResponse.json();
+          console.log('✅ Efemérides calculadas con Swiss Ephemeris');
+          setCartaCompleta(ephemerisData.data); // Guardar para exportación
+        } else {
+          console.warn('⚠️ No se pudieron calcular efemérides con backend, usando motor frontend');
+        }
+      } catch (ephemerisError) {
+        console.warn('⚠️ Error calculando efemérides backend:', ephemerisError);
+      }
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process.env as any).API_KEY;
       if (!apiKey) throw new Error("Falta la API key de Gemini. Configura VITE_GEMINI_API_KEY en Vercel.");
       const ai = new GoogleGenAI({ apiKey });
@@ -388,9 +425,91 @@ const App: React.FC = () => {
     }
   };
 
+  const downloadReport = async (format: string) => {
+    if (!analysisResult || !cartaCompleta) {
+      alert('No hay datos para exportar');
+      return;
+    }
+    
+    setIsExporting(true);
+    
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Compilar el análisis completo como texto
+      const analysisText = analysisResult.blocks
+        .map(block => `
+## ${block.title}
+
+### Tesis Sistémica
+${block.thesis}
+
+### Auditoría Técnica
+${block.audit}
+
+### Traducción Vivencial
+${block.synthesis}
+        `)
+        .join('\n\n---\n\n');
+      
+      const fullAnalysis = `
+${analysisText}
+
+---
+
+## Conclusión
+"${analysisResult.footerQuote}"
+      `;
+      
+      const response = await fetch(`${API_URL}/reports/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          carta_data: cartaCompleta,
+          format: format,
+          analysis_text: fullAnalysis
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error generando informe');
+      }
+      
+      // Determinar tipo de archivo
+      const contentType = response.headers.get('content-type') || '';
+      let extension = 'txt';
+      if (contentType.includes('pdf')) extension = 'pdf';
+      else if (contentType.includes('word') || contentType.includes('docx')) extension = 'docx';
+      else if (contentType.includes('html')) extension = 'html';
+      else if (contentType.includes('markdown')) extension = 'md';
+      
+      // Descargar archivo
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `carta_astral_${analysisResult.metadata.name.replace(/\s+/g, '_')}_${analysisResult.metadata.birthDate.replace(/-/g, '')}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      alert('✅ Informe descargado exitosamente');
+    } catch (error: any) {
+      console.error('Error descargando informe:', error);
+      alert(`Error descargando informe: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
   const downloadHTML = () => {
-    if (!analysisResult) return;
-    alert("Descarga iniciada...");
+    // Abrir modal con selector de formatos
+    setActiveModal('export');
   };
 
   // --- Modal Content Renderers ---
@@ -932,6 +1051,10 @@ const App: React.FC = () => {
 
         <GenericModal isOpen={activeModal === 'transits'} onClose={() => setActiveModal(null)} title={t.modalTransitsTitle}>
            <TransitsContent />
+        </GenericModal>
+
+        <GenericModal isOpen={activeModal === 'export'} onClose={() => setActiveModal(null)} title="Exportar Informe">
+           <ExportSelector onExport={downloadReport} isLoading={isExporting} />
         </GenericModal>
 
       </div>

@@ -102,12 +102,11 @@ async def update_system_prompt(
         result = await prompts_collection.insert_one(new_prompt)
         print(f"[CONFIG] System prompt updated successfully. ID: {result.inserted_id}", file=sys.stderr)
 
-        # NO devolver el contenido completo en la respuesta para evitar payloads grandes
-        # El frontend ya lo tiene localmente
+        # IMPORTANTE: Devolver el contenido COMPLETO porque se usa en Gemini
         return {
             "id": str(result.inserted_id),
             "active": True,
-            "content": prompt_data.content[:100] + "..." if len(prompt_data.content) > 100 else prompt_data.content,
+            "content": prompt_data.content,  # Completo para usar en análisis
             "updated_at": new_prompt["updated_at"],
             "size": len(prompt_data.content),
             "success": True

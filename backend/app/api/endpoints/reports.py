@@ -1,0 +1,177 @@
+"""
+Endpoints para generación de informes astrológicos en múltiples formatos
+"""
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse, Response
+from pydantic import BaseModel, Field
+from typing import Optional
+from app.api.endpoints.auth import get_current_user
+from app.services.report_generators import generate_report
+import sys
+
+router = APIRouter()
+
+
+class ReportRequest(BaseModel):
+    """Datos para generar informe"""
+    carta_data: dict = Field(..., description="Datos completos de la carta astral")
+    format: str = Field(..., description="Formato del informe: pdf, docx, markdown, html", example="pdf")
+    analysis_text: Optional[str] = Field(None, description="Texto del análisis psico-astrológico")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "carta_data": {
+                    "datos_entrada": {
+                        "fecha": "1990-01-15",
+                        "hora": "14:30",
+                        "latitud": 40.4168,
+                        "longitud": -3.7038,
+                        "zona_horaria": "Europe/Madrid"
+                    },
+                    "planetas": {},
+                    "casas": [],
+                    "angulos": {}
+                },
+                "format": "pdf",
+                "analysis_text": "Análisis detallado..."
+            }
+        }
+
+
+@router.post("/generate")
+async def generate_report_endpoint(
+    request: ReportRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera un informe astrológico en el formato especificado
+    
+    Formatos soportados:
+    - pdf: Documento PDF profesional
+    - docx: Documento Word editable
+    - markdown: Formato Markdown
+    - html: Página web con estilos
+    """
+    try:
+        format_lower = request.format.lower()
+        
+        print(f"[REPORTS] Generando informe en formato: {format_lower}", file=sys.stderr)
+        print(f"[REPORTS] Usuario: {current_user.get('username', 'unknown')}", file=sys.stderr)
+        
+        # Validar formato
+        valid_formats = ['pdf', 'docx', 'doc', 'markdown', 'md', 'html', 'web']
+        if format_lower not in valid_formats:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Formato no válido. Use: {', '.join(valid_formats)}"
+            )
+        
+        # Generar informe
+        report_content = generate_report(
+            carta_data=request.carta_data,
+            format=format_lower,
+            analysis_text=request.analysis_text
+        )
+        
+        # Determinar tipo MIME y nombre de archivo
+        if format_lower == 'pdf':
+            media_type = 'application/pdf'
+            extension = 'pdf'
+        elif format_lower in ['docx', 'doc']:
+            media_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            extension = 'docx'
+        elif format_lower in ['markdown', 'md']:
+            media_type = 'text/markdown'
+            extension = 'md'
+        elif format_lower in ['html', 'web']:
+            media_type = 'text/html'
+            extension = 'html'
+        else:
+            media_type = 'text/plain'
+            extension = 'txt'
+        
+        # Generar nombre de archivo
+        datos = request.carta_data.get('datos_entrada', {})
+        fecha = datos.get('fecha', 'fecha').replace('-', '')
+        filename = f"carta_astral_{fecha}.{extension}"
+        
+        print(f"[REPORTS] ✅ Informe generado: {filename}", file=sys.stderr)
+        
+        # Para PDF y DOCX, retornar como stream
+        if format_lower in ['pdf', 'docx', 'doc']:
+            return StreamingResponse(
+                report_content,
+                media_type=media_type,
+                headers={
+                    'Content-Disposition': f'attachment; filename="{filename}"'
+                }
+            )
+        else:
+            # Para HTML y Markdown, retornar como texto
+            return Response(
+                content=report_content,
+                media_type=media_type,
+                headers={
+                    'Content-Disposition': f'inline; filename="{filename}"'
+                }
+            )
+        
+    except ImportError as e:
+        print(f"[REPORTS] ❌ Error de dependencias: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"El formato {request.format} requiere dependencias adicionales. Contacte al administrador."
+        )
+    except ValueError as e:
+        print(f"[REPORTS] ❌ Error de validación: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"[REPORTS] ❌ Error generando informe: {type(e).__name__}: {e}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generando informe: {str(e)}"
+        )
+
+
+@router.get("/formats")
+async def get_available_formats(current_user: dict = Depends(get_current_user)):
+    """
+    Retorna los formatos de informe disponibles con sus descripciones
+    """
+    return {
+        "formats": [
+            {
+                "id": "web",
+                "name": "Web / HTML",
+                "description": "Página web con estilos visuales",
+                "icon": "🌐",
+                "available": True
+            },
+            {
+                "id": "pdf",
+                "name": "PDF",
+                "description": "Documento PDF profesional",
+                "icon": "📄",
+                "available": True
+            },
+            {
+                "id": "docx",
+                "name": "Word (DOCX)",
+                "description": "Documento Word editable",
+                "icon": "📝",
+                "available": True
+            },
+            {
+                "id": "markdown",
+                "name": "Markdown",
+                "description": "Formato Markdown para edición",
+                "icon": "📋",
+                "available": True
+            }
+        ]
+    }
+
