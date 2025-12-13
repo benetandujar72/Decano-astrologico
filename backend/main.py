@@ -1,6 +1,7 @@
 """
 Punto de entrada principal del backend FastAPI
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.main import router as app_router
@@ -13,9 +14,14 @@ app = FastAPI(
 )
 
 # Configurar CORS
+_cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "https://decano-astrologico.vercel.app,http://localhost:3000,http://127.0.0.1:3000",
+)
+allowed_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominios específicos
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
