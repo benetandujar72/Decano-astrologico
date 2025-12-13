@@ -3,7 +3,7 @@ Router principal de la aplicación FastAPI
 Incluye todos los endpoints de la API
 """
 from fastapi import APIRouter
-from app.api.endpoints import auth, charts, config, ephemeris, reports
+from app.api.endpoints import auth, charts, config, ephemeris, reports, subscriptions, admin
 
 # Crear router principal
 router = APIRouter()
@@ -14,6 +14,8 @@ router.include_router(charts.router, prefix="/charts", tags=["charts"])
 router.include_router(config.router, prefix="/config", tags=["config"])
 router.include_router(ephemeris.router, prefix="/ephemeris", tags=["ephemeris"])
 router.include_router(reports.router, prefix="/reports", tags=["reports"])
+router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
+router.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 # Alias para compatibilidad
 app = router
