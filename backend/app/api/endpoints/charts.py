@@ -15,8 +15,8 @@ load_dotenv()
 
 router = APIRouter()
 
-# Cliente MongoDB
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+# Cliente MongoDB (compat: MONGODB_URL o MONGODB_URI)
+MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client.fraktal
 charts_collection = db.charts

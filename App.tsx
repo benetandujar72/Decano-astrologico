@@ -241,7 +241,9 @@ const App: React.FC = () => {
       }
       
       const realData = calculateChartData(inputToUse.date, inputToUse.time, lat, lon);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process.env as any).API_KEY;
+      if (!apiKey) throw new Error("Falta la API key de Gemini. Configura VITE_GEMINI_API_KEY en Vercel.");
+      const ai = new GoogleGenAI({ apiKey });
       const typePrompt = analysisType === AnalysisType.PSYCHOLOGICAL 
         ? "ENFOQUE: ANÁLISIS SISTÉMICO (Módulos 1-4)."
         : "ENFOQUE: AUDITORÍA TÉCNICA Y ESTRUCTURAL.";
