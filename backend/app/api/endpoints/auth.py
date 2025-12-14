@@ -21,7 +21,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Usar bcrypt_sha256 para evitar el límite de 72 bytes de bcrypt.
+# Mantener bcrypt en la lista para verificar hashes antiguos.
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # Cliente MongoDB con opciones SSL configuradas
@@ -53,17 +55,15 @@ class RegisterRequest(BaseModel):
     password: str
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica una contraseña - Trunca a 72 bytes para bcrypt"""
-    # Bcrypt tiene límite de 72 bytes
-    if isinstance(plain_password, str):
-        plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verifica una contraseña"""
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError:
+        # Evita 500 por errores del backend de hash; tratar como credenciales inválidas.
+        return False
 
 def get_password_hash(password: str) -> str:
-    """Genera hash de contraseña - Trunca a 72 bytes para bcrypt"""
-    # Bcrypt tiene límite de 72 bytes
-    if isinstance(password, str):
-        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    """Genera hash de contraseña"""
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -145,17 +145,23 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             print(f"[AUTH] Error creating admin: {e}")
             # Tal vez ya existe (race condition), intentar buscar de nuevo
             user = await users_collection.find_one({"username": form_data.username})
-    
-    # Bootstrap segundo admin: bandujar@edutac.es
-    if not user and form_data.username == "bandujar@edutac.es":
-        print(f"[AUTH] Admin user bandujar@edutac.es not found, creating bootstrap admin...")
+
+    # Bootstrap opcional de un segundo admin (sin credenciales hardcodeadas)
+    second_admin_username = os.getenv("SECOND_ADMIN_BOOTSTRAP_USERNAME") or os.getenv("SECOND_ADMIN_BOOTSTRAP_EMAIL")
+    second_admin_password = os.getenv("SECOND_ADMIN_BOOTSTRAP_PASSWORD")
+    if (
+        not user
+        and second_admin_username
+        and second_admin_password
+        and form_data.username == second_admin_username
+    ):
+        print(f"[AUTH] Second admin not found, creating bootstrap admin: {second_admin_username}")
         bootstrap_start = time.time()
 
-        admin_password = "23@2705BEangu"
-        hashed_password = get_password_hash(admin_password)
+        hashed_password = get_password_hash(second_admin_password)
         admin_user = {
-            "username": "bandujar@edutac.es",
-            "email": "bandujar@edutac.es",
+            "username": second_admin_username,
+            "email": second_admin_username,
             "hashed_password": hashed_password,
             "role": "admin",
             "created_at": datetime.utcnow().isoformat(),
@@ -166,9 +172,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             user = admin_user
             user["_id"] = result.inserted_id
             bootstrap_time = time.time() - bootstrap_start
-            print(f"[AUTH] Admin bandujar@edutac.es bootstrap completed in {bootstrap_time:.3f}s")
+            print(f"[AUTH] Second admin bootstrap completed in {bootstrap_time:.3f}s")
         except Exception as e:
-            print(f"[AUTH] Error creating admin bandujar@edutac.es: {e}")
+            print(f"[AUTH] Error creating second admin: {e}")
             user = await users_collection.find_one({"username": form_data.username})
 
     if not user:

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 import os
 from dotenv import load_dotenv
-from app.api.endpoints.auth import get_current_user
+from app.api.endpoints.auth import get_current_user, get_password_hash
 from app.models.subscription import Invoice, Quote, SubscriptionTier
 from pydantic import BaseModel
 
@@ -263,10 +263,7 @@ async def create_user(
     admin: dict = Depends(require_admin)
 ):
     """Crea un nuevo usuario (solo admin)"""
-    from passlib.context import CryptContext
     import sys
-
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     # Verificar que username y email no existan
     existing_username = await users_collection.find_one({"username": request.username})
@@ -280,11 +277,8 @@ async def create_user(
     if request.role not in ["user", "admin"]:
         raise HTTPException(status_code=400, detail="Rol inválido")
 
-    # Crear usuario - Truncar contraseña a 72 bytes para bcrypt
-    password_to_hash = request.password
-    if isinstance(password_to_hash, str):
-        password_to_hash = password_to_hash.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    hashed_password = pwd_context.hash(password_to_hash)
+    # Crear usuario (bcrypt_sha256; evita límite 72 bytes de bcrypt)
+    hashed_password = get_password_hash(request.password)
 
     new_user = {
         "username": request.username,
@@ -319,21 +313,15 @@ async def reset_user_password(
 ):
     """Resetea la contraseña de un usuario (solo admin)"""
     from bson import ObjectId
-    from passlib.context import CryptContext
     import sys
-
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     # Verificar que el usuario existe
     user = await users_collection.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Hash de la nueva contraseña - Truncar a 72 bytes para bcrypt
-    password_to_hash = request.new_password
-    if isinstance(password_to_hash, str):
-        password_to_hash = password_to_hash.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    hashed_password = pwd_context.hash(password_to_hash)
+    # Hash de la nueva contraseña (bcrypt_sha256; evita límite 72 bytes de bcrypt)
+    hashed_password = get_password_hash(request.new_password)
 
     print(f"[ADMIN] Reseteando contraseña para usuario {user_id} ({user.get('username', 'unknown')})", file=sys.stderr)
 
