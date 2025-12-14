@@ -24,6 +24,50 @@ interface DashboardStats {
   monthly_revenue: number;
 }
 
+interface Subscriber {
+  user_id: string;
+  username: string;
+  email: string;
+  tier: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  billing_cycle: string;
+  payment_status: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  auto_renew?: boolean;
+  next_billing_date?: string;
+}
+
+interface Payment {
+  payment_id: string;
+  user_id: string;
+  subscription_tier: string;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  transaction_id?: string;
+  created_at: string;
+  stripe_session_id?: string;
+}
+
+interface RevenueStats {
+  total_subscribers: number;
+  active_subscribers: number;
+  subscribers_by_tier: {
+    free: number;
+    pro: number;
+    premium: number;
+    enterprise: number;
+  };
+  monthly_revenue: number;
+  yearly_revenue: number;
+  total_payments: number;
+  total_revenue_all_time: number;
+}
+
 interface UserData {
   _id: string;
   username: string;
@@ -75,6 +119,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const usersPerPage = 10;
 
+  // Subscriptions & Payments state
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [revenueStats, setRevenueStats] = useState<RevenueStats | null>(null);
+  const [tierFilter, setTierFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [subsPage, setSubsPage] = useState(1);
+  const [subsTotalPages, setSubsTotalPages] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [paymentsTotalPages, setPaymentsTotalPages] = useState(1);
+
   useEffect(() => {
     if (activeTab === 'overview') {
       fetchStats();
@@ -82,8 +137,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
       fetchUsers();
     } else if (activeTab === 'prompts') {
       fetchSpecializedPrompts();
+    } else if (activeTab === 'subscriptions') {
+      fetchSubscribers();
+      fetchRevenueStats();
+    } else if (activeTab === 'invoices') {
+      fetchPayments();
     }
   }, [activeTab]);
+
+  // Refetch subscriptions when filters change
+  useEffect(() => {
+    if (activeTab === 'subscriptions') {
+      fetchSubscribers();
+    }
+  }, [subsPage, tierFilter, statusFilter]);
+
+  // Refetch payments when page changes
+  useEffect(() => {
+    if (activeTab === 'invoices') {
+      fetchPayments();
+    }
+  }, [paymentsPage]);
 
   // Refetch users when filters or pagination change
   useEffect(() => {
@@ -163,6 +237,78 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
       console.error('Error loading specialized prompts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSubscribers = async () => {
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const params = new URLSearchParams();
+      const skip = (subsPage - 1) * 10;
+      params.append('skip', skip.toString());
+      params.append('limit', '10');
+      if (tierFilter) params.append('tier_filter', tierFilter);
+      if (statusFilter) params.append('status_filter', statusFilter);
+
+      const response = await fetch(`${API_URL}/subscriptions/admin/subscribers?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscribers(data.subscribers || []);
+        setSubsTotalPages(data.total_pages || 1);
+      }
+    } catch (error) {
+      console.error('Error loading subscribers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPayments = async () => {
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const params = new URLSearchParams();
+      const skip = (paymentsPage - 1) * 20;
+      params.append('skip', skip.toString());
+      params.append('limit', '20');
+
+      const response = await fetch(`${API_URL}/subscriptions/admin/payments?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPayments(data.payments || []);
+        setPaymentsTotalPages(data.total_pages || 1);
+      }
+    } catch (error) {
+      console.error('Error loading payments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRevenueStats = async () => {
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_URL}/subscriptions/admin/revenue-stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRevenueStats(data);
+      }
+    } catch (error) {
+      console.error('Error loading revenue stats:', error);
     }
   };
 
@@ -826,10 +972,270 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
             </div>
           )}
 
-          {(activeTab === 'subscriptions' || activeTab === 'invoices') && (
-            <div className="text-center py-12 text-gray-400">
-              <p className="mb-4">Funcionalidad en desarrollo...</p>
-              <p className="text-sm">Los endpoints están listos en el backend</p>
+          {activeTab === 'subscriptions' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Gestión de Suscripciones</h2>
+
+              {/* Revenue Stats */}
+              {revenueStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-xl p-6 border border-blue-500/30">
+                    <div className="text-sm text-gray-400 mb-1">Total Suscriptores</div>
+                    <div className="text-3xl font-bold text-white">{revenueStats.total_subscribers}</div>
+                    <div className="text-xs text-green-400 mt-1">{revenueStats.active_subscribers} activos</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-xl p-6 border border-green-500/30">
+                    <div className="text-sm text-gray-400 mb-1">Ingresos Mensuales</div>
+                    <div className="text-3xl font-bold text-white">€{revenueStats.monthly_revenue.toFixed(2)}</div>
+                    <div className="text-xs text-gray-400 mt-1">MRR (Monthly Recurring Revenue)</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-purple-500/20 to-pink-600/20 rounded-xl p-6 border border-purple-500/30">
+                    <div className="text-sm text-gray-400 mb-1">Ingresos Anuales</div>
+                    <div className="text-3xl font-bold text-white">€{revenueStats.yearly_revenue.toFixed(2)}</div>
+                    <div className="text-xs text-gray-400 mt-1">ARR (Annual Recurring Revenue)</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-yellow-500/20 to-orange-600/20 rounded-xl p-6 border border-yellow-500/30">
+                    <div className="text-sm text-gray-400 mb-1">Total Histórico</div>
+                    <div className="text-3xl font-bold text-white">€{revenueStats.total_revenue_all_time.toFixed(2)}</div>
+                    <div className="text-xs text-gray-400 mt-1">{revenueStats.total_payments} pagos</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Subscribers by Tier */}
+              {revenueStats && (
+                <div className="bg-white/5 rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-bold text-white mb-4">Suscriptores por Plan</h3>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-gray-400 text-sm mb-1">FREE</div>
+                      <div className="text-2xl font-bold text-gray-300">{revenueStats.subscribers_by_tier.free}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-400 text-sm mb-1">PRO</div>
+                      <div className="text-2xl font-bold text-blue-400">{revenueStats.subscribers_by_tier.pro}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-400 text-sm mb-1">PREMIUM</div>
+                      <div className="text-2xl font-bold text-purple-400">{revenueStats.subscribers_by_tier.premium}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-400 text-sm mb-1">ENTERPRISE</div>
+                      <div className="text-2xl font-bold text-yellow-400">{revenueStats.subscribers_by_tier.enterprise}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <select
+                  value={tierFilter}
+                  onChange={(e) => { setTierFilter(e.target.value); setSubsPage(1); }}
+                  className="mystic-input"
+                >
+                  <option value="">Todos los planes</option>
+                  <option value="free">FREE</option>
+                  <option value="pro">PRO</option>
+                  <option value="premium">PREMIUM</option>
+                  <option value="enterprise">ENTERPRISE</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value); setSubsPage(1); }}
+                  className="mystic-input"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="active">Activo</option>
+                  <option value="cancelled">Cancelado</option>
+                  <option value="expired">Expirado</option>
+                  <option value="trial">Trial</option>
+                </select>
+              </div>
+
+              {/* Subscribers List */}
+              {subscribers.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  No se encontraron suscriptores
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {subscribers.map((sub) => (
+                    <div key={sub.user_id} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="text-white font-semibold">{sub.username}</div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              sub.tier === 'enterprise' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                              sub.tier === 'premium' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                              sub.tier === 'pro' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                            }`}>
+                              {sub.tier.toUpperCase()}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                              sub.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                              sub.status === 'cancelled' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              sub.status === 'trial' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                            }`}>
+                              {sub.status.toUpperCase()}
+                            </span>
+                            {sub.billing_cycle && (
+                              <span className="text-xs text-gray-400">
+                                {sub.billing_cycle === 'monthly' ? '📅 Mensual' : '📅 Anual'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-400">{sub.email}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Inicio: {new Date(sub.start_date).toLocaleDateString('es-ES')} |
+                            Fin: {new Date(sub.end_date).toLocaleDateString('es-ES')}
+                            {sub.stripe_customer_id && (
+                              <span className="ml-2">| Stripe: {sub.stripe_customer_id.substring(0, 20)}...</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {sub.auto_renew && (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                              Auto-renovación
+                            </span>
+                          )}
+                          {sub.payment_status && (
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              sub.payment_status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                              sub.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-red-500/20 text-red-400'
+                            }`}>
+                              {sub.payment_status}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {subsTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <button
+                    onClick={() => setSubsPage(p => Math.max(1, p - 1))}
+                    disabled={subsPage === 1}
+                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="text-white px-4">Página {subsPage} de {subsTotalPages}</span>
+                  <button
+                    onClick={() => setSubsPage(p => Math.min(subsTotalPages, p + 1))}
+                    disabled={subsPage === subsTotalPages}
+                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'invoices' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Historial de Pagos</h2>
+
+              {/* Payments List */}
+              {payments.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  No se encontraron pagos
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Fecha</th>
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Usuario</th>
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Plan</th>
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Monto</th>
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Método</th>
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Estado</th>
+                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Transaction ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment) => (
+                        <tr key={payment.payment_id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                          <td className="py-3 px-4 text-gray-300 text-sm">
+                            {new Date(payment.created_at).toLocaleDateString('es-ES', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="py-3 px-4 text-white text-sm">{payment.user_id}</td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                              payment.subscription_tier === 'enterprise' ? 'bg-yellow-500/20 text-yellow-400' :
+                              payment.subscription_tier === 'premium' ? 'bg-purple-500/20 text-purple-400' :
+                              payment.subscription_tier === 'pro' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {payment.subscription_tier.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-white font-semibold text-sm">
+                            {payment.amount.toFixed(2)} {payment.currency.toUpperCase()}
+                          </td>
+                          <td className="py-3 px-4 text-gray-300 text-sm capitalize">{payment.method}</td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                              payment.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                              payment.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                              'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}>
+                              {payment.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-400 text-xs font-mono">
+                            {payment.transaction_id || payment.stripe_session_id?.substring(0, 20) || 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {paymentsTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <button
+                    onClick={() => setPaymentsPage(p => Math.max(1, p - 1))}
+                    disabled={paymentsPage === 1}
+                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="text-white px-4">Página {paymentsPage} de {paymentsTotalPages}</span>
+                  <button
+                    onClick={() => setPaymentsPage(p => Math.min(paymentsTotalPages, p + 1))}
+                    disabled={paymentsPage === paymentsTotalPages}
+                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
