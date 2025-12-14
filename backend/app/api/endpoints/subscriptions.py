@@ -2,6 +2,7 @@
 Endpoints para gestión de suscripciones y pagos
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.encoders import jsonable_encoder
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -77,7 +78,8 @@ async def get_my_subscription(current_user: dict = Depends(get_current_user)):
                 start_date=datetime.utcnow().isoformat(),
                 end_date=(datetime.utcnow() + timedelta(days=36500)).isoformat(),  # 100 años
                 auto_renew=True,
-                payment_status="admin_auto_granted"
+                # Debe cumplir el Literal del modelo (pending/completed/failed)
+                payment_status="completed"
             )
             
             await subscriptions_collection.insert_one(admin_subscription.dict())
@@ -112,10 +114,10 @@ async def get_my_subscription(current_user: dict = Depends(get_current_user)):
         tier = SubscriptionTier.FREE
     plan = SUBSCRIPTION_PLANS.get(tier)
     
-    return {
+    return jsonable_encoder({
         "subscription": subscription,
         "plan": plan.dict() if plan else None
-    }
+    })
 
 
 @router.post("/subscribe")
