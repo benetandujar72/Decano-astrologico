@@ -261,6 +261,7 @@ async def create_specialized_prompt(
     current_user: dict = Depends(get_current_user)
 ) -> dict:
     """Crea un prompt especializado (requiere plan Premium o superior)"""
+    import sys
     from app.services.subscription_permissions import require_feature
     
     user_id = str(current_user.get("_id"))
@@ -269,15 +270,6 @@ async def create_specialized_prompt(
         "customize_prompts",
         "La personalización de prompts requiere un plan Premium o superior."
     )
-    """Crea un nuevo prompt especializado (solo admin)"""
-    import sys
-
-    # Verificar que el usuario es admin
-    if current_user.get("role") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can create specialized prompts"
-        )
 
     try:
         # Preparar documento para MongoDB
