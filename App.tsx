@@ -266,8 +266,13 @@ const App: React.FC = () => {
       let lat = 40.4168, lon = -3.7038, timezone = 'UTC';
       if (inputToUse.place.includes(',')) {
         const parts = inputToUse.place.split(',');
-        lat = parseFloat(parts[0]) || 40.4168;
-        lon = parseFloat(parts[1]) || -3.7038;
+        // IMPORTANTE: No usar || porque 0 es falsy. Usar validación correcta
+        const parsedLat = parseFloat(parts[0].trim());
+        const parsedLon = parseFloat(parts[1].trim());
+        if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+          lat = parsedLat;
+          lon = parsedLon;
+        }
         // Si hay tercer parámetro, es la zona horaria
         timezone = parts[2]?.trim() || 'UTC';
       }
@@ -410,8 +415,12 @@ const App: React.FC = () => {
     let lat = 40.4168, lon = -3.7038;
     if (newInput.place.includes(',')) {
       const [latStr, lonStr] = newInput.place.split(',');
-      lat = parseFloat(latStr) || 40.4168;
-      lon = parseFloat(lonStr) || -3.7038;
+      const parsedLat = parseFloat(latStr.trim());
+      const parsedLon = parseFloat(lonStr.trim());
+      if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+        lat = parsedLat;
+        lon = parsedLon;
+      }
     }
 
     const realData = calculateChartData(dateStr, timeStr, lat, lon);
@@ -599,11 +608,15 @@ ${analysisText}
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-    let lat = 40.4168, lon = -3.7038; 
+    let lat = 40.4168, lon = -3.7038;
     if (analysisResult.metadata.birthPlace.includes(',')) {
       const [latStr, lonStr] = analysisResult.metadata.birthPlace.split(',');
-      lat = parseFloat(latStr) || 40.4168;
-      lon = parseFloat(lonStr) || -3.7038;
+      const parsedLat = parseFloat(latStr.trim());
+      const parsedLon = parseFloat(lonStr.trim());
+      if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+        lat = parsedLat;
+        lon = parsedLon;
+      }
     }
     const transitData = calculateChartData(dateStr, timeStr, lat, lon);
 
