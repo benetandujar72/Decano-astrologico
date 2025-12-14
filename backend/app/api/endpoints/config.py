@@ -325,7 +325,15 @@ async def update_specialized_prompt(
                 detail=f"Prompt with id '{prompt_id}' not found"
             )
 
-        # Verificar permisos
+        # Verificar permisos: admin o creador del prompt
+        user_id = str(current_user.get("_id"))
+        from app.services.subscription_permissions import require_feature
+        await require_feature(
+            user_id, 
+            "customize_prompts",
+            "La personalización de prompts requiere un plan Premium o superior."
+        )
+        
         if current_user.get("role") != "admin" and existing_prompt.get("created_by") != current_user.get("username"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -379,7 +387,15 @@ async def delete_specialized_prompt(
                 detail=f"Prompt with id '{prompt_id}' not found"
             )
 
-        # Verificar permisos
+        # Verificar permisos: admin o creador del prompt
+        user_id = str(current_user.get("_id"))
+        from app.services.subscription_permissions import require_feature
+        await require_feature(
+            user_id, 
+            "customize_prompts",
+            "La personalización de prompts requiere un plan Premium o superior."
+        )
+        
         if current_user.get("role") != "admin" and existing_prompt.get("created_by") != current_user.get("username"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
