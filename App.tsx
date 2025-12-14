@@ -510,16 +510,43 @@ const App: React.FC = () => {
       });
 
       const text = response.text;
-      if (!text) throw new Error("La API no devolvió texto.");
+      if (!text) {
+        console.error("❌ Gemini API no devolvió texto");
+        throw new Error("La API de Gemini no devolvió texto. Verifica que VITE_GEMINI_API_KEY esté configurada correctamente en Vercel.");
+      }
       
       const cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       const startIndex = cleanText.indexOf('{');
       const endIndex = cleanText.lastIndexOf('}');
+      
+      if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+        console.error("❌ No se encontró JSON válido en la respuesta de Gemini");
+        console.error("Texto recibido:", text?.substring(0, 500));
+        throw new Error("La respuesta de Gemini no contiene JSON válido. Intenta de nuevo.");
+      }
+      
       const jsonString = cleanText.substring(startIndex, endIndex + 1);
       
       let aiData;
-      try { aiData = JSON.parse(jsonString); } 
-      catch (e) { aiData = { blocks: [], footerQuote: "Error" }; }
+      try { 
+        aiData = JSON.parse(jsonString);
+        // Validar que tenga la estructura correcta
+        if (!aiData.blocks || !Array.isArray(aiData.blocks)) {
+          console.warn("⚠️ Respuesta de Gemini sin bloques válidos, usando fallback");
+          aiData = { blocks: [], footerQuote: "Análisis en proceso..." };
+        }
+        if (!aiData.footerQuote) {
+          aiData.footerQuote = "Fraktal";
+        }
+      } 
+      catch (e) { 
+        console.error("❌ Error parseando respuesta de Gemini:", e);
+        console.error("Texto recibido:", text?.substring(0, 500));
+        aiData = { 
+          blocks: [], 
+          footerQuote: "Error al procesar análisis. Verifica la configuración de Gemini API." 
+        };
+      }
 
       setAnalysisResult({
         metadata: {
