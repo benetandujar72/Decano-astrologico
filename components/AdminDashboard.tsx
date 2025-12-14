@@ -7,7 +7,7 @@ import {
   TrendingUp, Activity, Settings, ArrowLeft,
   Search, Edit, Trash2, Eye, Plus, Star, Key,
   UserX, UserCheck, ChevronLeft, ChevronRight,
-  Filter, History
+  Filter, History, Check
 } from 'lucide-react';
 import { ResetPasswordModal, AuditLogsModal } from './UserModals';
 import PromptEditorModal from './PromptEditorModal';

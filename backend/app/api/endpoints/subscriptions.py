@@ -95,10 +95,22 @@ async def get_my_subscription(current_user: dict = Depends(get_current_user)):
             
             await subscriptions_collection.insert_one(free_subscription.dict())
             subscription = free_subscription.dict()
+
+    # Normalizar documento Mongo (evitar ObjectId no serializable)
+    if isinstance(subscription, dict) and subscription.get("_id") is not None:
+        try:
+            subscription["_id"] = str(subscription["_id"])
+        except Exception:
+            # Si no se puede convertir, quitarlo para evitar 500
+            subscription.pop("_id", None)
     
     # Añadir detalles del plan
-    tier = subscription.get("tier", "free")
-    plan = SUBSCRIPTION_PLANS.get(SubscriptionTier(tier))
+    tier_raw = subscription.get("tier", SubscriptionTier.FREE)
+    try:
+        tier = SubscriptionTier(tier_raw)
+    except Exception:
+        tier = SubscriptionTier.FREE
+    plan = SUBSCRIPTION_PLANS.get(tier)
     
     return {
         "subscription": subscription,
