@@ -85,11 +85,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     user = await users_collection.find_one({"username": username})
     if user is None:
         raise credentials_exception
     return user
+
+async def require_admin(current_user: dict = Depends(get_current_user)):
+    """Verifica que el usuario actual sea administrador"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user
 
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
