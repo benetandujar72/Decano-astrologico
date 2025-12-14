@@ -948,50 +948,46 @@ ${analysisText}
   // --- Renderers --- //
 
   const Header = () => (
-    <div className="flex justify-between items-center mb-6 px-2 gap-4">
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 border border-indigo-500/30 flex-shrink-0">
-          <Sparkles size={20} />
+    <div className="mb-4">
+      {/* Logo y controles básicos en una línea */}
+      <div className="flex justify-between items-center mb-3 px-2">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-serif text-white tracking-wide">{t.appTitle}</h1>
+            <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{t.appSubtitle}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="text-xl font-serif text-white tracking-wide truncate">{t.appTitle}</h1>
-          <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest truncate">{t.appSubtitle}</p>
-        </div>
-      </div>
-      <div className="flex gap-2 items-center flex-wrap flex-shrink-0">
-        {isAdmin && (
+        {/* Idiomas y logout al lado del logo */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {(['es', 'ca', 'eu'] as Language[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border ${
+                  lang === l 
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' 
+                  : 'text-gray-500 border-transparent hover:bg-white/5'
+                }`}
+                title={l === 'es' ? 'Español' : l === 'ca' ? 'Català' : 'Euskera'}
+              >
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {isAuthenticated && (
             <button 
-                onClick={() => setMode(AppMode.ADMIN_PANEL)}
-                className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 flex items-center gap-1.5 animate-pulse flex-shrink-0"
-                title="Panel de Administrador"
+              onClick={handleLogout} 
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all" 
+              title={t.authLogout}
             >
-                <ShieldAlert size={14} /> ADMIN
+              <LogOut size={16} />
             </button>
-        )}
-        <div className="flex gap-1.5 flex-shrink-0">
-          {(['es', 'ca', 'eu'] as Language[]).map((l) => (
-            <button
-              key={l}
-              onClick={() => setLang(l)}
-              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${
-                lang === l 
-                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' 
-                : 'text-gray-500 border-transparent hover:bg-white/5'
-              }`}
-            >
-              {l.toUpperCase()}
-            </button>
-          ))}
+          )}
         </div>
-        {isAuthenticated && (
-          <button 
-            onClick={handleLogout} 
-            className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 flex items-center gap-1.5 flex-shrink-0" 
-            title={t.authLogout}
-          >
-            <LogOut size={14} />
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1188,7 +1184,7 @@ ${analysisText}
   );
 
   const renderListing = () => (
-    <div className="min-h-screen p-8 flex flex-col items-center">
+    <div className="min-h-screen p-4 sm:p-8 flex flex-col items-center overflow-y-auto">
        <Header />
        <div className="w-full max-w-4xl glass-panel p-8 rounded-2xl animate-fade-in">
          <div className="flex justify-between items-center mb-6">
@@ -1470,12 +1466,96 @@ ${analysisText}
 
   return (
     <MysticBackground>
-      {mode === AppMode.AUTH && renderAuth()}
-      {mode === AppMode.INPUT && renderInput()}
-      {mode === AppMode.MODE_SELECTION && renderModeSelection()}
-      {mode === AppMode.PROCESSING && renderProcessing()}
-      {mode === AppMode.RESULTS && renderResults()}
-      {mode === AppMode.LISTING && renderListing()}
+      {/* Barra de navegación inferior tipo móvil */}
+      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-4 py-2 safe-area-inset-bottom">
+          <div className="max-w-2xl mx-auto flex justify-around items-center">
+            <button 
+              onClick={() => setMode(AppMode.USER_PROFILE)} 
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                mode === AppMode.USER_PROFILE 
+                  ? 'text-indigo-400 bg-indigo-500/10' 
+                  : 'text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/5'
+              }`}
+              title="Mi Perfil"
+            >
+              <UserIcon size={20}/>
+              <span className="text-[10px] font-medium">Perfil</span>
+            </button>
+            <button 
+              onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                mode === AppMode.SUBSCRIPTION_PLANS 
+                  ? 'text-yellow-400 bg-yellow-500/10' 
+                  : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/5'
+              }`}
+              title="Planes"
+            >
+              <Crown size={20}/>
+              <span className="text-[10px] font-medium">Planes</span>
+            </button>
+            <button 
+              onClick={() => setMode(AppMode.INPUT)} 
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                mode === AppMode.INPUT || mode === AppMode.MODE_SELECTION
+                  ? 'text-purple-400 bg-purple-500/10' 
+                  : 'text-gray-400 hover:text-purple-400 hover:bg-purple-500/5'
+              }`}
+              title="Nueva Carta"
+            >
+              <Sparkles size={20}/>
+              <span className="text-[10px] font-medium">Nueva</span>
+            </button>
+            <button 
+              onClick={() => { setMode(AppMode.ADVANCED_TECHNIQUES); }} 
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                mode === AppMode.ADVANCED_TECHNIQUES 
+                  ? 'text-emerald-400 bg-emerald-500/10' 
+                  : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
+              }`}
+              title="Técnicas Avanzadas"
+            >
+              <Zap size={20}/>
+              <span className="text-[10px] font-medium">Técnicas</span>
+            </button>
+            <button 
+              onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                mode === AppMode.LISTING 
+                  ? 'text-blue-400 bg-blue-500/10' 
+                  : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/5'
+              }`}
+              title="Mis Cartas"
+            >
+              <FolderOpen size={20}/>
+              <span className="text-[10px] font-medium">Cartas</span>
+            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setMode(AppMode.ADMIN_PANEL)} 
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                  mode === AppMode.ADMIN_PANEL 
+                    ? 'text-red-400 bg-red-500/10' 
+                    : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
+                }`}
+                title="Admin"
+              >
+                <ShieldAlert size={20}/>
+                <span className="text-[10px] font-medium">Admin</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Contenido con scroll tipo móvil */}
+      <div className={`min-h-screen ${isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS ? 'pb-20' : ''}`}>
+        {mode === AppMode.AUTH && renderAuth()}
+        {mode === AppMode.INPUT && renderInput()}
+        {mode === AppMode.MODE_SELECTION && renderModeSelection()}
+        {mode === AppMode.PROCESSING && renderProcessing()}
+        {mode === AppMode.RESULTS && renderResults()}
+        {mode === AppMode.LISTING && renderListing()}
       {mode === AppMode.ADMIN_PANEL && !showAdminPromptEditor && (
         <AdminDashboard
           onBack={() => setMode(AppMode.INPUT)}
