@@ -91,6 +91,13 @@ class UserSubscription(BaseModel):
     next_billing_date: Optional[str] = None
     trial_end_date: Optional[str] = None
 
+    # Integración con Stripe
+    stripe_customer_id: Optional[str] = None  # ID del customer en Stripe (cus_...)
+    stripe_subscription_id: Optional[str] = None  # ID de la suscripción en Stripe (sub_...)
+    stripe_session_id: Optional[str] = None  # ID de la última sesión de checkout (cs_...)
+    payment_status: Literal["pending", "completed", "failed"] = "pending"
+    billing_cycle: Literal["monthly", "yearly"] = "monthly"
+
 
 class Payment(BaseModel):
     """Registro de pago"""
