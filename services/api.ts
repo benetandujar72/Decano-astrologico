@@ -89,5 +89,33 @@ export const api = {
     });
     if (!res.ok) throw new Error('Error actualizando prompt');
     return res.json();
+  },
+
+  // SPECIALIZED PROMPTS
+  getSpecializedPrompt: async (promptType: string): Promise<{ content: string }> => {
+    const res = await fetch(`${API_URL}/config/prompts/specialized/${promptType}`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error(`Error cargando prompt especializado: ${promptType}`);
+    const data = await res.json();
+    return { content: data.content || '' };
+  },
+
+  // USER SUBSCRIPTION
+  getUserSubscription: async (): Promise<{ tier: string, status: string }> => {
+    const res = await fetch(`${API_URL}/subscriptions/my-subscription`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) {
+      // Si no tiene suscripción, retornar FREE
+      return { tier: 'free', status: 'inactive' };
+    }
+    const data = await res.json();
+    // El endpoint devuelve { subscription: {...}, plan: {...} }
+    const subscription = data.subscription || {};
+    return { 
+      tier: subscription.tier || 'free', 
+      status: subscription.status || 'inactive' 
+    };
   }
 };

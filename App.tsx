@@ -81,6 +81,9 @@ const App: React.FC = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [resultStep, setResultStep] = useState<number>(0);
 
+  // Advanced technique state
+  const [selectedTechnique, setSelectedTechnique] = useState<string | null>(null);
+
   // Subscription state
   const [stripeSessionId, setStripeSessionId] = useState<string | null>(null);
 
@@ -155,8 +158,23 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchSystemPrompt = async () => {
+  const fetchSystemPrompt = async (techniqueType?: string | null) => {
     try {
+      // Si hay una técnica seleccionada, cargar el prompt especializado
+      if (techniqueType) {
+        try {
+          const specializedPrompt = await api.getSpecializedPrompt(techniqueType);
+          if (specializedPrompt && specializedPrompt.content) {
+            setSystemInstruction(specializedPrompt.content);
+            console.log(`✅ Prompt especializado cargado: ${techniqueType}`);
+            return;
+          }
+        } catch (e) {
+          console.warn(`⚠️ No se pudo cargar prompt especializado para ${techniqueType}, usando prompt por defecto:`, e);
+        }
+      }
+      
+      // Si no hay técnica o falló la carga, usar el prompt por defecto
       const promptData = await api.getSystemPrompt();
       if (promptData && promptData.content) {
         setSystemInstruction(promptData.content);
@@ -398,8 +416,8 @@ const App: React.FC = () => {
   };
 
   const handleAnalyze = async (overrideInput?: UserInput) => {
-    // Refresh prompt just in case it was updated
-    await fetchSystemPrompt();
+    // Refresh prompt just in case it was updated (con técnica si está seleccionada)
+    await fetchSystemPrompt(selectedTechnique);
 
     const inputToUse = overrideInput || userInput;
     setActiveChartParams(inputToUse); 
@@ -481,12 +499,28 @@ const App: React.FC = () => {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process.env as any).API_KEY;
       if (!apiKey) throw new Error("Falta la API key de Gemini. Configura VITE_GEMINI_API_KEY en Vercel.");
       const ai = new GoogleGenAI({ apiKey });
+      // Si hay una técnica avanzada seleccionada, indicarlo en el prompt
+      let techniqueContext = '';
+      if (selectedTechnique) {
+        const techniqueNames: Record<string, string> = {
+          'transits': 'TRÁNSITOS PLANETARIOS',
+          'progressions': 'PROGRESIONES SECUNDARIAS',
+          'solar_return': 'REVOLUCIÓN SOLAR',
+          'synastry': 'SINASTRÍA',
+          'composite': 'CARTA COMPUESTA',
+          'directions': 'DIRECCIONES PRIMARIAS',
+          'lunar_return': 'REVOLUCIÓN LUNAR',
+          'electional': 'ASTROLOGÍA ELECTIVA'
+        };
+        techniqueContext = `\n TÉCNICA AVANZADA: ${techniqueNames[selectedTechnique] || selectedTechnique.toUpperCase()}`;
+      }
+      
       const typePrompt = analysisType === AnalysisType.PSYCHOLOGICAL 
         ? "ENFOQUE: ANÁLISIS SISTÉMICO (Módulos 1-4)."
         : "ENFOQUE: AUDITORÍA TÉCNICA Y ESTRUCTURAL.";
 
       const positionsText = realData.positions.map(p => `${p.name}: ${p.degree} ${p.sign} (Casa ${p.house})`).join('\n');
-      const prompt = `EJECUTAR PROTOCOLO "FRAKTAL v1.0" PARA: ${inputToUse.name} \n DATOS: \n ${positionsText} \n ${typePrompt} \n IDIOMA: ${lang}.`;
+      const prompt = `EJECUTAR PROTOCOLO "FRAKTAL v1.0" PARA: ${inputToUse.name}${techniqueContext} \n DATOS: \n ${positionsText} \n ${typePrompt} \n IDIOMA: ${lang}.`;
 
       const analysisSchema: Schema = {
         type: Type.OBJECT,
@@ -655,7 +689,13 @@ const App: React.FC = () => {
 
       stopProgressSimulation();
       setCurrentStepIndex(t.processingSteps.length); 
-      setTimeout(() => { setMode(AppMode.RESULTS); setResultStep(0); }, 1000);
+      setTimeout(() => { 
+        setMode(AppMode.RESULTS); 
+        setResultStep(0);
+        // Limpiar técnica seleccionada después del análisis
+        setSelectedTechnique(null);
+        fetchSystemPrompt(); // Restaurar prompt por defecto
+      }, 1000);
 
     } catch (error: any) {
       console.error("Error:", error);
@@ -1055,6 +1095,42 @@ ${analysisText}
       </div>
       <div className="glass-panel w-full max-w-lg p-6 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
         <Header />
+        
+        {/* Indicador de técnica avanzada activa */}
+        {selectedTechnique && (
+          <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="text-purple-400" size={18} />
+              <div>
+                <div className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                  Técnica Avanzada Activa
+                </div>
+                <div className="text-sm text-white font-medium">
+                  {selectedTechnique === 'transits' && 'Tránsitos'}
+                  {selectedTechnique === 'progressions' && 'Progresiones Secundarias'}
+                  {selectedTechnique === 'solar_return' && 'Revolución Solar'}
+                  {selectedTechnique === 'synastry' && 'Sinastría'}
+                  {selectedTechnique === 'composite' && 'Carta Compuesta'}
+                  {selectedTechnique === 'directions' && 'Direcciones Primarias'}
+                  {selectedTechnique === 'lunar_return' && 'Revolución Lunar'}
+                  {selectedTechnique === 'electional' && 'Astrología Electiva'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTechnique(null);
+                fetchSystemPrompt();
+              }}
+              className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 hover:border-white/20 transition-colors"
+              title="Desactivar técnica"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        
         <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-6">
           <div className="space-y-4">
             <div>
@@ -1464,11 +1540,65 @@ ${analysisText}
         )}
         {mode === AppMode.ADVANCED_TECHNIQUES && (
           <AdvancedTechniques
-            onSelectTechnique={(technique) => {
-              alert(`Técnica seleccionada: ${technique}`);
+            onSelectTechnique={async (technique) => {
+              try {
+                // Verificar permisos del usuario
+                const subscription = await api.getUserSubscription();
+                const userTier = subscription.tier?.toLowerCase() || 'free';
+                
+                // Mapear técnica a requerimiento de plan
+                const techniqueRequirements: Record<string, string> = {
+                  'transits': 'pro',
+                  'progressions': 'pro',
+                  'solar_return': 'premium',
+                  'synastry': 'premium',
+                  'composite': 'premium',
+                  'directions': 'premium',
+                  'lunar_return': 'premium',
+                  'electional': 'premium'
+                };
+                
+                const requiredTier = techniqueRequirements[technique] || 'pro';
+                const tierOrder = { 'free': 0, 'pro': 1, 'premium': 2, 'enterprise': 3 };
+                const userTierLevel = tierOrder[userTier as keyof typeof tierOrder] || 0;
+                const requiredTierLevel = tierOrder[requiredTier as keyof typeof tierOrder] || 1;
+                
+                if (userTierLevel < requiredTierLevel) {
+                  alert(`Esta técnica requiere un plan ${requiredTier.toUpperCase()} o superior. Tu plan actual es ${userTier.toUpperCase()}. Por favor, mejora tu plan para acceder a esta funcionalidad.`);
+                  setMode(AppMode.SUBSCRIPTION_PLANS);
+                  return;
+                }
+                
+                // Guardar técnica seleccionada y cargar prompt especializado
+                setSelectedTechnique(technique);
+                await fetchSystemPrompt(technique);
+                
+                // Cambiar a modo INPUT para que el usuario ingrese los datos
+                setMode(AppMode.INPUT);
+                
+                // Mostrar mensaje informativo
+                const techniqueNames: Record<string, string> = {
+                  'transits': 'Tránsitos',
+                  'progressions': 'Progresiones Secundarias',
+                  'solar_return': 'Revolución Solar',
+                  'synastry': 'Sinastría',
+                  'composite': 'Carta Compuesta',
+                  'directions': 'Direcciones Primarias',
+                  'lunar_return': 'Revolución Lunar',
+                  'electional': 'Astrología Electiva'
+                };
+                
+                alert(`✅ Técnica "${techniqueNames[technique] || technique}" activada. Ahora ingresa los datos de la carta para el análisis.`);
+              } catch (error: any) {
+                console.error('Error al seleccionar técnica:', error);
+                alert(`Error al activar la técnica: ${error.message || 'Error desconocido'}`);
+              }
+            }}
+            onBack={() => {
+              setSelectedTechnique(null);
+              fetchSystemPrompt(); // Restaurar prompt por defecto
               setMode(AppMode.INPUT);
             }}
-            onBack={() => setMode(AppMode.INPUT)}
           />
         )}
         {mode === AppMode.SUBSCRIPTION_SUCCESS && stripeSessionId && (
