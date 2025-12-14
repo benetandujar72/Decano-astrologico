@@ -63,22 +63,38 @@ async def get_subscription_plans():
 async def get_my_subscription(current_user: dict = Depends(get_current_user)):
     """Obtiene la suscripción actual del usuario"""
     user_id = str(current_user.get("_id"))
+    user_role = current_user.get("role", "user")
     
     subscription = await subscriptions_collection.find_one({"user_id": user_id})
     
     if not subscription:
-        # Usuario nuevo, crear suscripción FREE
-        free_subscription = UserSubscription(
-            user_id=user_id,
-            tier=SubscriptionTier.FREE,
-            status="active",
-            start_date=datetime.utcnow().isoformat(),
-            end_date=(datetime.utcnow() + timedelta(days=36500)).isoformat(),  # 100 años
-            auto_renew=False
-        )
-        
-        await subscriptions_collection.insert_one(free_subscription.dict())
-        subscription = free_subscription.dict()
+        # Si es admin, dar acceso a ENTERPRISE automáticamente
+        if user_role == "admin":
+            admin_subscription = UserSubscription(
+                user_id=user_id,
+                tier=SubscriptionTier.ENTERPRISE,
+                status="active",
+                start_date=datetime.utcnow().isoformat(),
+                end_date=(datetime.utcnow() + timedelta(days=36500)).isoformat(),  # 100 años
+                auto_renew=True,
+                payment_status="admin_auto_granted"
+            )
+            
+            await subscriptions_collection.insert_one(admin_subscription.dict())
+            subscription = admin_subscription.dict()
+        else:
+            # Usuario nuevo, crear suscripción FREE
+            free_subscription = UserSubscription(
+                user_id=user_id,
+                tier=SubscriptionTier.FREE,
+                status="active",
+                start_date=datetime.utcnow().isoformat(),
+                end_date=(datetime.utcnow() + timedelta(days=36500)).isoformat(),  # 100 años
+                auto_renew=False
+            )
+            
+            await subscriptions_collection.insert_one(free_subscription.dict())
+            subscription = free_subscription.dict()
     
     # Añadir detalles del plan
     tier = subscription.get("tier", "free")

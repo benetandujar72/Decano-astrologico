@@ -92,7 +92,7 @@ interface SpecializedPrompt {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'invoices' | 'prompts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'invoices' | 'prompts' | 'admin-plans'>('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,6 +129,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const [subsTotalPages, setSubsTotalPages] = useState(1);
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [paymentsTotalPages, setPaymentsTotalPages] = useState(1);
+
+  // Admin Plans state
+  const [adminPlanLoading, setAdminPlanLoading] = useState(false);
+  const [adminPlanMessage, setAdminPlanMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [selectedAdminPlan, setSelectedAdminPlan] = useState<'pro' | 'premium' | 'enterprise'>('enterprise');
 
   useEffect(() => {
     if (activeTab === 'overview') {
@@ -479,6 +484,52 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
     }
   };
 
+  const handleGrantAdminPlan = async (planTier: 'pro' | 'premium' | 'enterprise') => {
+    setAdminPlanLoading(true);
+    setAdminPlanMessage(null);
+
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_URL}/admin/subscriptions/grant-plan`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          plan_tier: planTier,
+          duration_days: 365
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAdminPlanMessage({
+          type: 'success',
+          text: `✅ Plan ${planTier.toUpperCase()} activado correctamente. Tienes acceso ilimitado durante 1 año.`
+        });
+        setSelectedAdminPlan(planTier);
+        // Auto-hide mensaje después de 5 segundos
+        setTimeout(() => setAdminPlanMessage(null), 5000);
+      } else {
+        const error = await response.json();
+        setAdminPlanMessage({
+          type: 'error',
+          text: error.detail || 'Error al activar plan'
+        });
+      }
+    } catch (error) {
+      setAdminPlanMessage({
+        type: 'error',
+        text: 'Error de conexión. Verifica que el servidor esté activo.'
+      });
+    } finally {
+      setAdminPlanLoading(false);
+    }
+  };
+
   const handleViewAuditLogs = (user: UserData) => {
     setSelectedUser(user);
     setShowAuditLogs(true);
@@ -492,6 +543,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const tabs = [
     { id: 'overview', name: 'Dashboard', icon: Activity },
     { id: 'users', name: 'Usuarios', icon: Users },
+    { id: 'admin-plans', name: 'Mi Plan', icon: Crown },
     { id: 'subscriptions', name: 'Suscripciones', icon: Crown },
     { id: 'invoices', name: 'Facturas', icon: FileText },
     { id: 'prompts', name: 'Prompts', icon: Settings }
@@ -600,6 +652,163 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'admin-plans' && (
+            <div className="space-y-6">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-white mb-2">Mi Plan de Administrador</h2>
+                <p className="text-gray-400">Como administrador, tienes acceso a todos los planes sin necesidad de pagar</p>
+              </div>
+
+              {adminPlanMessage && (
+                <div className={`p-4 rounded-lg mb-4 border ${
+                  adminPlanMessage.type === 'success'
+                    ? 'bg-green-500/20 border-green-500/30 text-green-400'
+                    : 'bg-red-500/20 border-red-500/30 text-red-400'
+                }`}>
+                  {adminPlanMessage.text}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* PRO Plan */}
+                <div className="bg-gradient-to-br from-blue-600/20 to-blue-900/20 rounded-xl p-8 border border-blue-500/30 hover:border-blue-400/50 transition-all">
+                  <div className="mb-6">
+                    <div className="text-blue-400 font-bold mb-2 text-sm">PLAN PRO</div>
+                    <div className="text-white text-3xl font-bold">Gratis</div>
+                    <p className="text-gray-400 text-sm mt-2">Para administrador</p>
+                  </div>
+
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Cartas ilimitadas</span>
+                    </li>
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Exportar PDF</span>
+                    </li>
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Técnicas avanzadas</span>
+                    </li>
+                  </ul>
+
+                  <button
+                    onClick={() => handleGrantAdminPlan('pro')}
+                    disabled={adminPlanLoading || selectedAdminPlan === 'pro'}
+                    className={`w-full py-3 rounded-lg font-bold transition-all ${
+                      selectedAdminPlan === 'pro'
+                        ? 'bg-green-500/30 text-green-400 border border-green-500/50 cursor-default'
+                        : adminPlanLoading
+                        ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-500/30 text-blue-400 border border-blue-500/50 hover:bg-blue-500/40'
+                    }`}
+                  >
+                    {selectedAdminPlan === 'pro' ? '✓ Activo' : 'Activar Plan'}
+                  </button>
+                </div>
+
+                {/* PREMIUM Plan */}
+                <div className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 rounded-xl p-8 border border-purple-500/30 hover:border-purple-400/50 transition-all relative">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500/80 text-black px-3 py-1 rounded-full text-xs font-bold">
+                    ⭐ RECOMENDADO
+                  </div>
+
+                  <div className="mb-6 mt-2">
+                    <div className="text-purple-400 font-bold mb-2 text-sm">PLAN PREMIUM</div>
+                    <div className="text-white text-3xl font-bold">Gratis</div>
+                    <p className="text-gray-400 text-sm mt-2">Para administrador</p>
+                  </div>
+
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Todo del Pro</span>
+                    </li>
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Sinastría + Compuesta</span>
+                    </li>
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Análisis psicológico</span>
+                    </li>
+                  </ul>
+
+                  <button
+                    onClick={() => handleGrantAdminPlan('premium')}
+                    disabled={adminPlanLoading || selectedAdminPlan === 'premium'}
+                    className={`w-full py-3 rounded-lg font-bold transition-all ${
+                      selectedAdminPlan === 'premium'
+                        ? 'bg-green-500/30 text-green-400 border border-green-500/50 cursor-default'
+                        : adminPlanLoading
+                        ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
+                        : 'bg-purple-500/30 text-purple-400 border border-purple-500/50 hover:bg-purple-500/40'
+                    }`}
+                  >
+                    {selectedAdminPlan === 'premium' ? '✓ Activo' : 'Activar Plan'}
+                  </button>
+                </div>
+
+                {/* ENTERPRISE Plan */}
+                <div className="bg-gradient-to-br from-yellow-600/20 to-orange-900/20 rounded-xl p-8 border border-yellow-500/30 hover:border-yellow-400/50 transition-all">
+                  <div className="mb-6">
+                    <div className="text-yellow-400 font-bold mb-2 text-sm">PLAN ENTERPRISE</div>
+                    <div className="text-white text-3xl font-bold">Gratis</div>
+                    <p className="text-gray-400 text-sm mt-2">Para administrador</p>
+                  </div>
+
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Todo de Premium</span>
+                    </li>
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Predicciones avanzadas</span>
+                    </li>
+                    <li className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <span>Análisis vocacional</span>
+                    </li>
+                  </ul>
+
+                  <button
+                    onClick={() => handleGrantAdminPlan('enterprise')}
+                    disabled={adminPlanLoading || selectedAdminPlan === 'enterprise'}
+                    className={`w-full py-3 rounded-lg font-bold transition-all ${
+                      selectedAdminPlan === 'enterprise'
+                        ? 'bg-green-500/30 text-green-400 border border-green-500/50 cursor-default'
+                        : adminPlanLoading
+                        ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
+                        : 'bg-yellow-500/30 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/40'
+                    }`}
+                  >
+                    {selectedAdminPlan === 'enterprise' ? '✓ Activo' : 'Activar Plan'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-indigo-400 font-semibold mb-1">💡 Nota importante</p>
+                    <p className="text-gray-300 text-sm">
+                      Como administrador, tienes acceso a todos los planes de forma gratuita. Esto te permite:
+                    </p>
+                    <ul className="mt-3 space-y-1 text-gray-300 text-sm ml-4">
+                      <li>✓ Generar cartas astrologicas ilimitadas</li>
+                      <li>✓ Probar todas las características antes de ofrecerlas a usuarios</li>
+                      <li>✓ Acceso completo a herramientas avanzadas</li>
+                      <li>✓ No se requiere renovación de suscripción</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

@@ -766,3 +766,105 @@ async def get_dashboard_stats(admin: dict = Depends(require_admin)):
         "monthly_revenue": round(monthly_revenue, 2)
     }
 
+
+# ==================== ACCESO ADMIN A PLANES ====================
+
+@router.post("/subscriptions/grant-plan")
+async def grant_admin_plan_access(
+    request: dict,
+    admin: dict = Depends(require_admin)
+):
+    """
+    Da acceso automático al admin a un plan (sin Stripe).
+    El admin puede acceder a cualquier plan sin necesidad de pagar.
+    
+    Request body:
+    {
+        "plan_tier": "pro"|"premium"|"enterprise",
+        "duration_days": 365 (optional, default 365)
+    }
+    """
+    try:
+        from app.models.subscription import SUBSCRIPTION_PLANS, SubscriptionTier, UserSubscription
+        
+        plan_tier = request.get("plan_tier", "enterprise").lower()
+        duration_days = request.get("duration_days", 365)
+        
+        # Validar tier
+        valid_tiers = ["pro", "premium", "enterprise"]
+        if plan_tier not in valid_tiers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Plan inválido. Debe ser: {', '.join(valid_tiers)}"
+            )
+        
+        tier_enum = SubscriptionTier(plan_tier)
+        plan = SUBSCRIPTION_PLANS[tier_enum]
+        
+        admin_id = str(admin.get("_id"))
+        
+        # Verificar si admin ya tiene suscripción
+        existing = await subscriptions_collection.find_one({"user_id": admin_id})
+        
+        start_date = datetime.utcnow()
+        end_date = start_date + timedelta(days=duration_days)
+        
+        if existing:
+            # Actualizar suscripción existente
+            await subscriptions_collection.update_one(
+                {"user_id": admin_id},
+                {
+                    "$set": {
+                        "tier": plan_tier,
+                        "status": "active",
+                        "start_date": start_date.isoformat(),
+                        "end_date": end_date.isoformat(),
+                        "billing_cycle": "admin_unlimited",
+                        "auto_renew": True,
+                        "payment_status": "admin_granted",
+                        "admin_granted_at": datetime.utcnow().isoformat(),
+                        "admin_plan_notes": f"Plan {plan.name} otorgado al administrador"
+                    }
+                }
+            )
+            action = "actualizada"
+        else:
+            # Crear nueva suscripción
+            subscription = UserSubscription(
+                user_id=admin_id,
+                tier=plan_tier,
+                status="active",
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(),
+                billing_cycle="admin_unlimited",
+                auto_renew=True,
+                payment_status="admin_granted"
+            )
+            
+            sub_dict = subscription.dict()
+            sub_dict["admin_granted_at"] = datetime.utcnow().isoformat()
+            sub_dict["admin_plan_notes"] = f"Plan {plan.name} otorgado al administrador"
+            
+            await subscriptions_collection.insert_one(sub_dict)
+            action = "creada"
+        
+        return {
+            "success": True,
+            "message": f"Suscripción {action} correctamente",
+            "user_id": admin_id,
+            "tier": plan_tier,
+            "plan_name": plan.name,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "status": "active"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en grant_admin_plan_access: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error asignando plan: {str(e)}"
+        )
+
