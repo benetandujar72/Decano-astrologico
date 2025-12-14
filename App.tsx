@@ -515,37 +515,68 @@ const App: React.FC = () => {
         throw new Error("La API de Gemini no devolvió texto. Verifica que VITE_GEMINI_API_KEY esté configurada correctamente en Vercel.");
       }
       
-      const cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const startIndex = cleanText.indexOf('{');
-      const endIndex = cleanText.lastIndexOf('}');
+      // Limpiar el texto de markdown code blocks si existen
+      let cleanText = text.trim();
+      cleanText = cleanText.replace(/```json/gi, '').replace(/```/g, '').trim();
       
-      if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
-        console.error("❌ No se encontró JSON válido en la respuesta de Gemini");
-        console.error("Texto recibido:", text?.substring(0, 500));
-        throw new Error("La respuesta de Gemini no contiene JSON válido. Intenta de nuevo.");
+      // Intentar parsear directamente primero (método más simple y robusto)
+      let aiData;
+      try {
+        aiData = JSON.parse(cleanText);
+        console.log("✅ JSON parseado directamente");
+      } catch (directParseError) {
+        // Si falla, intentar extraer el JSON del texto
+        console.log("⚠️ Parse directo falló, intentando extraer JSON del texto");
+        
+        // Buscar el primer { y el último } balanceado
+        let startIndex = cleanText.indexOf('{');
+        let endIndex = -1;
+        
+        if (startIndex !== -1) {
+          // Encontrar el } correspondiente balanceando llaves
+          let braceCount = 0;
+          for (let i = startIndex; i < cleanText.length; i++) {
+            if (cleanText[i] === '{') braceCount++;
+            if (cleanText[i] === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                endIndex = i;
+                break;
+              }
+            }
+          }
+        }
+        
+        if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+          console.error("❌ No se encontró JSON válido en la respuesta de Gemini");
+          console.error("Texto recibido (primeros 1000 chars):", text?.substring(0, 1000));
+          throw new Error("La respuesta de Gemini no contiene JSON válido. Intenta de nuevo.");
+        }
+        
+        const jsonString = cleanText.substring(startIndex, endIndex + 1);
+        console.log("📝 Extrayendo JSON desde posición", startIndex, "hasta", endIndex);
+        
+        try {
+          aiData = JSON.parse(jsonString);
+          console.log("✅ JSON parseado después de extracción");
+        } catch (extractError) {
+          console.error("❌ Error parseando JSON extraído:", extractError);
+          console.error("JSON string extraído (primeros 500 chars):", jsonString?.substring(0, 500));
+          throw new Error("Error parseando la respuesta de Gemini. Intenta de nuevo.");
+        }
       }
       
-      const jsonString = cleanText.substring(startIndex, endIndex + 1);
+      // Validar que tenga la estructura correcta
+      if (!aiData || typeof aiData !== 'object') {
+        console.warn("⚠️ Respuesta de Gemini no es un objeto válido, usando fallback");
+        aiData = { blocks: [], footerQuote: "Análisis en proceso..." };
+      } else if (!aiData.blocks || !Array.isArray(aiData.blocks)) {
+        console.warn("⚠️ Respuesta de Gemini sin bloques válidos, usando fallback");
+        aiData = { blocks: [], footerQuote: "Análisis en proceso..." };
+      }
       
-      let aiData;
-      try { 
-        aiData = JSON.parse(jsonString);
-        // Validar que tenga la estructura correcta
-        if (!aiData.blocks || !Array.isArray(aiData.blocks)) {
-          console.warn("⚠️ Respuesta de Gemini sin bloques válidos, usando fallback");
-          aiData = { blocks: [], footerQuote: "Análisis en proceso..." };
-        }
-        if (!aiData.footerQuote) {
-          aiData.footerQuote = "Fraktal";
-        }
-      } 
-      catch (e) { 
-        console.error("❌ Error parseando respuesta de Gemini:", e);
-        console.error("Texto recibido:", text?.substring(0, 500));
-        aiData = { 
-          blocks: [], 
-          footerQuote: "Error al procesar análisis. Verifica la configuración de Gemini API." 
-        };
+      if (!aiData.footerQuote) {
+        aiData.footerQuote = "Fraktal";
       }
 
       setAnalysisResult({
