@@ -1373,7 +1373,7 @@ ${analysisText}
   const renderResults = () => {
     if (!analysisResult) return null;
     return (
-      <div className="min-h-screen text-slate-200 flex flex-col font-sans">
+      <div className="min-h-screen text-slate-200 flex flex-col font-sans overflow-y-auto">
         <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#020617]/80 border-b border-white/5">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1561,6 +1561,89 @@ ${analysisText}
             setStripeSessionId(null);
           }}
         />
+      )}
+      </div>
+      
+      {/* Barra de navegación inferior tipo móvil - FUERA del contenido scrolleable */}
+      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 safe-area-inset-bottom">
+          <div className="max-w-2xl mx-auto flex justify-around items-center">
+            <button 
+              onClick={() => setMode(AppMode.USER_PROFILE)} 
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                mode === AppMode.USER_PROFILE 
+                  ? 'text-indigo-400 bg-indigo-500/10' 
+                  : 'text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/5'
+              }`}
+              title="Mi Perfil"
+            >
+              <UserIcon size={20}/>
+              <span className="text-[10px] font-medium">Perfil</span>
+            </button>
+            <button 
+              onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                mode === AppMode.SUBSCRIPTION_PLANS 
+                  ? 'text-yellow-400 bg-yellow-500/10' 
+                  : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/5'
+              }`}
+              title="Planes"
+            >
+              <Crown size={20}/>
+              <span className="text-[10px] font-medium">Planes</span>
+            </button>
+            <button 
+              onClick={() => setMode(AppMode.INPUT)} 
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                mode === AppMode.INPUT || mode === AppMode.MODE_SELECTION
+                  ? 'text-purple-400 bg-purple-500/10' 
+                  : 'text-gray-400 hover:text-purple-400 hover:bg-purple-500/5'
+              }`}
+              title="Nueva Carta"
+            >
+              <Sparkles size={20}/>
+              <span className="text-[10px] font-medium">Nueva</span>
+            </button>
+            <button 
+              onClick={() => { setMode(AppMode.ADVANCED_TECHNIQUES); }} 
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                mode === AppMode.ADVANCED_TECHNIQUES 
+                  ? 'text-emerald-400 bg-emerald-500/10' 
+                  : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
+              }`}
+              title="Técnicas Avanzadas"
+            >
+              <Zap size={20}/>
+              <span className="text-[10px] font-medium">Técnicas</span>
+            </button>
+            <button 
+              onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                mode === AppMode.LISTING 
+                  ? 'text-blue-400 bg-blue-500/10' 
+                  : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/5'
+              }`}
+              title="Mis Cartas"
+            >
+              <FolderOpen size={20}/>
+              <span className="text-[10px] font-medium">Cartas</span>
+            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setMode(AppMode.ADMIN_PANEL)} 
+                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                  mode === AppMode.ADMIN_PANEL 
+                    ? 'text-red-400 bg-red-500/10' 
+                    : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
+                }`}
+                title="Admin"
+              >
+                <ShieldAlert size={20}/>
+                <span className="text-[10px] font-medium">Admin</span>
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </MysticBackground>
   );
