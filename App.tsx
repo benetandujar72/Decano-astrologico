@@ -948,41 +948,47 @@ ${analysisText}
   // --- Renderers --- //
 
   const Header = () => (
-    <div className="flex justify-between items-center mb-8 px-2">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+    <div className="flex justify-between items-center mb-6 px-2 gap-4">
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 border border-indigo-500/30 flex-shrink-0">
           <Sparkles size={20} />
         </div>
-        <div>
-          <h1 className="text-xl font-serif text-white tracking-wide">{t.appTitle}</h1>
-          <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{t.appSubtitle}</p>
+        <div className="min-w-0">
+          <h1 className="text-xl font-serif text-white tracking-wide truncate">{t.appTitle}</h1>
+          <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest truncate">{t.appSubtitle}</p>
         </div>
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center flex-wrap flex-shrink-0">
         {isAdmin && (
             <button 
                 onClick={() => setMode(AppMode.ADMIN_PANEL)}
-                className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 flex items-center gap-1 animate-pulse"
+                className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 flex items-center gap-1.5 animate-pulse flex-shrink-0"
                 title="Panel de Administrador"
             >
                 <ShieldAlert size={14} /> ADMIN
             </button>
         )}
-        {(['es', 'ca', 'eu'] as Language[]).map((l) => (
-          <button
-            key={l}
-            onClick={() => setLang(l)}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
-              lang === l 
-              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' 
-              : 'text-gray-500 border-transparent hover:bg-white/5'
-            }`}
-          >
-            {l.toUpperCase()}
-          </button>
-        ))}
+        <div className="flex gap-1.5 flex-shrink-0">
+          {(['es', 'ca', 'eu'] as Language[]).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${
+                lang === l 
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' 
+                : 'text-gray-500 border-transparent hover:bg-white/5'
+              }`}
+            >
+              {l.toUpperCase()}
+            </button>
+          ))}
+        </div>
         {isAuthenticated && (
-          <button onClick={handleLogout} className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 ml-2" title={t.authLogout}>
+          <button 
+            onClick={handleLogout} 
+            className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 flex items-center gap-1.5 flex-shrink-0" 
+            title={t.authLogout}
+          >
             <LogOut size={14} />
           </button>
         )}
@@ -1052,36 +1058,45 @@ ${analysisText}
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]"></div>
       </div>
       <div className="glass-panel w-full max-w-lg p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
-        <Header />
-        <div className="absolute top-8 right-8 flex gap-2">
-           <button 
-             onClick={() => setMode(AppMode.USER_PROFILE)} 
-             className="p-2 text-gray-400 hover:text-indigo-400 transition-colors mystic-tooltip" 
-             data-tooltip="Mi Perfil"
-           >
-             <UserIcon size={20}/>
-           </button>
-           <button 
-             onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
-             className="p-2 text-gray-400 hover:text-yellow-400 transition-colors mystic-tooltip" 
-             data-tooltip="Planes"
-           >
-             <Crown size={20}/>
-           </button>
-           <button 
-             onClick={() => setMode(AppMode.ADVANCED_TECHNIQUES)} 
-             className="p-2 text-gray-400 hover:text-purple-400 transition-colors mystic-tooltip" 
-             data-tooltip="Técnicas Avanzadas"
-           >
-             <Zap size={20}/>
-           </button>
-           <button 
-             onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
-             className="p-2 text-gray-400 hover:text-white transition-colors mystic-tooltip" 
-             data-tooltip="Mis Cartas"
-           >
-             <FolderOpen size={20}/>
-           </button>
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex-1">
+            <Header />
+          </div>
+          {/* Iconos de acción - posicionados correctamente sin sobreponerse */}
+          <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+             <button 
+               onClick={() => setMode(AppMode.USER_PROFILE)} 
+               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all mystic-tooltip" 
+               data-tooltip="Mi Perfil"
+               title="Mi Perfil"
+             >
+               <UserIcon size={18}/>
+             </button>
+             <button 
+               onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
+               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-yellow-400 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all mystic-tooltip" 
+               data-tooltip="Planes"
+               title="Planes"
+             >
+               <Crown size={18}/>
+             </button>
+             <button 
+               onClick={() => setMode(AppMode.ADVANCED_TECHNIQUES)} 
+               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all mystic-tooltip" 
+               data-tooltip="Técnicas Avanzadas"
+               title="Técnicas Avanzadas"
+             >
+               <Zap size={18}/>
+             </button>
+             <button 
+               onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
+               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all mystic-tooltip" 
+               data-tooltip="Mis Cartas"
+               title="Mis Cartas"
+             >
+               <FolderOpen size={18}/>
+             </button>
+          </div>
         </div>
         <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-6">
           <div className="space-y-4">
