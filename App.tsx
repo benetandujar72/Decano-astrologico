@@ -1427,88 +1427,6 @@ ${analysisText}
 
   return (
     <MysticBackground>
-      {/* Barra de navegación inferior tipo móvil */}
-      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-4 py-2 safe-area-inset-bottom">
-          <div className="max-w-2xl mx-auto flex justify-around items-center">
-            <button 
-              onClick={() => setMode(AppMode.USER_PROFILE)} 
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
-                mode === AppMode.USER_PROFILE 
-                  ? 'text-indigo-400 bg-indigo-500/10' 
-                  : 'text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/5'
-              }`}
-              title="Mi Perfil"
-            >
-              <UserIcon size={20}/>
-              <span className="text-[10px] font-medium">Perfil</span>
-            </button>
-            <button 
-              onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
-                mode === AppMode.SUBSCRIPTION_PLANS 
-                  ? 'text-yellow-400 bg-yellow-500/10' 
-                  : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/5'
-              }`}
-              title="Planes"
-            >
-              <Crown size={20}/>
-              <span className="text-[10px] font-medium">Planes</span>
-            </button>
-            <button 
-              onClick={() => setMode(AppMode.INPUT)} 
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
-                mode === AppMode.INPUT || mode === AppMode.MODE_SELECTION
-                  ? 'text-purple-400 bg-purple-500/10' 
-                  : 'text-gray-400 hover:text-purple-400 hover:bg-purple-500/5'
-              }`}
-              title="Nueva Carta"
-            >
-              <Sparkles size={20}/>
-              <span className="text-[10px] font-medium">Nueva</span>
-            </button>
-            <button 
-              onClick={() => { setMode(AppMode.ADVANCED_TECHNIQUES); }} 
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
-                mode === AppMode.ADVANCED_TECHNIQUES 
-                  ? 'text-emerald-400 bg-emerald-500/10' 
-                  : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
-              }`}
-              title="Técnicas Avanzadas"
-            >
-              <Zap size={20}/>
-              <span className="text-[10px] font-medium">Técnicas</span>
-            </button>
-            <button 
-              onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
-                mode === AppMode.LISTING 
-                  ? 'text-blue-400 bg-blue-500/10' 
-                  : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/5'
-              }`}
-              title="Mis Cartas"
-            >
-              <FolderOpen size={20}/>
-              <span className="text-[10px] font-medium">Cartas</span>
-            </button>
-            {isAdmin && (
-              <button 
-                onClick={() => setMode(AppMode.ADMIN_PANEL)} 
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all ${
-                  mode === AppMode.ADMIN_PANEL 
-                    ? 'text-red-400 bg-red-500/10' 
-                    : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
-                }`}
-                title="Admin"
-              >
-                <ShieldAlert size={20}/>
-                <span className="text-[10px] font-medium">Admin</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      
       {/* Contenido con scroll tipo móvil */}
       <div className={`min-h-screen ${isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS ? 'pb-20' : ''}`}>
         {mode === AppMode.AUTH && renderAuth()}
@@ -1517,51 +1435,51 @@ ${analysisText}
         {mode === AppMode.PROCESSING && renderProcessing()}
         {mode === AppMode.RESULTS && renderResults()}
         {mode === AppMode.LISTING && renderListing()}
-      {mode === AppMode.ADMIN_PANEL && !showAdminPromptEditor && (
-        <AdminDashboard
-          onBack={() => setMode(AppMode.INPUT)}
-          onEditPrompt={() => setShowAdminPromptEditor(true)}
-        />
-      )}
-      {mode === AppMode.ADMIN_PANEL && showAdminPromptEditor && (
-        <AdminPanel
-          onBack={() => setShowAdminPromptEditor(false)}
-          onUpdatePrompt={(newPrompt) => {
-            setSystemInstruction(newPrompt);
-            setShowAdminPromptEditor(false);
-          }}
-        />
-      )}
-      {mode === AppMode.USER_PROFILE && (
-        <UserProfilePage onBack={() => setMode(AppMode.INPUT)} />
-      )}
-      {mode === AppMode.SUBSCRIPTION_PLANS && (
-        <SubscriptionPlans 
-          onSelectPlan={(tier, billing) => {
-            alert(`Plan seleccionado: ${tier} (${billing})`);
-            setMode(AppMode.INPUT);
-          }}
-          onClose={() => setMode(AppMode.INPUT)}
-        />
-      )}
-      {mode === AppMode.ADVANCED_TECHNIQUES && (
-        <AdvancedTechniques
-          onSelectTechnique={(technique) => {
-            alert(`Técnica seleccionada: ${technique}`);
-            setMode(AppMode.INPUT);
-          }}
-          onBack={() => setMode(AppMode.INPUT)}
-        />
-      )}
-      {mode === AppMode.SUBSCRIPTION_SUCCESS && stripeSessionId && (
-        <SubscriptionSuccess
-          sessionId={stripeSessionId}
-          onContinue={() => {
-            setMode(AppMode.USER_PROFILE);
-            setStripeSessionId(null);
-          }}
-        />
-      )}
+        {mode === AppMode.ADMIN_PANEL && !showAdminPromptEditor && (
+          <AdminDashboard
+            onBack={() => setMode(AppMode.INPUT)}
+            onEditPrompt={() => setShowAdminPromptEditor(true)}
+          />
+        )}
+        {mode === AppMode.ADMIN_PANEL && showAdminPromptEditor && (
+          <AdminPanel
+            onBack={() => setShowAdminPromptEditor(false)}
+            onUpdatePrompt={(newPrompt) => {
+              setSystemInstruction(newPrompt);
+              setShowAdminPromptEditor(false);
+            }}
+          />
+        )}
+        {mode === AppMode.USER_PROFILE && (
+          <UserProfilePage onBack={() => setMode(AppMode.INPUT)} />
+        )}
+        {mode === AppMode.SUBSCRIPTION_PLANS && (
+          <SubscriptionPlans 
+            onSelectPlan={(tier, billing) => {
+              alert(`Plan seleccionado: ${tier} (${billing})`);
+              setMode(AppMode.INPUT);
+            }}
+            onClose={() => setMode(AppMode.INPUT)}
+          />
+        )}
+        {mode === AppMode.ADVANCED_TECHNIQUES && (
+          <AdvancedTechniques
+            onSelectTechnique={(technique) => {
+              alert(`Técnica seleccionada: ${technique}`);
+              setMode(AppMode.INPUT);
+            }}
+            onBack={() => setMode(AppMode.INPUT)}
+          />
+        )}
+        {mode === AppMode.SUBSCRIPTION_SUCCESS && stripeSessionId && (
+          <SubscriptionSuccess
+            sessionId={stripeSessionId}
+            onContinue={() => {
+              setMode(AppMode.USER_PROFILE);
+              setStripeSessionId(null);
+            }}
+          />
+        )}
       </div>
       
       {/* Barra de navegación inferior tipo móvil - FUERA del contenido scrolleable */}
