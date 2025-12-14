@@ -44,6 +44,7 @@ import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
 import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
 import SubscriptionSuccess from './components/SubscriptionSuccess'; // 🆕 Confirmación de pago
 import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técnicas
+import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualización de datos de carta
 import { calculateChartData } from './astrologyEngine'; 
 import { api } from './services/api';
 import './styles/mystic-theme.css'; // 🆕 Estilos místicos
@@ -972,6 +973,14 @@ ${analysisText}
           <h2 className="text-3xl font-serif text-white mb-2">{t.resultsTitle}</h2>
           <p className="text-gem-accent font-mono text-xs uppercase tracking-widest">{t.resultsSubtitle}</p>
         </div>
+
+        {/* Datos de Nacimiento y Timezone */}
+        {cartaCompleta && (
+          <div className="mb-8">
+            <ChartDataDisplay cartaCompleta={cartaCompleta} />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="glass-panel rounded-2xl p-1 overflow-hidden">
             <div className="bg-white/5 px-6 py-4 flex items-center gap-2">

@@ -367,14 +367,41 @@ def calcular_carta_completa(
     luna_lon = posiciones['Luna']['longitud']
     parte_fortuna = calcular_parte_fortuna(asc_lon, sol_lon, luna_lon)
     
-    # 6. Compilar resultado completo
+    # 6. Calcular información detallada de timezone
+    # Reconstruir dt_aware para obtener offset
+    local_dt = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+    tz = pytz.timezone(zona_horaria_detectada)
+    dt_aware = tz.localize(local_dt)
+
+    # Obtener offset en formato legible
+    offset_seconds = dt_aware.utcoffset().total_seconds()
+    offset_hours = int(offset_seconds / 3600)
+    offset_minutes = int((offset_seconds % 3600) / 60)
+    offset_str = f"{offset_hours:+03d}:{offset_minutes:02d}"  # "+01:00" o "+02:00"
+    offset_legible = f"UTC{offset_str}"  # "UTC+01:00"
+
+    # Detectar DST (Daylight Saving Time)
+    dst_activo = bool(dt_aware.dst())
+
+    # 7. Compilar resultado completo
     return {
         'datos_entrada': {
-            'fecha': fecha,
-            'hora': hora,
+            # Datos originales del usuario
+            'fecha_local': fecha,
+            'hora_local': hora,
+            'hora_local_completa': local_dt.strftime("%Y-%m-%d %H:%M:%S"),
+
+            # Ubicación
             'latitud': latitud,
             'longitud': longitud,
-            'zona_horaria': zona_horaria_detectada,  # ← Usar la zona detectada
+
+            # Información de zona horaria
+            'zona_horaria': zona_horaria_detectada,
+            'offset_utc': offset_str,  # "+01:00"
+            'offset_utc_legible': offset_legible,  # "UTC+01:00"
+            'dst_activo': dst_activo,  # True/False
+
+            # Conversión UTC
             'fecha_utc': dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
         },
         'planetas': posiciones,
@@ -399,14 +426,17 @@ def formato_texto_carta(carta: Dict) -> str:
         String formateado para mostrar
     """
     datos = carta['datos_entrada']
+    dst_indicator = " (DST)" if datos.get('dst_activo') else ""
+
     texto = f"""
 ╔══════════════════════════════════════════════════════════╗
 ║           CARTA ASTRAL COMPLETA                          ║
 ╚══════════════════════════════════════════════════════════╝
 
-📅 Fecha: {datos['fecha']} {datos['hora']} ({datos['zona_horaria']})
-🌍 Ubicación: Lat {datos['latitud']}, Lon {datos['longitud']}
-🕐 UTC: {datos['fecha_utc']}
+📅 Fecha Local: {datos.get('fecha_local', datos.get('fecha'))} {datos.get('hora_local', datos.get('hora'))} ({datos.get('offset_utc_legible', 'UTC')}{dst_indicator})
+🌍 Ubicación: Lat {datos['latitud']:.4f}, Lon {datos['longitud']:.4f}
+🌏 Zona Horaria: {datos['zona_horaria']}
+🕐 Fecha UTC: {datos['fecha_utc']}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   PLANETAS Y PUNTOS
