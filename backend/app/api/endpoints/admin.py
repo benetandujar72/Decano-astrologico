@@ -280,8 +280,11 @@ async def create_user(
     if request.role not in ["user", "admin"]:
         raise HTTPException(status_code=400, detail="Rol inválido")
 
-    # Crear usuario
-    hashed_password = pwd_context.hash(request.password)
+    # Crear usuario - Truncar contraseña a 72 bytes para bcrypt
+    password_to_hash = request.password
+    if isinstance(password_to_hash, str):
+        password_to_hash = password_to_hash.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    hashed_password = pwd_context.hash(password_to_hash)
 
     new_user = {
         "username": request.username,
@@ -326,8 +329,11 @@ async def reset_user_password(
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Hash de la nueva contraseña
-    hashed_password = pwd_context.hash(request.new_password)
+    # Hash de la nueva contraseña - Truncar a 72 bytes para bcrypt
+    password_to_hash = request.new_password
+    if isinstance(password_to_hash, str):
+        password_to_hash = password_to_hash.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    hashed_password = pwd_context.hash(password_to_hash)
 
     print(f"[ADMIN] Reseteando contraseña para usuario {user_id} ({user.get('username', 'unknown')})", file=sys.stderr)
 

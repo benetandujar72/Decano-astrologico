@@ -53,11 +53,17 @@ class RegisterRequest(BaseModel):
     password: str
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica una contraseña"""
+    """Verifica una contraseña - Trunca a 72 bytes para bcrypt"""
+    # Bcrypt tiene límite de 72 bytes
+    if isinstance(plain_password, str):
+        plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Genera hash de contraseña"""
+    """Genera hash de contraseña - Trunca a 72 bytes para bcrypt"""
+    # Bcrypt tiene límite de 72 bytes
+    if isinstance(password, str):
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
