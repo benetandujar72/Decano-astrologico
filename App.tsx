@@ -42,6 +42,7 @@ import ExportSelector from './components/ExportSelector';
 import MysticBackground from './components/MysticBackground'; // 🆕 Fondo místico
 import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
 import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
+import SubscriptionSuccess from './components/SubscriptionSuccess'; // 🆕 Confirmación de pago
 import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técnicas
 import { calculateChartData } from './astrologyEngine'; 
 import { api } from './services/api';
@@ -74,10 +75,25 @@ const App: React.FC = () => {
   // System Prompt State (Dynamic)
   const [systemInstruction, setSystemInstruction] = useState<string>(DEFAULT_SYSTEM_INSTRUCTION);
 
-  const [mode, setMode] = useState<AppMode>(AppMode.AUTH); 
+  const [mode, setMode] = useState<AppMode>(AppMode.AUTH);
   const [analysisType, setAnalysisType] = useState<AnalysisType>(AnalysisType.PSYCHOLOGICAL);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [resultStep, setResultStep] = useState<number>(0);
+
+  // Subscription state
+  const [stripeSessionId, setStripeSessionId] = useState<string | null>(null);
+
+  // Detectar session_id en URL (usuario vuelve de Stripe)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (sessionId) {
+      setStripeSessionId(sessionId);
+      setMode(AppMode.SUBSCRIPTION_SUCCESS);
+      // Limpiar URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Modal State
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -1142,6 +1158,15 @@ ${analysisText}
             setMode(AppMode.INPUT);
           }}
           onBack={() => setMode(AppMode.INPUT)}
+        />
+      )}
+      {mode === AppMode.SUBSCRIPTION_SUCCESS && stripeSessionId && (
+        <SubscriptionSuccess
+          sessionId={stripeSessionId}
+          onContinue={() => {
+            setMode(AppMode.USER_PROFILE);
+            setStripeSessionId(null);
+          }}
         />
       )}
     </MysticBackground>

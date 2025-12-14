@@ -56,7 +56,7 @@ export interface SystemPrompt {
 }
 
 export enum AppMode {
-  AUTH = 'AUTH', 
+  AUTH = 'AUTH',
   INPUT = 'INPUT',
   MODE_SELECTION = 'MODE_SELECTION',
   PROCESSING = 'PROCESSING',
@@ -65,6 +65,7 @@ export enum AppMode {
   ADMIN_PANEL = 'ADMIN_PANEL',
   USER_PROFILE = 'USER_PROFILE', // 🆕 Perfil de usuario
   SUBSCRIPTION_PLANS = 'SUBSCRIPTION_PLANS', // 🆕 Planes de suscripción
+  SUBSCRIPTION_SUCCESS = 'SUBSCRIPTION_SUCCESS', // 🆕 Confirmación de suscripción
   ADVANCED_TECHNIQUES = 'ADVANCED_TECHNIQUES' // 🆕 Técnicas avanzadas
 }
 

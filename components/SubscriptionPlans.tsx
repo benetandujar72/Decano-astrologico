@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Check, Zap, Crown, Building2, X } from 'lucide-react';
+import CheckoutWizard from './CheckoutWizard';
 
 interface Plan {
   tier: string;
@@ -24,6 +25,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(true);
+  const [showCheckoutWizard, setShowCheckoutWizard] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
   useEffect(() => {
     fetchPlans();
@@ -223,7 +226,11 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
 
                     {/* CTA Button */}
                     <button
-                      onClick={() => onSelectPlan(plan.tier, billing)}
+                      onClick={() => {
+                        if (plan.tier === 'free') return;
+                        setSelectedPlan({...plan, id: plan.tier} as any);
+                        setShowCheckoutWizard(true);
+                      }}
                       disabled={plan.tier === 'free'}
                       className={`
                         w-full py-4 rounded-xl font-bold text-lg
@@ -249,6 +256,23 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
           <p className="mt-2">¿Necesitas algo personalizado? <span className="text-indigo-400 cursor-pointer hover:underline">Contáctanos</span></p>
         </div>
       </div>
+
+      {/* Checkout Wizard Modal */}
+      {showCheckoutWizard && selectedPlan && (
+        <CheckoutWizard
+          plan={selectedPlan}
+          onClose={() => {
+            setShowCheckoutWizard(false);
+            setSelectedPlan(null);
+          }}
+          onSuccess={() => {
+            setShowCheckoutWizard(false);
+            setSelectedPlan(null);
+            // Opcional: llamar a onSelectPlan o redirigir
+            if (onClose) onClose();
+          }}
+        />
+      )}
     </div>
   );
 };
