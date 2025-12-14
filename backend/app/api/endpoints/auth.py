@@ -139,6 +139,31 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             print(f"[AUTH] Error creating admin: {e}")
             # Tal vez ya existe (race condition), intentar buscar de nuevo
             user = await users_collection.find_one({"username": form_data.username})
+    
+    # Bootstrap segundo admin: bandujar@edutac.es
+    if not user and form_data.username == "bandujar@edutac.es":
+        print(f"[AUTH] Admin user bandujar@edutac.es not found, creating bootstrap admin...")
+        bootstrap_start = time.time()
+
+        admin_password = "23@2705BEangu"
+        hashed_password = get_password_hash(admin_password)
+        admin_user = {
+            "username": "bandujar@edutac.es",
+            "email": "bandujar@edutac.es",
+            "hashed_password": hashed_password,
+            "role": "admin",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        try:
+            result = await users_collection.insert_one(admin_user)
+            user = admin_user
+            user["_id"] = result.inserted_id
+            bootstrap_time = time.time() - bootstrap_start
+            print(f"[AUTH] Admin bandujar@edutac.es bootstrap completed in {bootstrap_time:.3f}s")
+        except Exception as e:
+            print(f"[AUTH] Error creating admin bandujar@edutac.es: {e}")
+            user = await users_collection.find_one({"username": form_data.username})
 
     if not user:
         print(f"[AUTH] User not found: {form_data.username}")
