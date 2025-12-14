@@ -503,7 +503,7 @@ const App: React.FC = () => {
         contents: prompt,
         config: {
           systemInstruction: systemInstruction, // USAMOS EL PROMPT DINÁMICO
-          maxOutputTokens: 8192,
+          maxOutputTokens: 16384, // Aumentado para evitar truncamiento
           responseMimeType: "application/json",
           responseSchema: analysisSchema
         }
