@@ -19,7 +19,7 @@ export const SubscriptionSuccess: React.FC<SubscriptionSuccessProps> = ({ sessio
 
   const checkPaymentStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('fraktal_token');
       if (!token) {
         setStatus('failed');
         setError('No estás autenticado');

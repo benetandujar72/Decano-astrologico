@@ -44,7 +44,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('fraktal_token');
       if (!token) {
         throw new Error('No estás autenticado. Por favor, inicia sesión.');
       }

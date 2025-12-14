@@ -33,9 +33,9 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
     // Cargar formatos disponibles desde el backend
     const fetchFormats = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('fraktal_token');
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        
+
         const response = await fetch(`${API_URL}/reports/formats`, {
           headers: {
             'Authorization': `Bearer ${token}`,
