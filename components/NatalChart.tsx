@@ -228,7 +228,7 @@ const NatalChart: React.FC<NatalChartProps> = ({ positions, lang }) => {
                </div>
                <div className="flex justify-between">
                  <span className="text-gray-500">{t.tooltipDegree}:</span>
-                 <span className="text-indigo-200">{hoveredPlanet.degree.split('°')[0]}°</span>
+                 <span className="text-indigo-200 font-mono">{hoveredPlanet.degree}</span>
                </div>
                <div className="flex justify-between">
                  <span className="text-gray-500">{t.tooltipElement}:</span>
