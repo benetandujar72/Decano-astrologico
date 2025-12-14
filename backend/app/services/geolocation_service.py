@@ -238,8 +238,11 @@ def geocodificar_lugar(nombre_lugar: str) -> Dict[str, any]:
     
     # Llamar a Google Geocoding API
     url = "https://maps.googleapis.com/maps/api/geocode/json"
+    
+    # Intentar primero con el nombre tal cual
+    nombre_original = nombre_lugar.strip()
     params = {
-        "address": nombre_lugar.strip(),
+        "address": nombre_original,
         "key": api_key,
         "language": "es"  # Respuestas en español
     }
@@ -249,15 +252,55 @@ def geocodificar_lugar(nombre_lugar: str) -> Dict[str, any]:
         response.raise_for_status()
         data = response.json()
         
-        # Verificar estado de la respuesta
+        # Si no hay resultados, intentar agregar contexto (país) si no está presente
         if data.get("status") == "ZERO_RESULTS":
-            raise ValueError(f"No se encontró el lugar: {nombre_lugar}")
+            # Si el nombre no contiene coma, intentar agregar "España" o "Spain"
+            if "," not in nombre_original:
+                nombre_con_pais = f"{nombre_original}, España"
+                params["address"] = nombre_con_pais
+                response = requests.get(url, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+                
+                # Si aún no hay resultados, intentar sin acentos
+                if data.get("status") == "ZERO_RESULTS":
+                    # Reemplazar acentos comunes
+                    nombre_sin_acentos = nombre_original.replace("ó", "o").replace("é", "e").replace("í", "i").replace("á", "a").replace("ú", "u")
+                    if nombre_sin_acentos != nombre_original:
+                        params["address"] = f"{nombre_sin_acentos}, España"
+                        response = requests.get(url, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+        
+        # Verificar estado de la respuesta después de los intentos
+        if data.get("status") == "ZERO_RESULTS":
+            raise ValueError(
+                f"No se encontró el lugar '{nombre_original}'. "
+                f"Intenta con: '{nombre_original}, España' o usa coordenadas (ej: 37.12, -5.45)"
+            )
         
         if data.get("status") != "OK":
             error_message = data.get("error_message", "Error desconocido")
-            if data.get("status") == "REQUEST_DENIED":
-                raise RuntimeError(f"Error de autenticación con Google Geocoding API: {error_message}")
-            raise ValueError(f"Error geocodificando lugar: {data.get('status')} - {error_message}")
+            status = data.get("status")
+            
+            if status == "REQUEST_DENIED":
+                raise RuntimeError(
+                    f"Error de autenticación con Google Geocoding API: {error_message}. "
+                    f"Verifica que la API key tenga habilitada 'Geocoding API' y que las restricciones "
+                    f"permitan llamadas desde el servidor (no solo desde sitios web específicos)."
+                )
+            elif status == "OVER_QUERY_LIMIT":
+                raise RuntimeError(
+                    f"Se ha excedido el límite de consultas de Google Geocoding API. "
+                    f"Intenta más tarde o verifica los límites de tu cuenta."
+                )
+            elif status == "INVALID_REQUEST":
+                raise ValueError(
+                    f"Solicitud inválida: {error_message}. "
+                    f"Verifica que el nombre del lugar sea correcto."
+                )
+            else:
+                raise ValueError(f"Error geocodificando lugar ({status}): {error_message}")
         
         # Obtener el primer resultado (el más relevante)
         if not data.get("results"):
