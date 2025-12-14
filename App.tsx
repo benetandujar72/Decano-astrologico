@@ -527,6 +527,7 @@ const App: React.FC = () => {
       } catch (directParseError) {
         // Si falla, intentar extraer el JSON del texto
         console.log("⚠️ Parse directo falló, intentando extraer JSON del texto");
+        console.log("Error del parse directo:", directParseError);
         
         // Buscar el primer { y el último } balanceado
         let startIndex = cleanText.indexOf('{');
@@ -534,14 +535,40 @@ const App: React.FC = () => {
         
         if (startIndex !== -1) {
           // Encontrar el } correspondiente balanceando llaves
+          // Esto maneja correctamente objetos y arrays anidados
           let braceCount = 0;
+          let inString = false;
+          let escapeNext = false;
+          
           for (let i = startIndex; i < cleanText.length; i++) {
-            if (cleanText[i] === '{') braceCount++;
-            if (cleanText[i] === '}') {
-              braceCount--;
-              if (braceCount === 0) {
-                endIndex = i;
-                break;
+            const char = cleanText[i];
+            
+            // Manejar strings (ignorar llaves dentro de strings)
+            if (escapeNext) {
+              escapeNext = false;
+              continue;
+            }
+            
+            if (char === '\\') {
+              escapeNext = true;
+              continue;
+            }
+            
+            if (char === '"' && !escapeNext) {
+              inString = !inString;
+              continue;
+            }
+            
+            // Solo contar llaves fuera de strings
+            if (!inString) {
+              if (char === '{') {
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  endIndex = i;
+                  break;
+                }
               }
             }
           }
@@ -550,19 +577,46 @@ const App: React.FC = () => {
         if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
           console.error("❌ No se encontró JSON válido en la respuesta de Gemini");
           console.error("Texto recibido (primeros 1000 chars):", text?.substring(0, 1000));
-          throw new Error("La respuesta de Gemini no contiene JSON válido. Intenta de nuevo.");
-        }
-        
-        const jsonString = cleanText.substring(startIndex, endIndex + 1);
-        console.log("📝 Extrayendo JSON desde posición", startIndex, "hasta", endIndex);
-        
-        try {
-          aiData = JSON.parse(jsonString);
-          console.log("✅ JSON parseado después de extracción");
-        } catch (extractError) {
-          console.error("❌ Error parseando JSON extraído:", extractError);
-          console.error("JSON string extraído (primeros 500 chars):", jsonString?.substring(0, 500));
-          throw new Error("Error parseando la respuesta de Gemini. Intenta de nuevo.");
+          console.error("Longitud total del texto:", cleanText.length);
+          console.error("StartIndex:", startIndex, "EndIndex:", endIndex);
+          
+          // Último intento: buscar cualquier objeto JSON válido en el texto
+          const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              aiData = JSON.parse(jsonMatch[0]);
+              console.log("✅ JSON encontrado con regex y parseado");
+            } catch (regexError) {
+              throw new Error("La respuesta de Gemini no contiene JSON válido. Intenta de nuevo.");
+            }
+          } else {
+            throw new Error("La respuesta de Gemini no contiene JSON válido. Intenta de nuevo.");
+          }
+        } else {
+          const jsonString = cleanText.substring(startIndex, endIndex + 1);
+          console.log("📝 Extrayendo JSON desde posición", startIndex, "hasta", endIndex, "(longitud:", jsonString.length, "chars)");
+          
+          try {
+            aiData = JSON.parse(jsonString);
+            console.log("✅ JSON parseado después de extracción");
+          } catch (extractError) {
+            console.error("❌ Error parseando JSON extraído:", extractError);
+            console.error("JSON string extraído (primeros 500 chars):", jsonString?.substring(0, 500));
+            console.error("JSON string extraído (últimos 500 chars):", jsonString?.substring(Math.max(0, jsonString.length - 500)));
+            
+            // Intentar con regex como último recurso
+            const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              try {
+                aiData = JSON.parse(jsonMatch[0]);
+                console.log("✅ JSON encontrado con regex (fallback) y parseado");
+              } catch (regexError) {
+                throw new Error("Error parseando la respuesta de Gemini. Intenta de nuevo.");
+              }
+            } else {
+              throw new Error("Error parseando la respuesta de Gemini. Intenta de nuevo.");
+            }
+          }
         }
       }
       
