@@ -1048,52 +1048,13 @@ ${analysisText}
   );
 
   const renderInput = () => (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-y-auto">
       <div className="absolute inset-0 z-0">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]"></div>
       </div>
-      <div className="glass-panel w-full max-w-lg p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex-1">
-            <Header />
-          </div>
-          {/* Iconos de acción - posicionados correctamente sin sobreponerse */}
-          <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
-             <button 
-               onClick={() => setMode(AppMode.USER_PROFILE)} 
-               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all mystic-tooltip" 
-               data-tooltip="Mi Perfil"
-               title="Mi Perfil"
-             >
-               <UserIcon size={18}/>
-             </button>
-             <button 
-               onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
-               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-yellow-400 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all mystic-tooltip" 
-               data-tooltip="Planes"
-               title="Planes"
-             >
-               <Crown size={18}/>
-             </button>
-             <button 
-               onClick={() => setMode(AppMode.ADVANCED_TECHNIQUES)} 
-               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all mystic-tooltip" 
-               data-tooltip="Técnicas Avanzadas"
-               title="Técnicas Avanzadas"
-             >
-               <Zap size={18}/>
-             </button>
-             <button 
-               onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
-               className="p-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all mystic-tooltip" 
-               data-tooltip="Mis Cartas"
-               title="Mis Cartas"
-             >
-               <FolderOpen size={18}/>
-             </button>
-          </div>
-        </div>
+      <div className="glass-panel w-full max-w-lg p-6 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
+        <Header />
         <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-6">
           <div className="space-y-4">
             <div>
