@@ -70,7 +70,7 @@ export const TRANSLATIONS = {
     inputName: "Sujeto de Análisis",
     inputDate: "Fecha de Entrada",
     inputTime: "Hora de Entrada",
-    inputPlace: "Coordenadas Geográficas (Lat, Lon)",
+    inputPlace: "Lugar de Nacimiento",
     inputContext: "Variable de Contexto (Opcional)",
     inputContextPlaceholder: "Ej: Fricción en eje vincular, colapso vocacional...",
     btnNext: "Proceder",

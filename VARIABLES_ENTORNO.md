@@ -43,6 +43,20 @@ Este documento lista todas las variables de entorno necesarias para el despliegu
   3. Copia la clave generada
 - **Importante**: Mantén esta clave segura y no la expongas en el código
 
+#### `GOOGLE_GEOCODING_API_KEY`
+- **Descripción**: API Key de Google Geocoding API para convertir nombres de lugares a coordenadas
+- **Tipo**: String
+- **Ejemplo**: `AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`
+- **Obtención**: 
+  1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+  2. Crea un proyecto o selecciona uno existente
+  3. Habilita la API "Geocoding API"
+  4. Ve a **APIs & Services → Credentials**
+  5. Crea una nueva API Key o usa una existente
+  6. (Opcional) Restringe la API Key solo a Geocoding API para mayor seguridad
+- **Nota**: Si no se configura, el sistema intentará usar `GEMINI_API_KEY` como fallback (puede funcionar si ambas APIs están en el mismo proyecto)
+- **Importante**: Mantén esta clave segura y no la expongas en el código
+
 ## Configuración en Render
 
 ### Para el Servicio Backend (Web Service)
@@ -54,6 +68,8 @@ Este documento lista todas las variables de entorno necesarias para el despliegu
 ```
 SECRET_KEY=tu-clave-secreta-generada
 MONGODB_URL=tu-url-de-mongodb
+GOOGLE_GEOCODING_API_KEY=tu-api-key-de-google-geocoding
+GEMINI_API_KEY=tu-api-key-de-gemini
 ```
 
 ### Para el Servicio Frontend (Static Site)
@@ -93,6 +109,8 @@ Para desarrollo local, crea un archivo `.env` en la raíz del proyecto:
 # Backend
 SECRET_KEY=dev-secret-key-change-in-production
 MONGODB_URL=mongodb://localhost:27017/fraktal
+GOOGLE_GEOCODING_API_KEY=tu-api-key-de-google-geocoding
+GEMINI_API_KEY=tu-api-key-de-gemini
 
 # Frontend
 VITE_API_URL=http://localhost:8000

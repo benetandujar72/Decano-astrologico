@@ -115,6 +115,13 @@ const App: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false); // Estado de exportación
   const [showAdminPromptEditor, setShowAdminPromptEditor] = useState(false); // Modal de edición de prompt principal
   
+  // Estado para autocomplete de lugares
+  const [placeSuggestions, setPlaceSuggestions] = useState<Array<{nombre: string, lat: number, lon: number, timezone: string}>>([]);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const placeInputRef = useRef<HTMLInputElement>(null);
+  const geocodeTimeoutRef = useRef<number | null>(null);
+  
   const stepIntervalRef = useRef<number | null>(null);
   const t = TRANSLATIONS[lang];
 
@@ -254,6 +261,130 @@ const App: React.FC = () => {
     }
   };
 
+  // Función auxiliar para detectar si el input son coordenadas o texto
+  const esCoordenadas = (place: string): boolean => {
+    if (!place || !place.trim()) return false;
+    
+    // Si contiene coma, intentar parsear como coordenadas
+    if (place.includes(',')) {
+      const parts = place.split(',');
+      if (parts.length >= 2) {
+        const lat = parseFloat(parts[0].trim());
+        const lon = parseFloat(parts[1].trim());
+        // Si ambos son números válidos y están en rangos válidos, son coordenadas
+        if (!isNaN(lat) && !isNaN(lon) && 
+            lat >= -90 && lat <= 90 && 
+            lon >= -180 && lon <= 180) {
+          return true;
+        }
+      }
+    }
+    
+    // Si no contiene coma pero son solo números, podría ser coordenadas separadas por espacio
+    const numbers = place.trim().split(/\s+/);
+    if (numbers.length === 2) {
+      const lat = parseFloat(numbers[0]);
+      const lon = parseFloat(numbers[1]);
+      if (!isNaN(lat) && !isNaN(lon) && 
+          lat >= -90 && lat <= 90 && 
+          lon >= -180 && lon <= 180) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Función para geocodificar un lugar
+  const geocodificarLugar = async (nombreLugar: string): Promise<{lat: number, lon: number, timezone: string, nombre?: string}> => {
+    const token = localStorage.getItem('fraktal_token');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    
+    const response = await fetch(`${API_URL}/geolocation/geocode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ place: nombreLugar }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Error geocodificando el lugar');
+    }
+    
+    const data = await response.json();
+    return {
+      lat: data.lat,
+      lon: data.lon,
+      timezone: data.timezone || 'UTC',
+      nombre: data.nombre
+    };
+  };
+
+  // Función para buscar sugerencias de lugares mientras el usuario escribe
+  const buscarSugerenciasLugar = async (texto: string) => {
+    if (!texto || texto.trim().length < 3) {
+      setPlaceSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    // Si parece ser coordenadas, no buscar sugerencias
+    if (esCoordenadas(texto)) {
+      setPlaceSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsGeocoding(true);
+    try {
+      const resultado = await geocodificarLugar(texto);
+      setPlaceSuggestions([{
+        nombre: resultado.nombre || texto,
+        lat: resultado.lat,
+        lon: resultado.lon,
+        timezone: resultado.timezone
+      }]);
+      setShowSuggestions(true);
+    } catch (error) {
+      // Si hay error, no mostrar sugerencias
+      setPlaceSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  // Handler para cambios en el input de lugar
+  const handlePlaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevoValor = e.target.value;
+    setUserInput({...userInput, place: nuevoValor});
+    setShowSuggestions(false);
+
+    // Limpiar timeout anterior
+    if (geocodeTimeoutRef.current) {
+      clearTimeout(geocodeTimeoutRef.current);
+    }
+
+    // Si no son coordenadas y tiene al menos 3 caracteres, buscar sugerencias con debounce
+    if (!esCoordenadas(nuevoValor) && nuevoValor.trim().length >= 3) {
+      geocodeTimeoutRef.current = window.setTimeout(() => {
+        buscarSugerenciasLugar(nuevoValor);
+      }, 500); // Debounce de 500ms
+    } else {
+      setPlaceSuggestions([]);
+    }
+  };
+
+  // Handler para seleccionar una sugerencia
+  const handleSelectSuggestion = (sugerencia: {nombre: string, lat: number, lon: number, timezone: string}) => {
+    setUserInput({...userInput, place: sugerencia.nombre});
+    setPlaceSuggestions([]);
+    setShowSuggestions(false);
+  };
+
   const handleAnalyze = async (overrideInput?: UserInput) => {
     // Refresh prompt just in case it was updated
     await fetchSystemPrompt();
@@ -265,17 +396,41 @@ const App: React.FC = () => {
     
     try {
       let lat = 40.4168, lon = -3.7038, timezone = 'UTC';
-      if (inputToUse.place.includes(',')) {
-        const parts = inputToUse.place.split(',');
-        // IMPORTANTE: No usar || porque 0 es falsy. Usar validación correcta
-        const parsedLat = parseFloat(parts[0].trim());
-        const parsedLon = parseFloat(parts[1].trim());
-        if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
-          lat = parsedLat;
-          lon = parsedLon;
+      
+      // Detectar si el input son coordenadas o texto
+      if (esCoordenadas(inputToUse.place)) {
+        // Es formato de coordenadas, parsear como antes
+        if (inputToUse.place.includes(',')) {
+          const parts = inputToUse.place.split(',');
+          const parsedLat = parseFloat(parts[0].trim());
+          const parsedLon = parseFloat(parts[1].trim());
+          if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+            lat = parsedLat;
+            lon = parsedLon;
+          }
+          // Si hay tercer parámetro, es la zona horaria
+          timezone = parts[2]?.trim() || 'UTC';
+        } else {
+          // Coordenadas separadas por espacio
+          const numbers = inputToUse.place.trim().split(/\s+/);
+          if (numbers.length === 2) {
+            lat = parseFloat(numbers[0]);
+            lon = parseFloat(numbers[1]);
+          }
         }
-        // Si hay tercer parámetro, es la zona horaria
-        timezone = parts[2]?.trim() || 'UTC';
+      } else {
+        // Es texto, geocodificar
+        try {
+          console.log(`🌍 Geocodificando lugar: ${inputToUse.place}`);
+          const geocoded = await geocodificarLugar(inputToUse.place);
+          lat = geocoded.lat;
+          lon = geocoded.lon;
+          timezone = geocoded.timezone;
+          console.log(`✅ Geocodificado: Lat ${lat}, Lon ${lon}, TZ: ${timezone}`);
+        } catch (error: any) {
+          console.error('❌ Error geocodificando lugar:', error);
+          throw new Error(`No se pudo encontrar el lugar "${inputToUse.place}". Por favor, verifica el nombre o usa coordenadas (ej: 40.41, -3.70)`);
+        }
       }
       
       // Primero calcular con el motor frontend (rápido para visualización)
@@ -833,10 +988,53 @@ ${analysisText}
             <div>
               <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputPlace}</label>
               <div className="relative">
-                <input required type="text" value={userInput.place} onChange={e => setUserInput({...userInput, place: e.target.value})} 
-                  placeholder="Ej: 40.41, -3.70 (Lat, Lon)"
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 outline-none" />
-                <Search className="absolute left-3 top-3.5 text-gray-500" size={16} />
+                <input 
+                  ref={placeInputRef}
+                  required 
+                  type="text" 
+                  value={userInput.place} 
+                  onChange={handlePlaceChange}
+                  onFocus={() => {
+                    if (placeSuggestions.length > 0) {
+                      setShowSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay para permitir click en sugerencias
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                  placeholder="Ej: Madrid, España o 40.41, -3.70"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 outline-none" 
+                />
+                {isGeocoding ? (
+                  <Activity className="absolute left-3 top-3.5 text-indigo-400 animate-pulse" size={16} />
+                ) : (
+                  <Search className="absolute left-3 top-3.5 text-gray-500" size={16} />
+                )}
+                
+                {/* Sugerencias de autocomplete */}
+                {showSuggestions && placeSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                    {placeSuggestions.map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(sug)}
+                        className="w-full text-left px-4 py-3 hover:bg-indigo-500/20 transition-colors border-b border-white/5 last:border-0"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-white font-medium">{sug.nombre}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {sug.lat.toFixed(4)}°, {sug.lon.toFixed(4)}° • {sug.timezone}
+                            </div>
+                          </div>
+                          <CheckCircle2 className="text-indigo-400" size={16} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div>
