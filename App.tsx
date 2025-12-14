@@ -192,7 +192,19 @@ const App: React.FC = () => {
     if (res.user.role === 'admin') {
         setIsAdmin(true);
     }
-    setMode(AppMode.INPUT);
+    
+    // Si es un nuevo registro, mostrar planes de suscripción
+    // Si es login normal, ir a INPUT
+    const wasRegistering = isRegistering;
+    setIsRegistering(false);
+    
+    if (wasRegistering) {
+      // Nuevo usuario: mostrar planes para que pueda elegir
+      setMode(AppMode.SUBSCRIPTION_PLANS);
+    } else {
+      setMode(AppMode.INPUT);
+    }
+    
     loadChartsFromApi();
     fetchSystemPrompt();
   };

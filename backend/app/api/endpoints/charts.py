@@ -10,6 +10,7 @@ from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user
+from app.services.subscription_permissions import require_chart_quota
 
 load_dotenv()
 
@@ -53,6 +54,9 @@ async def save_chart(
     user_id = current_user.get("_id")
     if isinstance(user_id, ObjectId):
         user_id = str(user_id)
+    
+    # Verificar límite de cartas según plan
+    await require_chart_quota(user_id)
     
     chart = {
         "user_id": user_id,

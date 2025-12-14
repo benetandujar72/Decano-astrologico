@@ -54,10 +54,11 @@ async def get_system_prompt(current_user: dict = Depends(get_current_user)) -> d
     
     if not prompt:
         # Retornar prompt por defecto si no hay uno en la BD
+        from app.models.default_prompt import DEFAULT_SYSTEM_PROMPT
         return {
             "id": None,
             "active": True,
-            "content": "",
+            "content": DEFAULT_SYSTEM_PROMPT,
             "updated_at": datetime.utcnow().isoformat()
         }
     
@@ -259,6 +260,15 @@ async def create_specialized_prompt(
     prompt: SpecializedPrompt,
     current_user: dict = Depends(get_current_user)
 ) -> dict:
+    """Crea un prompt especializado (requiere plan Premium o superior)"""
+    from app.services.subscription_permissions import require_feature
+    
+    user_id = str(current_user.get("_id"))
+    await require_feature(
+        user_id, 
+        "customize_prompts",
+        "La personalización de prompts requiere un plan Premium o superior."
+    )
     """Crea un nuevo prompt especializado (solo admin)"""
     import sys
 

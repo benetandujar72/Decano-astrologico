@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from app.api.endpoints.auth import get_current_user
 from app.services.report_generators import generate_report
+from app.services.subscription_permissions import require_feature
 import sys
 
 router = APIRouter()
@@ -67,6 +68,16 @@ async def generate_report_endpoint(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Formato no válido. Use: {', '.join(valid_formats)}"
             )
+        
+        # Verificar permisos según formato
+        user_id = str(current_user.get("_id"))
+        if format_lower == 'pdf':
+            await require_feature(user_id, "export_pdf")
+        elif format_lower in ['docx', 'doc']:
+            await require_feature(user_id, "export_docx")
+        elif format_lower in ['html', 'web']:
+            await require_feature(user_id, "export_html")
+        # markdown/md siempre disponible
         
         # Generar informe (con portada si hay nombre)
         report_content = generate_report(
