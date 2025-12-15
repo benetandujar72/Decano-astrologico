@@ -1023,6 +1023,7 @@ ${analysisText}
               onClick={handleLogout} 
               className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all" 
               title={t.authLogout}
+              aria-label={t.authLogout}
             >
               <LogOut size={16} />
             </button>
@@ -1053,18 +1054,18 @@ ${analysisText}
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
-            <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authUser}</label>
+            <label htmlFor="auth-username" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authUser}</label>
             <div className="relative">
-              <input required type="text" 
+              <input id="auth-username" required type="text" 
                 value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})}
                 className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
               <UserIcon className="absolute left-3 top-3.5 text-gray-500" size={16} />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authPass}</label>
+            <label htmlFor="auth-password" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authPass}</label>
             <div className="relative">
-              <input required type="password" 
+              <input id="auth-password" required type="password" 
                  value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})}
                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
               <Lock className="absolute left-3 top-3.5 text-gray-500" size={16} />
@@ -1098,7 +1099,7 @@ ${analysisText}
         
         {/* Indicador de técnica avanzada activa */}
         {selectedTechnique && (
-          <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 rounded-lg flex items-center justify-between">
+          <div className="mb-4 p-3 bg-linear-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="text-purple-400" size={18} />
               <div>
@@ -1134,26 +1135,27 @@ ${analysisText}
         <form onSubmit={(e) => { e.preventDefault(); setMode(AppMode.MODE_SELECTION); }} className="space-y-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputName}</label>
-              <input required type="text" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} 
+              <label htmlFor="input-name" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputName}</label>
+              <input id="input-name" required type="text" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} 
                 className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none" />
             </div>
             <div className="grid grid-cols-2 gap-4">
                <div>
-                 <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputDate}</label>
-                 <input required type="date" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} 
+                 <label htmlFor="input-date" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputDate}</label>
+                 <input id="input-date" required type="date" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} 
                    className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none text-sm" />
                </div>
                <div>
-                 <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputTime}</label>
-                 <input required type="time" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} 
+                 <label htmlFor="input-time" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputTime}</label>
+                 <input id="input-time" required type="time" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} 
                    className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none text-sm" />
                </div>
             </div>
             <div>
-              <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputPlace}</label>
+              <label htmlFor="input-place" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputPlace}</label>
               <div className="relative">
                 <input 
+                  id="input-place"
                   ref={placeInputRef}
                   required 
                   type="text" 
@@ -1203,16 +1205,16 @@ ${analysisText}
               </div>
             </div>
             <div>
-              <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1 flex items-center gap-2">
+              <label htmlFor="input-context" className="text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1 flex items-center gap-2">
                 {t.inputContext}
               </label>
-              <textarea rows={2} value={userInput.context} onChange={e => setUserInput({...userInput, context: e.target.value})}
+              <textarea id="input-context" rows={2} value={userInput.context} onChange={e => setUserInput({...userInput, context: e.target.value})}
                 className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-indigo-500 outline-none resize-none"
                 placeholder={t.inputContextPlaceholder}
               />
             </div>
           </div>
-          <button type="submit" className="w-full mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 group">
+          <button type="submit" className="w-full mt-2 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 group">
             {t.btnNext} <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
           </button>
         </form>
@@ -1226,7 +1228,14 @@ ${analysisText}
        <div className="w-full max-w-4xl glass-panel p-8 rounded-2xl animate-fade-in">
          <div className="flex justify-between items-center mb-6">
            <h2 className="text-xl font-bold text-white">{t.listTitle}</h2>
-           <button onClick={() => setMode(AppMode.INPUT)} className="text-gray-400 hover:text-white"><ChevronLeft/></button>
+           <button
+             onClick={() => setMode(AppMode.INPUT)}
+             className="text-gray-400 hover:text-white"
+             title={t.btnNew}
+             aria-label={t.btnNew}
+           >
+             <ChevronLeft/>
+           </button>
          </div>
          {savedCharts.length === 0 ? (
            <div className="text-center py-10 text-gray-500">{t.listEmpty}</div>
@@ -1242,7 +1251,12 @@ ${analysisText}
                    <button onClick={() => loadChart(chart)} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold">
                      {t.listLoad}
                    </button>
-                   <button onClick={() => deleteChart(chart.id)} className="p-1.5 text-red-400 hover:bg-red-900/20 rounded">
+                   <button
+                     onClick={() => deleteChart(chart.id)}
+                     className="p-1.5 text-red-400 hover:bg-red-900/20 rounded"
+                     title="Eliminar carta"
+                     aria-label="Eliminar carta"
+                   >
                      <Trash2 size={16} />
                    </button>
                  </div>
@@ -1263,7 +1277,7 @@ ${analysisText}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <button onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
             className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-indigo-500/40 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 border border-indigo-500/20">
               <Brain size={28} />
             </div>
@@ -1275,7 +1289,7 @@ ${analysisText}
           </button>
           <button onClick={() => { setAnalysisType(AnalysisType.TECHNICAL); handleAnalyze(); }}
             className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-emerald-500/40 relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             <div className="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 border border-emerald-500/20">
               <Layout size={28} />
             </div>
@@ -1305,7 +1319,7 @@ ${analysisText}
           </h2>
         </div>
         <div className="glass-panel rounded-xl p-8 order-1 md:order-2 shadow-2xl relative overflow-hidden">
-           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse"></div>
+           <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse"></div>
           <div className="space-y-5">
             {t.processingSteps.map((step, idx) => {
               const isCompleted = idx < currentStepIndex; const isActive = idx === currentStepIndex;
@@ -1354,7 +1368,7 @@ ${analysisText}
                 <PlanetaryTable positions={analysisResult.positions} lang={lang} />
             </div>
           </div>
-          <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-[500px]">
+           <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-125">
              <NatalChart positions={analysisResult.positions} lang={lang} />
           </div>
         </div>
@@ -1424,7 +1438,7 @@ ${analysisText}
     if (!analysisResult) return null;
     return (
       <div className="animate-fade-in text-center max-w-3xl mx-auto py-12">
-        <div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white mb-10 shadow-[0_0_50px_rgba(99,102,241,0.4)]">
+        <div className="w-24 h-24 mx-auto bg-linear-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white mb-10 shadow-[0_0_50px_rgba(99,102,241,0.4)]">
           <Sparkles size={40} />
         </div>
         <h2 className="text-4xl font-serif text-white mb-6">{t.resultsTitle}</h2>
@@ -1459,7 +1473,12 @@ ${analysisText}
             <div className="flex items-center gap-4">
                 <div className="text-[10px] font-mono text-gray-500 uppercase border border-white/10 px-2 py-1 rounded">{analysisResult.metadata.name}</div>
                 <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">{lang.toUpperCase()}</div>
-                <button onClick={handleLogout} className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 ml-2">
+                <button
+                  onClick={handleLogout}
+                  className="px-3 py-1 rounded-full text-xs font-bold bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/40 ml-2"
+                  title={t.authLogout}
+                  aria-label={t.authLogout}
+                >
                   <LogOut size={14} />
                 </button>
             </div>
@@ -1470,7 +1489,7 @@ ${analysisText}
             </div>
           )}
         </header>
-        <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col min-h-[600px]">
+        <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col min-h-150">
           {resultStep === 0 && renderDashboardTechnical()}
           {resultStep > 0 && resultStep <= analysisResult.blocks.length && renderAnalysisBlock(resultStep - 1)}
           {resultStep > analysisResult.blocks.length && renderFinalScreen()}

@@ -135,7 +135,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                 className={`
                   flex items-center px-6 py-3 rounded-lg whitespace-nowrap transition-all
                   ${activeTab === tab.id
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                    ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
                     : 'bg-white/10 text-gray-300 hover:bg-white/20'
                   }
                 `}
@@ -152,7 +152,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Plan actual */}
-              <div className="bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-xl p-6 border border-indigo-500/30">
+              <div className="bg-linear-to-r from-indigo-500/20 to-purple-600/20 rounded-xl p-6 border border-indigo-500/30">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center">
                     <Crown className="w-6 h-6 text-yellow-400 mr-3" />
@@ -190,7 +190,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                     {usage.charts_limit > 0 && (
                       <div className="w-full bg-white/10 rounded-full h-2">
                         <div
-                          className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all"
+                          className="bg-linear-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all"
                           style={{ width: `${Math.min(usage.percentage_used, 100)}%` }}
                         />
                       </div>
@@ -211,7 +211,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                     </div>
                     <div className="w-full bg-white/10 rounded-full h-2">
                       <div
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all"
+                        className="bg-linear-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all"
                         style={{ width: `${(usage.storage_used_mb / usage.storage_limit_mb) * 100}%` }}
                       />
                     </div>
@@ -236,7 +236,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                         Estado: <span className="text-green-400">{subscription.status}</span>
                       </p>
                     </div>
-                    <button className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all">
+                    <button className="bg-linear-to-r from-indigo-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all">
                       Mejorar Plan
                     </button>
                   </div>
