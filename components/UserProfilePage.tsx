@@ -188,12 +188,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                       )}
                     </div>
                     {usage.charts_limit > 0 && (
-                      <div className="w-full bg-white/10 rounded-full h-2">
-                        <div
-                          className="bg-linear-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(usage.percentage_used, 100)}%` }}
-                        />
-                      </div>
+                      <progress
+                        className="mystic-progress-sm mystic-progress--indigo"
+                        value={Math.min(usage.percentage_used, 100)}
+                        max={100}
+                        aria-label="Uso de cartas"
+                      />
                     )}
                   </div>
 
@@ -209,12 +209,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                         /{usage.storage_limit_mb} MB
                       </span>
                     </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
-                      <div
-                        className="bg-linear-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all"
-                        style={{ width: `${(usage.storage_used_mb / usage.storage_limit_mb) * 100}%` }}
-                      />
-                    </div>
+                    <progress
+                      className="mystic-progress-sm mystic-progress--green"
+                      value={Math.min((usage.storage_used_mb / Math.max(usage.storage_limit_mb, 1)) * 100, 100)}
+                      max={100}
+                      aria-label="Uso de almacenamiento"
+                    />
                   </div>
                 </div>
               )}

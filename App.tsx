@@ -902,12 +902,19 @@ ${analysisText}
             <span className="font-bold">{item.name}</span>
             <span>{item.value} puntos</span>
           </div>
-          <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
-            <div 
-              className="h-full rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${(item.value / 10) * 100}%`, backgroundColor: item.fill }}
-            />
-          </div>
+          <progress
+            className={`mystic-progress ${(() => {
+              const key = String(item.name ?? '').toLowerCase();
+              if (key.includes('fuego') || key.includes('fire')) return 'mystic-progress--fire';
+              if (key.includes('tierra') || key.includes('earth')) return 'mystic-progress--earth';
+              if (key.includes('aire') || key.includes('air')) return 'mystic-progress--air';
+              if (key.includes('agua') || key.includes('water')) return 'mystic-progress--water';
+              return 'mystic-progress--indigo';
+            })()}`}
+            value={(Number(item.value) / 10) * 100}
+            max={100}
+            aria-label={`${item.name}: ${item.value} puntos`}
+          />
         </div>
       ))}
       <div className="mt-8 p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-lg text-xs text-indigo-200 leading-relaxed">
@@ -1484,9 +1491,12 @@ ${analysisText}
             </div>
           </div>
           {resultStep > 0 && resultStep <= analysisResult.blocks.length && (
-            <div className="h-0.5 bg-gray-800 w-full">
-              <div className="h-full bg-indigo-500 transition-all duration-700 ease-out box-shadow-[0_0_10px_#6366f1]" style={{ width: `${(resultStep / analysisResult.blocks.length) * 100}%` }}></div>
-            </div>
+            <progress
+              className="mystic-progress-thin mystic-progress-thin--indigo box-shadow-[0_0_10px_#6366f1]"
+              value={(resultStep / analysisResult.blocks.length) * 100}
+              max={100}
+              aria-label="Progreso"
+            />
           )}
         </header>
         <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col min-h-150">

@@ -34,3 +34,82 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Progress bars (sin estilos inline) */
+progress.mystic-progress,
+progress.mystic-progress-sm,
+progress.mystic-progress-thin {
+  appearance: none;
+}
+
+progress.mystic-progress {
+  @apply w-full h-4 rounded-full overflow-hidden border border-white/5 bg-slate-800;
+}
+
+progress.mystic-progress-sm {
+  @apply w-full h-2 rounded-full overflow-hidden bg-white/10;
+}
+
+progress.mystic-progress-thin {
+  @apply w-full h-0.5 bg-gray-800;
+}
+
+progress.mystic-progress::-webkit-progress-bar {
+  @apply bg-slate-800;
+}
+
+progress.mystic-progress-sm::-webkit-progress-bar {
+  @apply bg-white/10;
+}
+
+progress.mystic-progress-thin::-webkit-progress-bar {
+  @apply bg-gray-800;
+}
+
+progress.mystic-progress::-webkit-progress-value,
+progress.mystic-progress-sm::-webkit-progress-value,
+progress.mystic-progress-thin::-webkit-progress-value {
+  @apply rounded-full;
+}
+
+progress.mystic-progress::-moz-progress-bar,
+progress.mystic-progress-sm::-moz-progress-bar,
+progress.mystic-progress-thin::-moz-progress-bar {
+  @apply rounded-full;
+}
+
+/* Variantes de color */
+progress.mystic-progress--indigo::-webkit-progress-value,
+progress.mystic-progress--indigo::-moz-progress-bar {
+  @apply bg-linear-to-r from-indigo-500 to-purple-600;
+}
+
+progress.mystic-progress--green::-webkit-progress-value,
+progress.mystic-progress--green::-moz-progress-bar {
+  @apply bg-linear-to-r from-green-500 to-emerald-600;
+}
+
+progress.mystic-progress--fire::-webkit-progress-value,
+progress.mystic-progress--fire::-moz-progress-bar {
+  @apply bg-red-500;
+}
+
+progress.mystic-progress--earth::-webkit-progress-value,
+progress.mystic-progress--earth::-moz-progress-bar {
+  @apply bg-emerald-500;
+}
+
+progress.mystic-progress--air::-webkit-progress-value,
+progress.mystic-progress--air::-moz-progress-bar {
+  @apply bg-sky-500;
+}
+
+progress.mystic-progress--water::-webkit-progress-value,
+progress.mystic-progress--water::-moz-progress-bar {
+  @apply bg-blue-500;
+}
+
+progress.mystic-progress-thin--indigo::-webkit-progress-value,
+progress.mystic-progress-thin--indigo::-moz-progress-bar {
+  @apply bg-indigo-500;
+}
+
