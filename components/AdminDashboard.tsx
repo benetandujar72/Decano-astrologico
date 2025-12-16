@@ -417,6 +417,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
     try {
       const token = localStorage.getItem('fraktal_token');
+      if (!token) {
+        setMessage({ type: 'error', text: 'No hay token de autenticación. Por favor, inicia sesión nuevamente.' });
+        setLoading(false);
+        return;
+      }
+
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${API_URL}/admin/users/${selectedUser._id}`, {
@@ -440,12 +446,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
           setSelectedUserId(null);
         }
         
-        // Recargar lista de usuarios
-        await fetchUsers();
+        // Recargar lista de usuarios después de un breve delay
+        setTimeout(async () => {
+          await fetchUsers();
+        }, 500);
       } else {
-        const error = await response.json().catch(() => ({ detail: 'Error desconocido' }));
-        setMessage({ type: 'error', text: error.detail || 'Error al actualizar usuario' });
-        console.error('Error actualizando usuario:', error);
+        let errorMessage = 'Error al actualizar usuario';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || error.message || errorMessage;
+          
+          // Mensajes específicos según el código de estado
+          if (response.status === 401) {
+            errorMessage = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+          } else if (response.status === 403) {
+            errorMessage = 'No tienes permisos para realizar esta acción.';
+          } else if (response.status === 404) {
+            errorMessage = 'Usuario no encontrado.';
+          } else if (response.status === 400) {
+            errorMessage = error.detail || 'Datos inválidos. Verifica la información.';
+          }
+        } catch (e) {
+          // Si no se puede parsear el error, usar el mensaje por defecto
+          console.error('Error parseando respuesta:', e);
+        }
+        
+        setMessage({ type: 'error', text: errorMessage });
+        console.error('Error actualizando usuario:', response.status, errorMessage);
       }
     } catch (error: any) {
       console.error('Error de conexión:', error);
