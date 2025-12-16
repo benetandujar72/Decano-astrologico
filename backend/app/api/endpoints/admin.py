@@ -332,28 +332,71 @@ async def update_user(
 ):
     """Actualiza un usuario parcialmente (solo role y active)"""
     from bson import ObjectId
+    import sys
 
+    # Verificar permisos
+    if admin.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+
+    # Buscar usuario
+    user = None
+    try:
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except Exception as e:
+        print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
+        user = await users_collection.find_one({"email": user_id})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    user_id_obj = user["_id"]
     update_data = {}
+    
     if request.role is not None:
         if request.role not in ["user", "admin"]:
-            raise HTTPException(status_code=400, detail="Rol inválido")
+            raise HTTPException(status_code=400, detail="Rol inválido. Debe ser 'user' o 'admin'")
         update_data["role"] = request.role
 
     if request.active is not None:
         update_data["active"] = request.active
 
     if not update_data:
-        raise HTTPException(status_code=400, detail="Sin cambios")
+        raise HTTPException(status_code=400, detail="Sin cambios para actualizar")
+
+    print(f"[ADMIN] Actualizando usuario {user_id} ({user.get('email')}): {update_data}", file=sys.stderr)
 
     result = await users_collection.update_one(
-        {"_id": ObjectId(user_id)},
+        {"_id": user_id_obj},
         {"$set": update_data}
     )
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    return {"success": True, "message": "Usuario actualizado"}
+    # Log de auditoría
+    await db.audit_logs.insert_one({
+        "action": "update_user",
+        "target_user_id": str(user_id_obj),
+        "target_username": user.get("username"),
+        "admin_user": admin.get("username"),
+        "admin_email": admin.get("email"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "changes": update_data
+    })
+
+    # Obtener usuario actualizado
+    updated_user = await users_collection.find_one({"_id": user_id_obj})
+    updated_user["_id"] = str(updated_user["_id"])
+    updated_user.pop("hashed_password", None)
+
+    return {
+        "success": True,
+        "message": "Usuario actualizado correctamente",
+        "user": updated_user
+    }
 
 
 @router.put("/users/{user_id}")
@@ -366,13 +409,35 @@ async def full_update_user(
     from bson import ObjectId
     import sys
 
+    # Verificar que el usuario autenticado es admin
+    if admin.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+
+    # Buscar usuario - intentar por ObjectId primero
+    user = None
+    try:
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except Exception as e:
+        print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
+    
+    # Si no se encuentra, buscar por email
+    if not user:
+        user = await users_collection.find_one({"email": user_id})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    user_id_obj = user["_id"]
     update_data = {}
 
     if request.username is not None:
         # Verificar que el username no esté en uso por otro usuario
         existing = await users_collection.find_one({
             "username": request.username,
-            "_id": {"$ne": ObjectId(user_id)}
+            "_id": {"$ne": user_id_obj}
         })
         if existing:
             raise HTTPException(status_code=400, detail="Nombre de usuario ya existe")
@@ -382,7 +447,7 @@ async def full_update_user(
         # Verificar que el email no esté en uso por otro usuario
         existing = await users_collection.find_one({
             "email": request.email,
-            "_id": {"$ne": ObjectId(user_id)}
+            "_id": {"$ne": user_id_obj}
         })
         if existing:
             raise HTTPException(status_code=400, detail="Email ya existe")
@@ -390,28 +455,48 @@ async def full_update_user(
 
     if request.role is not None:
         if request.role not in ["user", "admin"]:
-            raise HTTPException(status_code=400, detail="Rol inválido")
+            raise HTTPException(status_code=400, detail="Rol inválido. Debe ser 'user' o 'admin'")
         update_data["role"] = request.role
 
     if request.active is not None:
         update_data["active"] = request.active
 
     if not update_data:
-        raise HTTPException(status_code=400, detail="Sin cambios")
+        raise HTTPException(status_code=400, detail="Sin cambios para actualizar")
 
-    print(f"[ADMIN] Actualizando usuario {user_id}: {update_data}", file=sys.stderr)
+    print(f"[ADMIN] Actualizando usuario {user_id} ({user.get('email')}): {update_data}", file=sys.stderr)
 
     result = await users_collection.update_one(
-        {"_id": ObjectId(user_id)},
+        {"_id": user_id_obj},
         {"$set": update_data}
     )
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+    # Log de auditoría
+    await db.audit_logs.insert_one({
+        "action": "update_user",
+        "target_user_id": str(user_id_obj),
+        "target_username": user.get("username"),
+        "admin_user": admin.get("username"),
+        "admin_email": admin.get("email"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "changes": update_data
+    })
+
     print(f"[ADMIN] Usuario {user_id} actualizado exitosamente", file=sys.stderr)
 
-    return {"success": True, "message": "Usuario actualizado correctamente"}
+    # Obtener usuario actualizado para devolverlo
+    updated_user = await users_collection.find_one({"_id": user_id_obj})
+    updated_user["_id"] = str(updated_user["_id"])
+    updated_user.pop("hashed_password", None)
+
+    return {
+        "success": True,
+        "message": "Usuario actualizado correctamente",
+        "user": updated_user
+    }
 
 
 @router.post("/users")

@@ -412,6 +412,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const handleSaveUser = async (userData: { username?: string; email?: string; role?: string }) => {
     if (!selectedUser) return;
 
+    setLoading(true);
+    setMessage(null);
+
     try {
       const token = localStorage.getItem('fraktal_token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -426,16 +429,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Usuario actualizado correctamente' });
+        const result = await response.json();
+        setMessage({ type: 'success', text: result.message || 'Usuario actualizado correctamente' });
         setShowUserEditor(false);
         setSelectedUser(null);
-        fetchUsers(); // Recargar lista
+        
+        // Cerrar UserDetailView si está abierto para este usuario
+        if (showUserDetail && selectedUserId === selectedUser._id) {
+          setShowUserDetail(false);
+          setSelectedUserId(null);
+        }
+        
+        // Recargar lista de usuarios
+        await fetchUsers();
       } else {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ detail: 'Error desconocido' }));
         setMessage({ type: 'error', text: error.detail || 'Error al actualizar usuario' });
+        console.error('Error actualizando usuario:', error);
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Error de conexión' });
+    } catch (error: any) {
+      console.error('Error de conexión:', error);
+      setMessage({ type: 'error', text: `Error de conexión: ${error.message || 'No se pudo conectar al servidor'}` });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1626,10 +1642,21 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
     email: user.email,
     role: user.role
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    setSaving(true);
+    setError(null);
+    
+    try {
+      await onSave(formData);
+      // onSave maneja el cierre del modal
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar cambios');
+      setSaving(false);
+    }
   };
 
   return (
@@ -1649,6 +1676,12 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-900/30 border border-red-500 rounded-lg p-3 text-red-300 text-sm">
+                {error}
+              </div>
+            )}
+
             <div>
               <label htmlFor="admin-edit-username" className="block text-sm font-semibold text-white mb-2">
                 Nombre de Usuario
@@ -1660,6 +1693,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 className="mystic-input w-full"
                 required
+                disabled={saving}
               />
             </div>
 
@@ -1674,6 +1708,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="mystic-input w-full"
                 required
+                disabled={saving}
               />
             </div>
 
@@ -1686,6 +1721,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="mystic-input w-full"
+                disabled={saving}
               >
                 <option value="user">Usuario</option>
                 <option value="admin">Administrador</option>
@@ -1696,15 +1732,24 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+                disabled={saving}
+                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="mystic-button"
+                disabled={saving}
+                className="mystic-button disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Guardar Cambios
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  'Guardar Cambios'
+                )}
               </button>
             </div>
           </form>

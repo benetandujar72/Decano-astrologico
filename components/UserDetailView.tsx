@@ -134,9 +134,14 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
           setCharts(chartsData.charts || []);
         } else if (chartsResponse.status === 403) {
           console.warn('No tienes permisos para ver las cartas de este usuario');
+          setCharts([]);
+        } else {
+          console.warn('Error cargando cartas:', chartsResponse.status);
+          setCharts([]);
         }
       } catch (err) {
         console.error('Error loading charts:', err);
+        setCharts([]);
       }
 
       // Obtener pagos del usuario (endpoint de admin)
@@ -149,9 +154,14 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
           setPayments(paymentsData.payments || []);
         } else if (paymentsResponse.status === 403) {
           console.warn('No tienes permisos para ver los pagos de este usuario');
+          setPayments([]);
+        } else {
+          console.warn('Error cargando pagos:', paymentsResponse.status);
+          setPayments([]);
         }
       } catch (err) {
         console.error('Error loading payments:', err);
+        setPayments([]);
       }
 
       // Obtener consultas con experto (endpoint de admin)
@@ -164,9 +174,14 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
           setConsultations(consultationsData.consultations || []);
         } else if (consultationsResponse.status === 403) {
           console.warn('No tienes permisos para ver las consultas de este usuario');
+          setConsultations([]);
+        } else {
+          console.warn('Error cargando consultas:', consultationsResponse.status);
+          setConsultations([]);
         }
       } catch (err) {
         console.error('Error loading consultations:', err);
+        setConsultations([]);
       }
 
       // Obtener reservas de servicios (endpoint de admin)
@@ -179,9 +194,14 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
           setBookings(bookingsData.bookings || []);
         } else if (bookingsResponse.status === 403) {
           console.warn('No tienes permisos para ver las reservas de este usuario');
+          setBookings([]);
+        } else {
+          console.warn('Error cargando reservas:', bookingsResponse.status);
+          setBookings([]);
         }
       } catch (err) {
         console.error('Error loading bookings:', err);
+        setBookings([]);
       }
 
     } catch (err: any) {
