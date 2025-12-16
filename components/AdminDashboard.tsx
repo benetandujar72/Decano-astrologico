@@ -145,6 +145,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const [adminPlanMessage, setAdminPlanMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [selectedAdminPlan, setSelectedAdminPlan] = useState<'pro' | 'premium' | 'enterprise'>('enterprise');
 
+  // Verificar permisos de admin al montar
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      try {
+        const token = localStorage.getItem('fraktal_token');
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        
+        // Verificar que el usuario es admin haciendo una petición al backend
+        const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            alert('No tienes permisos de administrador. Serás redirigido.');
+            window.location.href = '/';
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error verificando permisos de admin:', error);
+      }
+    };
+    
+    checkAdminAccess();
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'overview') {
       fetchStats();

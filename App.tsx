@@ -1541,10 +1541,27 @@ ${analysisText}
         {mode === AppMode.RESULTS && renderResults()}
         {mode === AppMode.LISTING && renderListing()}
         {mode === AppMode.ADMIN_PANEL && !showAdminPromptEditor && (
-          <AdminDashboard
-            onBack={() => setMode(AppMode.INPUT)}
-            onEditPrompt={() => setShowAdminPromptEditor(true)}
-          />
+          isAdmin && currentUser?.role === 'admin' ? (
+            <AdminDashboard
+              onBack={() => setMode(AppMode.INPUT)}
+              onEditPrompt={() => setShowAdminPromptEditor(true)}
+            />
+          ) : (
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="bg-red-900/30 border border-red-500 rounded-xl p-8 max-w-md">
+                <h2 className="text-2xl font-bold text-red-400 mb-4">Acceso Denegado</h2>
+                <p className="text-gray-300 mb-6">
+                  No tienes permisos de administrador para acceder a este panel.
+                </p>
+                <button
+                  onClick={() => setMode(AppMode.INPUT)}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+                >
+                  Volver
+                </button>
+              </div>
+            </div>
+          )
         )}
         {mode === AppMode.ADMIN_PANEL && showAdminPromptEditor && (
           <AdminPanel
