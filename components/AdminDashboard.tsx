@@ -409,8 +409,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
     }
   };
 
-  const handleSaveUser = async (userData: { username?: string; email?: string; role?: string }) => {
-    if (!selectedUser) return;
+  const handleSaveUser = async (userData: { username?: string; email?: string; role?: string }): Promise<void> => {
+    if (!selectedUser) {
+      throw new Error('No hay usuario seleccionado');
+    }
 
     setLoading(true);
     setMessage(null);
@@ -418,9 +420,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
     try {
       const token = localStorage.getItem('fraktal_token');
       if (!token) {
-        setMessage({ type: 'error', text: 'No hay token de autenticación. Por favor, inicia sesión nuevamente.' });
+        const errorMsg = 'No hay token de autenticación. Por favor, inicia sesión nuevamente.';
+        setMessage({ type: 'error', text: errorMsg });
         setLoading(false);
-        return;
+        throw new Error(errorMsg);
       }
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -450,6 +453,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
         setTimeout(async () => {
           await fetchUsers();
         }, 500);
+        
+        setLoading(false);
+        // Resolver la promesa para que el modal sepa que terminó exitosamente
+        return;
       } else {
         let errorMessage = 'Error al actualizar usuario';
         try {
@@ -473,12 +480,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
         
         setMessage({ type: 'error', text: errorMessage });
         console.error('Error actualizando usuario:', response.status, errorMessage);
+        setLoading(false);
+        // Lanzar error para que el modal lo capture
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
-      console.error('Error de conexión:', error);
-      setMessage({ type: 'error', text: `Error de conexión: ${error.message || 'No se pudo conectar al servidor'}` });
-    } finally {
       setLoading(false);
+      const errorMsg = error.message || 'No se pudo conectar al servidor';
+      setMessage({ type: 'error', text: `Error de conexión: ${errorMsg}` });
+      console.error('Error de conexión:', error);
+      // Re-lanzar el error para que el modal lo capture
+      throw error;
     }
   };
 
@@ -1679,7 +1691,11 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
     
     try {
       await onSave(formData);
-      // onSave maneja el cierre del modal
+      // Si onSave se completa sin error, el modal se cierra desde AdminDashboard
+      // pero por si acaso, resetear el estado después de un breve delay
+      setTimeout(() => {
+        setSaving(false);
+      }, 100);
     } catch (err: any) {
       setError(err.message || 'Error al guardar cambios');
       setSaving(false);
