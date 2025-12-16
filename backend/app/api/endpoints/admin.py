@@ -181,87 +181,118 @@ async def get_user_details(
     """
     from bson import ObjectId
     import sys
+    import traceback
     
-    # Verificar que el usuario autenticado es admin
-    if admin.get("role") != "admin":
-        print(f"[ADMIN] Intento de acceso no autorizado por usuario {admin.get('email')}", file=sys.stderr)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Se requieren permisos de administrador"
-        )
-    
-    print(f"[ADMIN] Obteniendo detalles de usuario {user_id} por admin {admin.get('email')}", file=sys.stderr)
-    
-    # Intentar buscar por ObjectId primero
-    user = None
     try:
-        user = await users_collection.find_one({"_id": ObjectId(user_id)})
-    except Exception as e:
-        print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
-    
-    # Si no se encuentra, buscar por email
-    if not user:
-        user = await users_collection.find_one({"email": user_id})
-    
-    if not user:
-        print(f"[ADMIN] Usuario {user_id} no encontrado", file=sys.stderr)
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    user_id_str = str(user["_id"])
-    user.pop("hashed_password", None)
-    
-    # Suscripción
-    subscription = await subscriptions_collection.find_one({"user_id": user_id_str})
-    if not subscription:
-        # Intentar buscar por email también
-        subscription = await subscriptions_collection.find_one({"user_id": user.get("email")})
-    
-    # Convertir subscription a dict si existe
-    subscription_dict = None
-    if subscription:
-        subscription_dict = {
-            "tier": subscription.get("tier", "free"),
-            "status": subscription.get("status", "inactive"),
-            "start_date": subscription.get("start_date"),
-            "end_date": subscription.get("end_date"),
-            "billing_cycle": subscription.get("billing_cycle"),
-            "auto_renew": subscription.get("auto_renew", False)
+        # Verificar que el usuario autenticado es admin
+        if admin.get("role") != "admin":
+            print(f"[ADMIN] Intento de acceso no autorizado por usuario {admin.get('email')}", file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Se requieren permisos de administrador"
+            )
+        
+        print(f"[ADMIN] Obteniendo detalles de usuario {user_id} por admin {admin.get('email')}", file=sys.stderr)
+        
+        # Intentar buscar por ObjectId primero
+        user = None
+        try:
+            if len(user_id) == 24:  # ObjectId tiene 24 caracteres hexadecimales
+                user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        except Exception as e:
+            print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
+        
+        # Si no se encuentra, buscar por email
+        if not user:
+            user = await users_collection.find_one({"email": user_id})
+        
+        if not user:
+            print(f"[ADMIN] Usuario {user_id} no encontrado", file=sys.stderr)
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        user_id_str = str(user["_id"])
+        user.pop("hashed_password", None)
+        
+        # Suscripción - con manejo de errores
+        subscription_dict = None
+        try:
+            subscription = await subscriptions_collection.find_one({"user_id": user_id_str})
+            if not subscription:
+                # Intentar buscar por email también
+                subscription = await subscriptions_collection.find_one({"user_id": user.get("email")})
+            
+            if subscription:
+                subscription_dict = {
+                    "tier": subscription.get("tier", "free"),
+                    "status": subscription.get("status", "inactive"),
+                    "start_date": subscription.get("start_date"),
+                    "end_date": subscription.get("end_date"),
+                    "billing_cycle": subscription.get("billing_cycle"),
+                    "auto_renew": subscription.get("auto_renew", False)
+                }
+                if subscription.get("_id"):
+                    subscription_dict["_id"] = str(subscription["_id"])
+        except Exception as e:
+            print(f"[ADMIN] Error obteniendo suscripción: {e}", file=sys.stderr)
+        
+        # Cartas - con manejo de errores
+        charts_count = 0
+        try:
+            charts_count = await db.charts.count_documents({"user_id": user_id_str})
+        except Exception as e:
+            print(f"[ADMIN] Error contando cartas: {e}", file=sys.stderr)
+        
+        # Pagos - con manejo de errores
+        payments = []
+        try:
+            payments_cursor = payments_collection.find({"user_id": user_id_str}).limit(10)
+            payments = await payments_cursor.to_list(length=10)
+            for payment in payments:
+                payment["_id"] = str(payment["_id"])
+        except Exception as e:
+            print(f"[ADMIN] Error obteniendo pagos: {e}", file=sys.stderr)
+        
+        # Consultas con experto IA - con manejo de errores
+        consultations_count = 0
+        try:
+            consultations_count = await db.expert_consultations.count_documents({"user_id": user_id_str})
+        except Exception as e:
+            print(f"[ADMIN] Error contando consultas: {e}", file=sys.stderr)
+        
+        # Reservas de servicios - con manejo de errores
+        bookings_count = 0
+        try:
+            bookings_count = await db.service_bookings.count_documents({"user_id": user_id_str})
+        except Exception as e:
+            print(f"[ADMIN] Error contando reservas: {e}", file=sys.stderr)
+        
+        result = {
+            "_id": user_id_str,
+            "username": user.get("username", ""),
+            "email": user.get("email", ""),
+            "role": user.get("role", "user"),
+            "active": user.get("active", True),
+            "created_at": user.get("created_at", ""),
+            "subscription": subscription_dict,
+            "charts_count": charts_count,
+            "consultations_count": consultations_count,
+            "bookings_count": bookings_count,
+            "recent_payments": payments
         }
-        if subscription.get("_id"):
-            subscription_dict["_id"] = str(subscription["_id"])
+        
+        print(f"[ADMIN] Detalles de usuario {user_id_str} obtenidos exitosamente", file=sys.stderr)
+        
+        return result
     
-    # Cartas
-    charts_count = await db.charts.count_documents({"user_id": user_id_str})
-    
-    # Pagos
-    payments_cursor = payments_collection.find({"user_id": user_id_str}).limit(10)
-    payments = await payments_cursor.to_list(length=10)
-    for payment in payments:
-        payment["_id"] = str(payment["_id"])
-    
-    # Consultas con experto IA
-    consultations_count = await db.expert_consultations.count_documents({"user_id": user_id_str})
-    
-    # Reservas de servicios
-    bookings_count = await db.service_bookings.count_documents({"user_id": user_id_str})
-    
-    result = {
-        "_id": user_id_str,
-        "username": user.get("username"),
-        "email": user.get("email"),
-        "role": user.get("role", "user"),
-        "active": user.get("active", True),
-        "created_at": user.get("created_at"),
-        "subscription": subscription_dict,
-        "charts_count": charts_count,
-        "consultations_count": consultations_count,
-        "bookings_count": bookings_count,
-        "recent_payments": payments
-    }
-    
-    print(f"[ADMIN] Detalles de usuario {user_id_str} obtenidos exitosamente", file=sys.stderr)
-    
-    return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ADMIN] Error inesperado en get_user_details: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener detalles del usuario: {str(e)}"
+        )
 
 
 @router.get("/users/{user_id}/charts")
@@ -333,70 +364,91 @@ async def update_user(
     """Actualiza un usuario parcialmente (solo role y active)"""
     from bson import ObjectId
     import sys
+    import traceback
 
-    # Verificar permisos
-    if admin.get("role") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Se requieren permisos de administrador"
+    try:
+        # Verificar permisos
+        if admin.get("role") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Se requieren permisos de administrador"
+            )
+
+        # Buscar usuario
+        user = None
+        try:
+            if len(user_id) == 24:  # ObjectId tiene 24 caracteres hexadecimales
+                user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        except Exception as e:
+            print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
+        
+        if not user:
+            user = await users_collection.find_one({"email": user_id})
+
+        if not user:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+        user_id_obj = user["_id"]
+        update_data = {}
+        
+        if request.role is not None:
+            if request.role not in ["user", "admin"]:
+                raise HTTPException(status_code=400, detail="Rol inválido. Debe ser 'user' o 'admin'")
+            update_data["role"] = request.role
+
+        if request.active is not None:
+            update_data["active"] = request.active
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="Sin cambios para actualizar")
+
+        print(f"[ADMIN] Actualizando usuario {user_id} ({user.get('email')}): {update_data}", file=sys.stderr)
+
+        result = await users_collection.update_one(
+            {"_id": user_id_obj},
+            {"$set": update_data}
         )
 
-    # Buscar usuario
-    user = None
-    try:
-        user = await users_collection.find_one({"_id": ObjectId(user_id)})
-    except Exception as e:
-        print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
-        user = await users_collection.find_one({"email": user_id})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        # Log de auditoría
+        try:
+            await db.audit_logs.insert_one({
+                "action": "update_user",
+                "target_user_id": str(user_id_obj),
+                "target_username": user.get("username"),
+                "admin_user": admin.get("username"),
+                "admin_email": admin.get("email"),
+                "timestamp": datetime.utcnow().isoformat(),
+                "changes": update_data
+            })
+        except Exception as e:
+            print(f"[ADMIN] Error guardando log de auditoría: {e}", file=sys.stderr)
 
-    user_id_obj = user["_id"]
-    update_data = {}
+        # Obtener usuario actualizado
+        updated_user = await users_collection.find_one({"_id": user_id_obj})
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="Error al obtener usuario actualizado")
+        
+        updated_user["_id"] = str(updated_user["_id"])
+        updated_user.pop("hashed_password", None)
+
+        return {
+            "success": True,
+            "message": "Usuario actualizado correctamente",
+            "user": updated_user
+        }
     
-    if request.role is not None:
-        if request.role not in ["user", "admin"]:
-            raise HTTPException(status_code=400, detail="Rol inválido. Debe ser 'user' o 'admin'")
-        update_data["role"] = request.role
-
-    if request.active is not None:
-        update_data["active"] = request.active
-
-    if not update_data:
-        raise HTTPException(status_code=400, detail="Sin cambios para actualizar")
-
-    print(f"[ADMIN] Actualizando usuario {user_id} ({user.get('email')}): {update_data}", file=sys.stderr)
-
-    result = await users_collection.update_one(
-        {"_id": user_id_obj},
-        {"$set": update_data}
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # Log de auditoría
-    await db.audit_logs.insert_one({
-        "action": "update_user",
-        "target_user_id": str(user_id_obj),
-        "target_username": user.get("username"),
-        "admin_user": admin.get("username"),
-        "admin_email": admin.get("email"),
-        "timestamp": datetime.utcnow().isoformat(),
-        "changes": update_data
-    })
-
-    # Obtener usuario actualizado
-    updated_user = await users_collection.find_one({"_id": user_id_obj})
-    updated_user["_id"] = str(updated_user["_id"])
-    updated_user.pop("hashed_password", None)
-
-    return {
-        "success": True,
-        "message": "Usuario actualizado correctamente",
-        "user": updated_user
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ADMIN] Error inesperado en update_user: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al actualizar usuario: {str(e)}"
+        )
 
 
 @router.put("/users/{user_id}")
@@ -408,95 +460,114 @@ async def full_update_user(
     """Actualiza un usuario completamente"""
     from bson import ObjectId
     import sys
+    import traceback
 
-    # Verificar que el usuario autenticado es admin
-    if admin.get("role") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Se requieren permisos de administrador"
+    try:
+        # Verificar que el usuario autenticado es admin
+        if admin.get("role") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Se requieren permisos de administrador"
+            )
+
+        # Buscar usuario - intentar por ObjectId primero
+        user = None
+        try:
+            if len(user_id) == 24:  # ObjectId tiene 24 caracteres hexadecimales
+                user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        except Exception as e:
+            print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
+        
+        # Si no se encuentra, buscar por email
+        if not user:
+            user = await users_collection.find_one({"email": user_id})
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        user_id_obj = user["_id"]
+        update_data = {}
+
+        if request.username is not None:
+            # Verificar que el username no esté en uso por otro usuario
+            existing = await users_collection.find_one({
+                "username": request.username,
+                "_id": {"$ne": user_id_obj}
+            })
+            if existing:
+                raise HTTPException(status_code=400, detail="Nombre de usuario ya existe")
+            update_data["username"] = request.username
+
+        if request.email is not None:
+            # Verificar que el email no esté en uso por otro usuario
+            existing = await users_collection.find_one({
+                "email": request.email,
+                "_id": {"$ne": user_id_obj}
+            })
+            if existing:
+                raise HTTPException(status_code=400, detail="Email ya existe")
+            update_data["email"] = request.email
+
+        if request.role is not None:
+            if request.role not in ["user", "admin"]:
+                raise HTTPException(status_code=400, detail="Rol inválido. Debe ser 'user' o 'admin'")
+            update_data["role"] = request.role
+
+        if request.active is not None:
+            update_data["active"] = request.active
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="Sin cambios para actualizar")
+
+        print(f"[ADMIN] Actualizando usuario {user_id} ({user.get('email')}): {update_data}", file=sys.stderr)
+
+        result = await users_collection.update_one(
+            {"_id": user_id_obj},
+            {"$set": update_data}
         )
 
-    # Buscar usuario - intentar por ObjectId primero
-    user = None
-    try:
-        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+        # Log de auditoría
+        try:
+            await db.audit_logs.insert_one({
+                "action": "update_user",
+                "target_user_id": str(user_id_obj),
+                "target_username": user.get("username"),
+                "admin_user": admin.get("username"),
+                "admin_email": admin.get("email"),
+                "timestamp": datetime.utcnow().isoformat(),
+                "changes": update_data
+            })
+        except Exception as e:
+            print(f"[ADMIN] Error guardando log de auditoría: {e}", file=sys.stderr)
+
+        print(f"[ADMIN] Usuario {user_id} actualizado exitosamente", file=sys.stderr)
+
+        # Obtener usuario actualizado para devolverlo
+        updated_user = await users_collection.find_one({"_id": user_id_obj})
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="Error al obtener usuario actualizado")
+        
+        updated_user["_id"] = str(updated_user["_id"])
+        updated_user.pop("hashed_password", None)
+
+        return {
+            "success": True,
+            "message": "Usuario actualizado correctamente",
+            "user": updated_user
+        }
+    
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
-    
-    # Si no se encuentra, buscar por email
-    if not user:
-        user = await users_collection.find_one({"email": user_id})
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    user_id_obj = user["_id"]
-    update_data = {}
-
-    if request.username is not None:
-        # Verificar que el username no esté en uso por otro usuario
-        existing = await users_collection.find_one({
-            "username": request.username,
-            "_id": {"$ne": user_id_obj}
-        })
-        if existing:
-            raise HTTPException(status_code=400, detail="Nombre de usuario ya existe")
-        update_data["username"] = request.username
-
-    if request.email is not None:
-        # Verificar que el email no esté en uso por otro usuario
-        existing = await users_collection.find_one({
-            "email": request.email,
-            "_id": {"$ne": user_id_obj}
-        })
-        if existing:
-            raise HTTPException(status_code=400, detail="Email ya existe")
-        update_data["email"] = request.email
-
-    if request.role is not None:
-        if request.role not in ["user", "admin"]:
-            raise HTTPException(status_code=400, detail="Rol inválido. Debe ser 'user' o 'admin'")
-        update_data["role"] = request.role
-
-    if request.active is not None:
-        update_data["active"] = request.active
-
-    if not update_data:
-        raise HTTPException(status_code=400, detail="Sin cambios para actualizar")
-
-    print(f"[ADMIN] Actualizando usuario {user_id} ({user.get('email')}): {update_data}", file=sys.stderr)
-
-    result = await users_collection.update_one(
-        {"_id": user_id_obj},
-        {"$set": update_data}
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # Log de auditoría
-    await db.audit_logs.insert_one({
-        "action": "update_user",
-        "target_user_id": str(user_id_obj),
-        "target_username": user.get("username"),
-        "admin_user": admin.get("username"),
-        "admin_email": admin.get("email"),
-        "timestamp": datetime.utcnow().isoformat(),
-        "changes": update_data
-    })
-
-    print(f"[ADMIN] Usuario {user_id} actualizado exitosamente", file=sys.stderr)
-
-    # Obtener usuario actualizado para devolverlo
-    updated_user = await users_collection.find_one({"_id": user_id_obj})
-    updated_user["_id"] = str(updated_user["_id"])
-    updated_user.pop("hashed_password", None)
-
-    return {
-        "success": True,
-        "message": "Usuario actualizado correctamente",
-        "user": updated_user
-    }
+        print(f"[ADMIN] Error inesperado en full_update_user: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al actualizar usuario: {str(e)}"
+        )
 
 
 @router.post("/users")
