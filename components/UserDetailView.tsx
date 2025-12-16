@@ -96,36 +96,50 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
       });
 
       if (!userResponse.ok) {
-        throw new Error('Error al cargar datos del usuario');
+        if (userResponse.status === 403) {
+          throw new Error('No tienes permisos de administrador para ver datos de otros usuarios');
+        } else if (userResponse.status === 404) {
+          throw new Error('Usuario no encontrado');
+        } else {
+          const errorData = await userResponse.json().catch(() => ({}));
+          throw new Error(errorData.detail || 'Error al cargar datos del usuario');
+        }
       }
 
       const userData = await userResponse.json();
       
+      // Verificar que tenemos los datos necesarios
+      if (!userData._id && !userData.username && !userData.email) {
+        throw new Error('Datos de usuario incompletos');
+      }
+      
       // El endpoint ahora devuelve directamente los datos del usuario
       setUserDetails({
         _id: userData._id || userId,
-        username: userData.username || userData.user?.username,
-        email: userData.email || userData.user?.email,
-        role: userData.role || userData.user?.role || 'user',
-        active: userData.active !== undefined ? userData.active : (userData.user?.active !== false),
-        created_at: userData.created_at || userData.user?.created_at,
-        subscription: userData.subscription
+        username: userData.username || 'Usuario',
+        email: userData.email || '',
+        role: userData.role || 'user',
+        active: userData.active !== undefined ? userData.active : true,
+        created_at: userData.created_at || new Date().toISOString(),
+        subscription: userData.subscription || null
       });
 
-      // Obtener cartas del usuario
+      // Obtener cartas del usuario (endpoint de admin)
       try {
-        const chartsResponse = await fetch(`${API_URL}/charts/user/${userId}`, {
+        const chartsResponse = await fetch(`${API_URL}/admin/users/${userId}/charts`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (chartsResponse.ok) {
           const chartsData = await chartsResponse.json();
           setCharts(chartsData.charts || []);
+        } else if (chartsResponse.status === 403) {
+          console.warn('No tienes permisos para ver las cartas de este usuario');
         }
       } catch (err) {
         console.error('Error loading charts:', err);
       }
 
-      // Obtener pagos del usuario
+      // Obtener pagos del usuario (endpoint de admin)
       try {
         const paymentsResponse = await fetch(`${API_URL}/subscriptions/admin/payments?user_id=${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -133,12 +147,14 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
         if (paymentsResponse.ok) {
           const paymentsData = await paymentsResponse.json();
           setPayments(paymentsData.payments || []);
+        } else if (paymentsResponse.status === 403) {
+          console.warn('No tienes permisos para ver los pagos de este usuario');
         }
       } catch (err) {
         console.error('Error loading payments:', err);
       }
 
-      // Obtener consultas con experto
+      // Obtener consultas con experto (endpoint de admin)
       try {
         const consultationsResponse = await fetch(`${API_URL}/expert-chat/admin/user/${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -146,19 +162,23 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
         if (consultationsResponse.ok) {
           const consultationsData = await consultationsResponse.json();
           setConsultations(consultationsData.consultations || []);
+        } else if (consultationsResponse.status === 403) {
+          console.warn('No tienes permisos para ver las consultas de este usuario');
         }
       } catch (err) {
         console.error('Error loading consultations:', err);
       }
 
-      // Obtener reservas de servicios
+      // Obtener reservas de servicios (endpoint de admin)
       try {
-        const bookingsResponse = await fetch(`${API_URL}/professional-services/admin/bookings?user_id=${userId}`, {
+        const bookingsResponse = await fetch(`${API_URL}/professional-services/admin/bookings/user/${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (bookingsResponse.ok) {
           const bookingsData = await bookingsResponse.json();
           setBookings(bookingsData.bookings || []);
+        } else if (bookingsResponse.status === 403) {
+          console.warn('No tienes permisos para ver las reservas de este usuario');
         }
       } catch (err) {
         console.error('Error loading bookings:', err);

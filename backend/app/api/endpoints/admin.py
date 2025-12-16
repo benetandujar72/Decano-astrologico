@@ -173,28 +173,41 @@ async def get_user_details(
     user_id: str,
     admin: dict = Depends(require_admin)
 ):
-    """Obtiene detalles completos de un usuario"""
+    """
+    Obtiene detalles completos de un usuario (SOLO ADMIN)
+    
+    IMPORTANTE: Este endpoint solo es accesible por administradores.
+    Los usuarios normales NO pueden acceder a datos de otros usuarios.
+    """
     from bson import ObjectId
+    import sys
+    
+    # Verificar que el usuario autenticado es admin
+    if admin.get("role") != "admin":
+        print(f"[ADMIN] Intento de acceso no autorizado por usuario {admin.get('email')}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+    
+    print(f"[ADMIN] Obteniendo detalles de usuario {user_id} por admin {admin.get('email')}", file=sys.stderr)
     
     # Intentar buscar por ObjectId primero
+    user = None
     try:
         user = await users_collection.find_one({"_id": ObjectId(user_id)})
-    except:
-        user = None
+    except Exception as e:
+        print(f"[ADMIN] Error buscando por ObjectId: {e}", file=sys.stderr)
     
-    # Si no se encuentra, buscar por user_id como string
-    if not user:
-        user = await users_collection.find_one({"user_id": user_id})
-    
-    # Si aún no se encuentra, buscar por email
+    # Si no se encuentra, buscar por email
     if not user:
         user = await users_collection.find_one({"email": user_id})
     
     if not user:
+        print(f"[ADMIN] Usuario {user_id} no encontrado", file=sys.stderr)
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
-    user["_id"] = str(user["_id"])
-    user_id_str = user["_id"]
+    user_id_str = str(user["_id"])
     user.pop("hashed_password", None)
     
     # Suscripción
@@ -202,6 +215,20 @@ async def get_user_details(
     if not subscription:
         # Intentar buscar por email también
         subscription = await subscriptions_collection.find_one({"user_id": user.get("email")})
+    
+    # Convertir subscription a dict si existe
+    subscription_dict = None
+    if subscription:
+        subscription_dict = {
+            "tier": subscription.get("tier", "free"),
+            "status": subscription.get("status", "inactive"),
+            "start_date": subscription.get("start_date"),
+            "end_date": subscription.get("end_date"),
+            "billing_cycle": subscription.get("billing_cycle"),
+            "auto_renew": subscription.get("auto_renew", False)
+        }
+        if subscription.get("_id"):
+            subscription_dict["_id"] = str(subscription["_id"])
     
     # Cartas
     charts_count = await db.charts.count_documents({"user_id": user_id_str})
@@ -218,19 +245,60 @@ async def get_user_details(
     # Reservas de servicios
     bookings_count = await db.service_bookings.count_documents({"user_id": user_id_str})
     
-    return {
+    result = {
         "_id": user_id_str,
         "username": user.get("username"),
         "email": user.get("email"),
         "role": user.get("role", "user"),
         "active": user.get("active", True),
         "created_at": user.get("created_at"),
-        "subscription": subscription,
+        "subscription": subscription_dict,
         "charts_count": charts_count,
         "consultations_count": consultations_count,
         "bookings_count": bookings_count,
         "recent_payments": payments
     }
+    
+    print(f"[ADMIN] Detalles de usuario {user_id_str} obtenidos exitosamente", file=sys.stderr)
+    
+    return result
+
+
+@router.get("/users/{user_id}/charts")
+async def get_user_charts(
+    user_id: str,
+    admin: dict = Depends(require_admin)
+):
+    """Obtiene todas las cartas de un usuario específico (solo admin)"""
+    from bson import ObjectId
+    import sys
+    
+    if admin.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+    
+    # Buscar usuario
+    try:
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except:
+        user = await users_collection.find_one({"email": user_id})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    user_id_str = str(user["_id"])
+    
+    # Obtener cartas
+    charts_cursor = db.charts.find({"user_id": user_id_str}).sort("timestamp", -1)
+    charts = await charts_cursor.to_list(length=100)
+    
+    for chart in charts:
+        chart["_id"] = str(chart["_id"])
+        chart["chart_id"] = chart.get("chart_id") or str(chart["_id"])
+    
+    return {"charts": charts, "total": len(charts)}
 
 
 class UpdateUserRequest(BaseModel):
