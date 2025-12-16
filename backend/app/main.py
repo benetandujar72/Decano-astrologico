@@ -3,7 +3,18 @@ Router principal de la aplicación FastAPI
 Incluye todos los endpoints de la API
 """
 from fastapi import APIRouter
-from app.api.endpoints import auth, charts, config, ephemeris, reports, subscriptions, admin, geolocation
+from app.api.endpoints import (
+    auth,
+    charts,
+    config,
+    ephemeris,
+    reports,
+    subscriptions,
+    admin,
+    geolocation,
+    expert_chat,
+    professional_services
+)
 
 # Crear router principal
 router = APIRouter()
@@ -17,6 +28,10 @@ router.include_router(geolocation.router, prefix="/geolocation", tags=["geolocat
 router.include_router(reports.router, prefix="/reports", tags=["reports"])
 router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 router.include_router(admin.router, prefix="/admin", tags=["admin"])
+
+# Nuevos endpoints para sistema de expertos y servicios profesionales
+router.include_router(expert_chat.router, prefix="/expert-chat", tags=["expert-chat"])
+router.include_router(professional_services.router, prefix="/professional-services", tags=["professional-services"])
 
 # Alias para compatibilidad
 app = router

@@ -118,12 +118,12 @@ async def require_feature(
 async def require_chart_quota(user_id: str) -> None:
     """
     Verifica que el usuario tenga cuota disponible para crear una carta.
-    
+
     Raises:
         HTTPException si no tiene cuota disponible
     """
     can_create, current_count, limit = await check_chart_limit(user_id)
-    
+
     if not can_create:
         plan = await get_user_plan(user_id)
         error_msg = f"Has alcanzado el límite de cartas de tu plan ({plan.name}). Has creado {current_count} de {limit} cartas permitidas. Actualiza tu plan para crear más cartas."
@@ -131,4 +131,99 @@ async def require_chart_quota(user_id: str) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail=error_msg
         )
+
+
+async def check_expert_consultation_quota(user_id: str) -> tuple[bool, int, int]:
+    """
+    Verifica si el usuario puede crear más consultas con experto este mes.
+
+    Returns:
+        (can_create: bool, current_count: int, limit: int)
+    """
+    plan = await get_user_plan(user_id)
+
+    # Si no tiene acceso al chat con experto
+    if not plan.can_access_expert_chat:
+        return (False, 0, 0)
+
+    # Si es ilimitado (-1), siempre puede crear
+    if plan.expert_consultations_per_month == -1:
+        return (True, 0, -1)
+
+    # Contar consultas del mes actual
+    from datetime import datetime
+    from motor.motor_asyncio import AsyncIOMotorClient
+    import os
+
+    MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
+    client = AsyncIOMotorClient(MONGODB_URL)
+    db = client.fraktal
+    consultations_collection = db.expert_consultations
+
+    # Calcular inicio del mes actual
+    now = datetime.utcnow()
+    start_of_month = datetime(now.year, now.month, 1)
+
+    count = await consultations_collection.count_documents({
+        "user_id": user_id,
+        "created_at": {"$gte": start_of_month.isoformat()}
+    })
+
+    can_create = count < plan.expert_consultations_per_month
+    return (can_create, count, plan.expert_consultations_per_month)
+
+
+async def require_expert_consultation_quota(user_id: str) -> SubscriptionPlan:
+    """
+    Verifica que el usuario tenga cuota disponible para consultas con experto.
+
+    Returns:
+        SubscriptionPlan del usuario
+
+    Raises:
+        HTTPException si no tiene acceso o ha alcanzado el límite
+    """
+    plan = await get_user_plan(user_id)
+
+    # Verificar acceso básico
+    if not plan.can_access_expert_chat:
+        error_msg = f"Tu plan actual ({plan.name}) no incluye acceso al chat con experto IA. Actualiza tu plan a PRO o superior para acceder a esta funcionalidad."
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_msg
+        )
+
+    # Verificar cuota
+    can_create, current_count, limit = await check_expert_consultation_quota(user_id)
+
+    if not can_create:
+        error_msg = f"Has alcanzado el límite de consultas con experto de tu plan ({plan.name}). Has usado {current_count} de {limit} consultas este mes. Actualiza tu plan para obtener más consultas."
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_msg
+        )
+
+    return plan
+
+
+async def require_professional_services_access(user_id: str) -> tuple[SubscriptionPlan, int]:
+    """
+    Verifica que el usuario tenga acceso a servicios profesionales de Jon Landeta.
+
+    Returns:
+        (SubscriptionPlan del usuario, descuento aplicable en porcentaje)
+
+    Raises:
+        HTTPException si no tiene acceso
+    """
+    plan = await get_user_plan(user_id)
+
+    if not plan.can_access_professional_services:
+        error_msg = f"Tu plan actual ({plan.name}) no incluye acceso a servicios profesionales de Jon Landeta. Actualiza tu plan a PREMIUM o superior para acceder."
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_msg
+        )
+
+    return (plan, plan.professional_services_discount)
 

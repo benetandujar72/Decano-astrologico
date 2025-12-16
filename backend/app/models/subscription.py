@@ -50,6 +50,12 @@ class SubscriptionPlan(BaseModel):
     can_use_solar_return: bool  # Revolución Solar
     can_customize_prompts: bool
     priority_support: bool
+
+    # Nuevos privilegios para sistema de expertos y servicios profesionales
+    can_access_expert_chat: bool  # Acceso a chat con experto IA
+    expert_consultations_per_month: int  # Número de consultas mensuales con experto IA (-1 = ilimitado)
+    can_access_professional_services: bool  # Acceso a servicios de Jon Landeta
+    professional_services_discount: int  # Porcentaje de descuento en servicios profesionales (0-100)
     
     class Config:
         json_schema_extra = {
@@ -62,7 +68,8 @@ class SubscriptionPlan(BaseModel):
                     "Cartas natales ilimitadas",
                     "Exportación PDF/DOCX/HTML",
                     "Tránsitos y Progresiones",
-                    "Soporte prioritario"
+                    "Soporte prioritario",
+                    "1 consulta con experto IA por mes"
                 ],
                 "max_charts": -1,
                 "max_storage_mb": 5000,
@@ -73,7 +80,11 @@ class SubscriptionPlan(BaseModel):
                 "can_use_synastry": True,
                 "can_use_solar_return": True,
                 "can_customize_prompts": False,
-                "priority_support": True
+                "priority_support": True,
+                "can_access_expert_chat": True,
+                "expert_consultations_per_month": 1,
+                "can_access_professional_services": False,
+                "professional_services_discount": 0
             }
         }
 
@@ -232,7 +243,11 @@ SUBSCRIPTION_PLANS = {
         can_use_synastry=False,
         can_use_solar_return=False,
         can_customize_prompts=False,
-        priority_support=False
+        priority_support=False,
+        can_access_expert_chat=False,
+        expert_consultations_per_month=0,
+        can_access_professional_services=False,
+        professional_services_discount=0
     ),
     
     SubscriptionTier.PRO: SubscriptionPlan(
@@ -246,7 +261,8 @@ SUBSCRIPTION_PLANS = {
             "Tránsitos y Progresiones",
             "Revolución Solar",
             "Almacenamiento 5GB",
-            "Soporte prioritario"
+            "Soporte prioritario",
+            "1 consulta con experto IA por mes"
         ],
         max_charts=-1,  # Ilimitado
         max_storage_mb=5000,
@@ -257,7 +273,11 @@ SUBSCRIPTION_PLANS = {
         can_use_synastry=True,
         can_use_solar_return=True,
         can_customize_prompts=False,
-        priority_support=True
+        priority_support=True,
+        can_access_expert_chat=True,
+        expert_consultations_per_month=1,
+        can_access_professional_services=False,
+        professional_services_discount=0
     ),
     
     SubscriptionTier.PREMIUM: SubscriptionPlan(
@@ -273,7 +293,10 @@ SUBSCRIPTION_PLANS = {
             "Análisis 3D interactivo",
             "Almacenamiento 20GB",
             "Soporte 24/7",
-            "API privada"
+            "API privada",
+            "3 consultas con experto IA por mes",
+            "Acceso a servicios de Jon Landeta",
+            "10% descuento en servicios profesionales"
         ],
         max_charts=-1,
         max_storage_mb=20000,
@@ -284,7 +307,11 @@ SUBSCRIPTION_PLANS = {
         can_use_synastry=True,
         can_use_solar_return=True,
         can_customize_prompts=True,
-        priority_support=True
+        priority_support=True,
+        can_access_expert_chat=True,
+        expert_consultations_per_month=3,
+        can_access_professional_services=True,
+        professional_services_discount=10
     ),
     
     SubscriptionTier.ENTERPRISE: SubscriptionPlan(
@@ -300,7 +327,10 @@ SUBSCRIPTION_PLANS = {
             "SLA 99.9%",
             "Gestor de cuenta",
             "Integraciones personalizadas",
-            "Formación incluida"
+            "Formación incluida",
+            "Consultas ilimitadas con experto IA",
+            "Acceso prioritario a Jon Landeta",
+            "20% descuento en servicios profesionales"
         ],
         max_charts=-1,
         max_storage_mb=-1,  # Ilimitado
@@ -311,7 +341,11 @@ SUBSCRIPTION_PLANS = {
         can_use_synastry=True,
         can_use_solar_return=True,
         can_customize_prompts=True,
-        priority_support=True
+        priority_support=True,
+        can_access_expert_chat=True,
+        expert_consultations_per_month=-1,  # Ilimitado
+        can_access_professional_services=True,
+        professional_services_discount=20
     )
 }
 

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ResetPasswordModal, AuditLogsModal } from './UserModals';
 import PromptEditorModal from './PromptEditorModal';
+import UserDetailView from './UserDetailView';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -108,6 +109,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [showUserDetail, setShowUserDetail] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // Paginación y filtros
   const [currentPage, setCurrentPage] = useState(1);
@@ -936,6 +939,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                           </span>
 
                           <button
+                            onClick={() => {
+                              setSelectedUserId(user._id);
+                              setShowUserDetail(true);
+                            }}
+                            className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                            title="Ver detalles completos"
+                          >
+                            <Eye size={18} />
+                          </button>
+
+                          <button
                             onClick={() => handleViewAuditLogs(user)}
                             className="p-2 text-gray-400 hover:text-purple-400 transition-colors"
                             title="Ver historial"
@@ -1521,6 +1535,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
           onClose={() => {
             setShowAuditLogs(false);
             setSelectedUser(null);
+          }}
+        />
+      )}
+
+      {/* Vista Detallada de Usuario */}
+      {showUserDetail && selectedUserId && (
+        <UserDetailView
+          userId={selectedUserId}
+          onClose={() => {
+            setShowUserDetail(false);
+            setSelectedUserId(null);
           }}
         />
       )}

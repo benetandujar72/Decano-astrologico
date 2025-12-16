@@ -18,3 +18,4 @@ stripe>=7.0.0
 timezonefinder>=6.1.0
 requests>=2.31.0
 Pillow>=10.0.0
+google-generativeai>=0.3.0
