@@ -377,140 +377,140 @@ class ReportGenerator:
             buffer = BytesIO()
             doc = SimpleDocTemplate(buffer, pagesize=A4, 
                                     topMargin=0.75*inch, bottomMargin=0.75*inch)
-        
-        # Estilos
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=24,
-            textColor=colors.HexColor('#667eea'),
-            spaceAfter=30,
-            alignment=TA_CENTER,
-            fontName='Helvetica-Bold'
-        )
-        
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontSize=16,
-            textColor=colors.HexColor('#764ba2'),
-            spaceAfter=12,
-            spaceBefore=20,
-            fontName='Helvetica-Bold'
-        )
-        
-        normal_style = ParagraphStyle(
-            'CustomNormal',
-            parent=styles['Normal'],
-            fontSize=11,
-            spaceAfter=12,
-            alignment=TA_JUSTIFY
-        )
-        
-        # Contenido
-        story = []
-        
-        # Título
-        story.append(Paragraph("🌟 Carta Astral Completa", title_style))
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Datos Personales
-        story.append(Paragraph("📋 Datos Personales", heading_style))
-        datos_text = f"""
-        <b>Fecha:</b> {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}<br/>
-        <b>Ubicación:</b> Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}<br/>
-        <b>Zona Horaria:</b> {self.datos.get('zona_horaria', 'UTC')}<br/>
-        <b>Fecha UTC:</b> {self.datos.get('fecha_utc', 'N/A')}
-        """
-        story.append(Paragraph(datos_text, normal_style))
-        story.append(Spacer(1, 0.2*inch))
-        
-        # Carta Astral Visual
-        if self.chart_image:
-            try:
-                story.append(Paragraph("🌟 Carta Astral Visual", heading_style))
-                self.chart_image.seek(0)
-                img = RLImage(self.chart_image, width=4.5*inch, height=4.5*inch)
-                story.append(img)
-                story.append(Spacer(1, 0.3*inch))
-            except Exception as e:
-                print(f"⚠️ Error añadiendo imagen al PDF: {e}")
-        
-        # Tabla de Planetas
-        story.append(Paragraph("🪐 Posiciones Planetarias", heading_style))
-        
-        planetas_data = [['Planeta', 'Posición', 'Casa', 'Estado']]
-        for nombre, pos in self.planetas.items():
-            if pos:
-                retro = 'Retrógrado' if pos.get('retrogrado', False) else ''
-                casa = f"Casa {pos.get('casa', '?')}"
-                planetas_data.append([nombre, pos['texto'], casa, retro])
-        
-        # Añadir Parte de Fortuna
-        pf = self.angulos.get('parte_fortuna', {})
-        planetas_data.append(['Parte de Fortuna', pf.get('texto', 'N/A'), '-', '-'])
-        
-        planetas_table = Table(planetas_data, colWidths=[1.5*inch, 2*inch, 1*inch, 1.5*inch])
-        planetas_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-        ]))
-        
-        story.append(planetas_table)
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Ángulos
-        story.append(Paragraph("🔺 Ángulos Principales", heading_style))
-        angulos_text = f"""
-        <b>Ascendente:</b> {self.angulos.get('ascendente', {}).get('texto', 'N/A')}<br/>
-        <b>Medio Cielo:</b> {self.angulos.get('medio_cielo', {}).get('texto', 'N/A')}
-        """
-        story.append(Paragraph(angulos_text, normal_style))
-        story.append(Spacer(1, 0.2*inch))
-        
-        # Casas
-        story.append(Paragraph("🏠 Cúspides de Casas (Placidus)", heading_style))
-        casas_data = [['Casa', 'Cúspide']]
-        for casa in self.casas:
-            casas_data.append([f"Casa {casa['numero']}", casa['texto']])
-        
-        casas_table = Table(casas_data, colWidths=[1.5*inch, 4.5*inch])
-        casas_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-        ]))
-        
-        story.append(casas_table)
-        story.append(PageBreak())
-        
-        # Análisis
-        story.append(Paragraph("📖 Análisis Psico-Astrológico", heading_style))
-        # Dividir el análisis en párrafos
-        for parrafo in self.analysis.split('\n\n'):
-            if parrafo.strip():
-                story.append(Paragraph(parrafo.strip(), normal_style))
-                story.append(Spacer(1, 0.1*inch))
-        
-        # Footer
-        story.append(Spacer(1, 0.3*inch))
-        footer_text = f"<i>Informe generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}</i>"
-        footer_style = ParagraphStyle('Footer', parent=styles['Normal'], 
-                                      fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
-        story.append(Paragraph(footer_text, footer_style))
+            
+            # Estilos
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=24,
+                textColor=colors.HexColor('#667eea'),
+                spaceAfter=30,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold'
+            )
+            
+            heading_style = ParagraphStyle(
+                'CustomHeading',
+                parent=styles['Heading2'],
+                fontSize=16,
+                textColor=colors.HexColor('#764ba2'),
+                spaceAfter=12,
+                spaceBefore=20,
+                fontName='Helvetica-Bold'
+            )
+            
+            normal_style = ParagraphStyle(
+                'CustomNormal',
+                parent=styles['Normal'],
+                fontSize=11,
+                spaceAfter=12,
+                alignment=TA_JUSTIFY
+            )
+            
+            # Contenido
+            story = []
+            
+            # Título
+            story.append(Paragraph("🌟 Carta Astral Completa", title_style))
+            story.append(Spacer(1, 0.3*inch))
+            
+            # Datos Personales
+            story.append(Paragraph("📋 Datos Personales", heading_style))
+            datos_text = f"""
+            <b>Fecha:</b> {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}<br/>
+            <b>Ubicación:</b> Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}<br/>
+            <b>Zona Horaria:</b> {self.datos.get('zona_horaria', 'UTC')}<br/>
+            <b>Fecha UTC:</b> {self.datos.get('fecha_utc', 'N/A')}
+            """
+            story.append(Paragraph(datos_text, normal_style))
+            story.append(Spacer(1, 0.2*inch))
+            
+            # Carta Astral Visual
+            if self.chart_image:
+                try:
+                    story.append(Paragraph("🌟 Carta Astral Visual", heading_style))
+                    self.chart_image.seek(0)
+                    img = RLImage(self.chart_image, width=4.5*inch, height=4.5*inch)
+                    story.append(img)
+                    story.append(Spacer(1, 0.3*inch))
+                except Exception as e:
+                    print(f"⚠️ Error añadiendo imagen al PDF: {e}", file=sys.stderr)
+            
+            # Tabla de Planetas
+            story.append(Paragraph("🪐 Posiciones Planetarias", heading_style))
+            
+            planetas_data = [['Planeta', 'Posición', 'Casa', 'Estado']]
+            for nombre, pos in self.planetas.items():
+                if pos:
+                    retro = 'Retrógrado' if pos.get('retrogrado', False) else ''
+                    casa = f"Casa {pos.get('casa', '?')}"
+                    planetas_data.append([nombre, pos['texto'], casa, retro])
+            
+            # Añadir Parte de Fortuna
+            pf = self.angulos.get('parte_fortuna', {})
+            planetas_data.append(['Parte de Fortuna', pf.get('texto', 'N/A'), '-', '-'])
+            
+            planetas_table = Table(planetas_data, colWidths=[1.5*inch, 2*inch, 1*inch, 1.5*inch])
+            planetas_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ]))
+            
+            story.append(planetas_table)
+            story.append(Spacer(1, 0.3*inch))
+            
+            # Ángulos
+            story.append(Paragraph("🔺 Ángulos Principales", heading_style))
+            angulos_text = f"""
+            <b>Ascendente:</b> {self.angulos.get('ascendente', {}).get('texto', 'N/A')}<br/>
+            <b>Medio Cielo:</b> {self.angulos.get('medio_cielo', {}).get('texto', 'N/A')}
+            """
+            story.append(Paragraph(angulos_text, normal_style))
+            story.append(Spacer(1, 0.2*inch))
+            
+            # Casas
+            story.append(Paragraph("🏠 Cúspides de Casas (Placidus)", heading_style))
+            casas_data = [['Casa', 'Cúspide']]
+            for casa in self.casas:
+                casas_data.append([f"Casa {casa['numero']}", casa['texto']])
+            
+            casas_table = Table(casas_data, colWidths=[1.5*inch, 4.5*inch])
+            casas_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ]))
+            
+            story.append(casas_table)
+            story.append(PageBreak())
+            
+            # Análisis
+            story.append(Paragraph("📖 Análisis Psico-Astrológico", heading_style))
+            # Dividir el análisis en párrafos
+            for parrafo in self.analysis.split('\n\n'):
+                if parrafo.strip():
+                    story.append(Paragraph(parrafo.strip(), normal_style))
+                    story.append(Spacer(1, 0.1*inch))
+            
+            # Footer
+            story.append(Spacer(1, 0.3*inch))
+            footer_text = f"<i>Informe generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}</i>"
+            footer_style = ParagraphStyle('Footer', parent=styles['Normal'], 
+                                          fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
+            story.append(Paragraph(footer_text, footer_style))
         
             # Construir PDF
             try:
@@ -550,88 +550,88 @@ class ReportGenerator:
         
         try:
             doc = Document()
-        
-        # Configurar estilos del documento
-        style = doc.styles['Normal']
-        style.font.name = 'Calibri'
-        style.font.size = Pt(11)
-        
-        # Título
-        title = doc.add_heading('🌟 Carta Astral Completa', level=0)
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title.runs[0].font.color.rgb = RGBColor(102, 126, 234)
-        
-        doc.add_paragraph()
-        
-        # Datos Personales
-        doc.add_heading('📋 Datos Personales', level=1)
-        doc.add_paragraph(f"Fecha: {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}")
-        doc.add_paragraph(f"Ubicación: Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}")
-        doc.add_paragraph(f"Zona Horaria: {self.datos.get('zona_horaria', 'UTC')}")
-        doc.add_paragraph(f"Fecha UTC: {self.datos.get('fecha_utc', 'N/A')}")
-        
-        # Posiciones Planetarias
-        doc.add_heading('🪐 Posiciones Planetarias', level=1)
-        
-        table = doc.add_table(rows=1, cols=4)
-        table.style = 'Light Grid Accent 1'
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = 'Planeta'
-        hdr_cells[1].text = 'Posición'
-        hdr_cells[2].text = 'Casa'
-        hdr_cells[3].text = 'Estado'
-        
-        for nombre, pos in self.planetas.items():
-            if pos:
-                row_cells = table.add_row().cells
-                row_cells[0].text = nombre
-                row_cells[1].text = pos['texto']
-                row_cells[2].text = f"Casa {pos.get('casa', '?')}"
-                row_cells[3].text = 'Retrógrado' if pos.get('retrogrado', False) else ''
-        
-        # Parte de Fortuna
-        pf = self.angulos.get('parte_fortuna', {})
-        row_cells = table.add_row().cells
-        row_cells[0].text = 'Parte de Fortuna'
-        row_cells[1].text = pf.get('texto', 'N/A')
-        row_cells[2].text = '-'
-        row_cells[3].text = '-'
-        
-        doc.add_paragraph()
-        
-        # Ángulos
-        doc.add_heading('🔺 Ángulos Principales', level=1)
-        doc.add_paragraph(f"Ascendente: {self.angulos.get('ascendente', {}).get('texto', 'N/A')}")
-        doc.add_paragraph(f"Medio Cielo: {self.angulos.get('medio_cielo', {}).get('texto', 'N/A')}")
-        
-        # Casas
-        doc.add_heading('🏠 Cúspides de Casas (Placidus)', level=1)
-        
-        casas_table = doc.add_table(rows=1, cols=2)
-        casas_table.style = 'Light Grid Accent 1'
-        hdr_cells = casas_table.rows[0].cells
-        hdr_cells[0].text = 'Casa'
-        hdr_cells[1].text = 'Cúspide'
-        
-        for casa in self.casas:
-            row_cells = casas_table.add_row().cells
-            row_cells[0].text = f"Casa {casa['numero']}"
-            row_cells[1].text = casa['texto']
-        
-        doc.add_page_break()
-        
-        # Análisis
-        doc.add_heading('📖 Análisis Psico-Astrológico', level=1)
-        for parrafo in self.analysis.split('\n\n'):
-            if parrafo.strip():
-                doc.add_paragraph(parrafo.strip())
-        
-        # Footer
-        doc.add_paragraph()
-        footer = doc.add_paragraph(f"Informe generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-        footer.runs[0].font.size = Pt(9)
-        footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
-        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Configurar estilos del documento
+            style = doc.styles['Normal']
+            style.font.name = 'Calibri'
+            style.font.size = Pt(11)
+            
+            # Título
+            title = doc.add_heading('🌟 Carta Astral Completa', level=0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            title.runs[0].font.color.rgb = RGBColor(102, 126, 234)
+            
+            doc.add_paragraph()
+            
+            # Datos Personales
+            doc.add_heading('📋 Datos Personales', level=1)
+            doc.add_paragraph(f"Fecha: {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}")
+            doc.add_paragraph(f"Ubicación: Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}")
+            doc.add_paragraph(f"Zona Horaria: {self.datos.get('zona_horaria', 'UTC')}")
+            doc.add_paragraph(f"Fecha UTC: {self.datos.get('fecha_utc', 'N/A')}")
+            
+            # Posiciones Planetarias
+            doc.add_heading('🪐 Posiciones Planetarias', level=1)
+            
+            table = doc.add_table(rows=1, cols=4)
+            table.style = 'Light Grid Accent 1'
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'Planeta'
+            hdr_cells[1].text = 'Posición'
+            hdr_cells[2].text = 'Casa'
+            hdr_cells[3].text = 'Estado'
+            
+            for nombre, pos in self.planetas.items():
+                if pos:
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = nombre
+                    row_cells[1].text = pos['texto']
+                    row_cells[2].text = f"Casa {pos.get('casa', '?')}"
+                    row_cells[3].text = 'Retrógrado' if pos.get('retrogrado', False) else ''
+            
+            # Parte de Fortuna
+            pf = self.angulos.get('parte_fortuna', {})
+            row_cells = table.add_row().cells
+            row_cells[0].text = 'Parte de Fortuna'
+            row_cells[1].text = pf.get('texto', 'N/A')
+            row_cells[2].text = '-'
+            row_cells[3].text = '-'
+            
+            doc.add_paragraph()
+            
+            # Ángulos
+            doc.add_heading('🔺 Ángulos Principales', level=1)
+            doc.add_paragraph(f"Ascendente: {self.angulos.get('ascendente', {}).get('texto', 'N/A')}")
+            doc.add_paragraph(f"Medio Cielo: {self.angulos.get('medio_cielo', {}).get('texto', 'N/A')}")
+            
+            # Casas
+            doc.add_heading('🏠 Cúspides de Casas (Placidus)', level=1)
+            
+            casas_table = doc.add_table(rows=1, cols=2)
+            casas_table.style = 'Light Grid Accent 1'
+            hdr_cells = casas_table.rows[0].cells
+            hdr_cells[0].text = 'Casa'
+            hdr_cells[1].text = 'Cúspide'
+            
+            for casa in self.casas:
+                row_cells = casas_table.add_row().cells
+                row_cells[0].text = f"Casa {casa['numero']}"
+                row_cells[1].text = casa['texto']
+            
+            doc.add_page_break()
+            
+            # Análisis
+            doc.add_heading('📖 Análisis Psico-Astrológico', level=1)
+            for parrafo in self.analysis.split('\n\n'):
+                if parrafo.strip():
+                    doc.add_paragraph(parrafo.strip())
+            
+            # Footer
+            doc.add_paragraph()
+            footer = doc.add_paragraph(f"Informe generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+            footer.runs[0].font.size = Pt(9)
+            footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
+            footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
             # Guardar en buffer
             buffer = BytesIO()
