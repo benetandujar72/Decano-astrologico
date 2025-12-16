@@ -1,6 +1,6 @@
 /**
  * Vista detallada de usuario para administrador
- * Muestra toda la información del usuario: plan, cartas, facturación, consultas, etc.
+ * Muestra toda la informaciรณn del usuario: plan, cartas, facturaciรณn, consultas, etc.
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -100,7 +100,17 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
       }
 
       const userData = await userResponse.json();
-      setUserDetails(userData);
+      
+      // El endpoint ahora devuelve directamente los datos del usuario
+      setUserDetails({
+        _id: userData._id || userId,
+        username: userData.username || userData.user?.username,
+        email: userData.email || userData.user?.email,
+        role: userData.role || userData.user?.role || 'user',
+        active: userData.active !== undefined ? userData.active : (userData.user?.active !== false),
+        created_at: userData.created_at || userData.user?.created_at,
+        subscription: userData.subscription
+      });
 
       // Obtener cartas del usuario
       try {
@@ -248,11 +258,11 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Información Básica */}
+          {/* Informaciรณn Bรกsica */}
           <div className="bg-gray-800 rounded-xl p-6">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <User className="w-5 h-5" />
-              Información Básica
+              Informaciรณn Bรกsica
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
@@ -314,17 +324,17 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
                     <p className="text-white">{new Date(userDetails.subscription.end_date).toLocaleDateString('es-ES')}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 mb-1">Ciclo de Facturación</p>
+                    <p className="text-gray-400 mb-1">Ciclo de Facturaciรณn</p>
                     <p className="text-white capitalize">{userDetails.subscription.billing_cycle}</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-gray-400">Sin suscripción activa (Plan FREE)</p>
+              <p className="text-gray-400">Sin suscripciรณn activa (Plan FREE)</p>
             )}
           </div>
 
-          {/* Cartas Astrológicas */}
+          {/* Cartas Astrolรณgicas */}
           <div className="bg-gray-800 rounded-xl p-6">
             <button
               onClick={() => toggleSection('charts')}
@@ -332,7 +342,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
             >
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Cartas Astrológicas ({charts.length})
+                Cartas Astrolรณgicas ({charts.length})
               </h3>
               {expandedSections.charts ? (
                 <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -361,7 +371,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
             )}
           </div>
 
-          {/* Facturación */}
+          {/* Facturaciรณn */}
           <div className="bg-gray-800 rounded-xl p-6">
             <button
               onClick={() => toggleSection('payments')}
@@ -469,7 +479,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
                       <div>
                         <p className="text-white font-semibold">{booking.service_name}</p>
                         <p className="text-gray-400 text-xs">
-                          {new Date(booking.created_at).toLocaleDateString('es-ES')} - {booking.final_price}€
+                          {new Date(booking.created_at).toLocaleDateString('es-ES')} - {booking.final_price}โ�ฌ
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.status)}`}>
