@@ -81,15 +81,75 @@ async def get_all_users(
 
     print(f"[ADMIN] Listando usuarios: query={query}, skip={skip}, limit={limit}, sort={sort_by}:{sort_order}", file=sys.stderr)
 
-    # Obtener usuarios
-    users_cursor = users_collection.find(query).sort(sort_by, sort_direction).skip(skip).limit(limit)
-    users = await users_cursor.to_list(length=limit)
-    total = await users_collection.count_documents(query)
+    # Obtener usuarios - Asegurar que no haya duplicados por email
+    users_cursor = users_collection.find(query).sort(sort_by, sort_direction)
+    all_users = await users_cursor.to_list(length=None)
+    
+    # Eliminar duplicados por email (mantener el más reciente por fecha de creación)
+    seen_emails = {}
+    seen_ids = set()
+    unique_users = []
+    
+    # Primero, ordenar por fecha de creación descendente para mantener los más recientes
+    all_users_sorted = sorted(
+        all_users,
+        key=lambda x: x.get("created_at", ""),
+        reverse=True
+    )
+    
+    for user in all_users_sorted:
+        user_id = str(user.get("_id", ""))
+        email = (user.get("email", "") or "").lower().strip()
+        
+        # Si ya vimos este ID, saltarlo
+        if user_id in seen_ids:
+            continue
+        seen_ids.add(user_id)
+        
+        # Si tiene email y ya lo vimos, saltarlo (duplicado)
+        if email and email in seen_emails:
+            print(f"[ADMIN] Usuario duplicado detectado: {email} (ID: {user_id}), saltando...", file=sys.stderr)
+            continue
+        
+        # Añadir a lista única
+        if email:
+            seen_emails[email] = user
+        unique_users.append(user)
+    
+    # Aplicar paginación después de eliminar duplicados
+    total = len(unique_users)
+    users = unique_users[skip:skip + limit]
+    
+    # Obtener suscripciones para todos los usuarios
+    user_ids = [str(user["_id"]) for user in users]
+    subscriptions = {}
+    if user_ids:
+        subs_cursor = subscriptions_collection.find({"user_id": {"$in": user_ids}})
+        subs_list = await subs_cursor.to_list(length=None)
+        for sub in subs_list:
+            subscriptions[sub.get("user_id")] = sub
 
-    # Limpiar datos sensibles
+    # Limpiar datos sensibles y añadir información de suscripción
     for user in users:
-        user["_id"] = str(user["_id"])
+        user_id = str(user["_id"])
+        user["_id"] = user_id
         user.pop("hashed_password", None)
+        
+        # Añadir información de suscripción
+        subscription = subscriptions.get(user_id)
+        if subscription:
+            user["subscription"] = {
+                "tier": subscription.get("tier", "free"),
+                "status": subscription.get("status", "inactive"),
+                "start_date": subscription.get("start_date"),
+                "end_date": subscription.get("end_date"),
+                "billing_cycle": subscription.get("billing_cycle")
+            }
+        else:
+            user["subscription"] = {
+                "tier": "free",
+                "status": "inactive"
+            }
 
     total_pages = (total + limit - 1) // limit  # Ceiling division
     current_page = (skip // limit) + 1
@@ -116,30 +176,59 @@ async def get_user_details(
     """Obtiene detalles completos de un usuario"""
     from bson import ObjectId
     
-    # Usuario
-    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    # Intentar buscar por ObjectId primero
+    try:
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except:
+        user = None
+    
+    # Si no se encuentra, buscar por user_id como string
+    if not user:
+        user = await users_collection.find_one({"user_id": user_id})
+    
+    # Si aún no se encuentra, buscar por email
+    if not user:
+        user = await users_collection.find_one({"email": user_id})
+    
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     user["_id"] = str(user["_id"])
+    user_id_str = user["_id"]
     user.pop("hashed_password", None)
     
     # Suscripción
-    subscription = await subscriptions_collection.find_one({"user_id": user_id})
+    subscription = await subscriptions_collection.find_one({"user_id": user_id_str})
+    if not subscription:
+        # Intentar buscar por email también
+        subscription = await subscriptions_collection.find_one({"user_id": user.get("email")})
     
     # Cartas
-    charts_count = await db.charts.count_documents({"user_id": user_id})
+    charts_count = await db.charts.count_documents({"user_id": user_id_str})
     
     # Pagos
-    payments_cursor = payments_collection.find({"user_id": user_id}).limit(10)
+    payments_cursor = payments_collection.find({"user_id": user_id_str}).limit(10)
     payments = await payments_cursor.to_list(length=10)
     for payment in payments:
         payment["_id"] = str(payment["_id"])
     
+    # Consultas con experto IA
+    consultations_count = await db.expert_consultations.count_documents({"user_id": user_id_str})
+    
+    # Reservas de servicios
+    bookings_count = await db.service_bookings.count_documents({"user_id": user_id_str})
+    
     return {
-        "user": user,
+        "_id": user_id_str,
+        "username": user.get("username"),
+        "email": user.get("email"),
+        "role": user.get("role", "user"),
+        "active": user.get("active", True),
+        "created_at": user.get("created_at"),
         "subscription": subscription,
         "charts_count": charts_count,
+        "consultations_count": consultations_count,
+        "bookings_count": bookings_count,
         "recent_payments": payments
     }
 

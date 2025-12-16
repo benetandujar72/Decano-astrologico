@@ -76,6 +76,13 @@ interface UserData {
   role: string;
   created_at: string;
   active?: boolean;
+  subscription?: {
+    tier: string;
+    status: string;
+    start_date?: string;
+    end_date?: string;
+    billing_cycle?: string;
+  };
 }
 
 interface SpecializedPrompt {
@@ -909,15 +916,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {users.map((user) => (
+                  {users.map((user) => {
+                    const subscription = user.subscription || { tier: 'free', status: 'inactive' };
+                    const getTierColor = (tier: string) => {
+                      switch (tier?.toLowerCase()) {
+                        case 'enterprise': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                        case 'premium': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+                        case 'pro': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                        default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+                      }
+                    };
+                    
+                    return (
                     <div key={user._id} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-1">
                           <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
                             {user.username[0].toUpperCase()}
                           </div>
-                          <div>
-                            <div className="text-white font-semibold flex items-center gap-2">
+                          <div className="flex-1">
+                            <div className="text-white font-semibold flex items-center gap-2 flex-wrap">
                               {user.username}
                               {!user.active && (
                                 <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30">
@@ -926,6 +944,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                               )}
                             </div>
                             <div className="text-gray-400 text-sm">{user.email}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getTierColor(subscription.tier)}`}>
+                                {subscription.tier.toUpperCase()}
+                              </span>
+                              {subscription.status === 'active' && (
+                                <span className="text-xs text-green-400">● Activo</span>
+                              )}
+                              {subscription.end_date && (
+                                <span className="text-xs text-gray-500">
+                                  Hasta: {new Date(subscription.end_date).toLocaleDateString('es-ES')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -995,7 +1026,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
