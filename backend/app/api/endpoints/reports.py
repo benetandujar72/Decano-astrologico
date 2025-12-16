@@ -71,21 +71,56 @@ async def generate_report_endpoint(
         
         # Verificar permisos según formato
         user_id = str(current_user.get("_id"))
-        if format_lower == 'pdf':
-            await require_feature(user_id, "export_pdf")
-        elif format_lower in ['docx', 'doc']:
-            await require_feature(user_id, "export_docx")
-        elif format_lower in ['html', 'web']:
-            await require_feature(user_id, "export_html")
-        # markdown/md siempre disponible
+        try:
+            if format_lower == 'pdf':
+                await require_feature(user_id, "export_pdf")
+            elif format_lower in ['docx', 'doc']:
+                await require_feature(user_id, "export_docx")
+            elif format_lower in ['html', 'web']:
+                await require_feature(user_id, "export_html")
+            # markdown/md siempre disponible
+        except HTTPException as perm_error:
+            print(f"[REPORTS] ❌ Error de permisos: {perm_error.detail}", file=sys.stderr)
+            raise perm_error
+        except Exception as perm_e:
+            print(f"[REPORTS] ⚠️ Error verificando permisos (continuando): {perm_e}", file=sys.stderr)
+            # Continuar si hay error verificando permisos (puede ser que el usuario no tenga suscripción)
+        
+        # Validar que carta_data tenga la estructura mínima necesaria
+        if not request.carta_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="carta_data es requerido"
+            )
         
         # Generar informe (con portada si hay nombre)
-        report_content = generate_report(
-            carta_data=request.carta_data,
-            format=format_lower,
-            analysis_text=request.analysis_text,
-            nombre=request.nombre
-        )
+        try:
+            report_content = generate_report(
+                carta_data=request.carta_data,
+                format=format_lower,
+                analysis_text=request.analysis_text,
+                nombre=request.nombre
+            )
+        except ImportError as import_err:
+            print(f"[REPORTS] ❌ Error de dependencias: {import_err}", file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail=f"El formato {format_lower} requiere dependencias adicionales. Contacte al administrador. Error: {str(import_err)}"
+            )
+        except ValueError as val_err:
+            print(f"[REPORTS] ❌ Error de validación: {val_err}", file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(val_err)
+            )
+        except Exception as gen_err:
+            print(f"[REPORTS] ❌ Error en generación: {type(gen_err).__name__}: {gen_err}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error generando informe en formato {format_lower}: {str(gen_err)}"
+            )
         
         # Determinar tipo MIME y nombre de archivo
         if format_lower == 'pdf':
@@ -106,13 +141,26 @@ async def generate_report_endpoint(
         
         # Generar nombre de archivo
         datos = request.carta_data.get('datos_entrada', {})
-        fecha = datos.get('fecha', 'fecha').replace('-', '')
+        fecha = datos.get('fecha', 'fecha').replace('-', '') if datos.get('fecha') else 'fecha'
         filename = f"carta_astral_{fecha}.{extension}"
         
         print(f"[REPORTS] ✅ Informe generado: {filename}", file=sys.stderr)
         
         # Para PDF y DOCX, retornar como stream
         if format_lower in ['pdf', 'docx', 'doc']:
+            # Asegurar que report_content sea un BytesIO
+            if isinstance(report_content, str):
+                # Si es string, convertir a bytes
+                report_content = report_content.encode('utf-8')
+            elif hasattr(report_content, 'read'):
+                # Si es BytesIO, está bien
+                pass
+            else:
+                # Si es bytes, convertir a BytesIO
+                from io import BytesIO
+                buffer = BytesIO(report_content)
+                report_content = buffer
+            
             return StreamingResponse(
                 report_content,
                 media_type=media_type,
@@ -122,6 +170,9 @@ async def generate_report_endpoint(
             )
         else:
             # Para HTML y Markdown, retornar como texto
+            if isinstance(report_content, bytes):
+                report_content = report_content.decode('utf-8')
+            
             return Response(
                 content=report_content,
                 media_type=media_type,
@@ -130,20 +181,13 @@ async def generate_report_endpoint(
                 }
             )
         
-    except ImportError as e:
-        print(f"[REPORTS] ❌ Error de dependencias: {e}", file=sys.stderr)
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=f"El formato {request.format} requiere dependencias adicionales. Contacte al administrador."
-        )
-    except ValueError as e:
-        print(f"[REPORTS] ❌ Error de validación: {e}", file=sys.stderr)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    except HTTPException:
+        # Re-lanzar HTTPExceptions sin modificar
+        raise
     except Exception as e:
-        print(f"[REPORTS] ❌ Error generando informe: {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"[REPORTS] ❌ Error inesperado: {type(e).__name__}: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generando informe: {str(e)}"

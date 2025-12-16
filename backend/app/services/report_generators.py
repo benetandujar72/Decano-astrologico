@@ -368,12 +368,15 @@ class ReportGenerator:
     
     def generate_pdf(self) -> BytesIO:
         """Genera informe en formato PDF"""
+        import sys
+        
         if not PDF_AVAILABLE:
             raise ImportError("ReportLab no está instalado. Instala con: pip install reportlab")
         
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                                topMargin=0.75*inch, bottomMargin=0.75*inch)
+        try:
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                                    topMargin=0.75*inch, bottomMargin=0.75*inch)
         
         # Estilos
         styles = getSampleStyleSheet()
@@ -509,29 +512,44 @@ class ReportGenerator:
                                       fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
         story.append(Paragraph(footer_text, footer_style))
         
-        # Construir PDF
-        doc.build(story)
-        buffer.seek(0)
-        
-        # Añadir portada mística al inicio
-        if self.cover_image and COVER_AVAILABLE:
+            # Construir PDF
             try:
-                final_buffer = add_cover_to_pdf(buffer, self.cover_image)
-                return final_buffer
-            except Exception as e:
-                print(f"⚠️ Error añadiendo portada al PDF: {e}")
-                return buffer
-        
-        return buffer
+                doc.build(story)
+                buffer.seek(0)
+            except Exception as build_err:
+                print(f"❌ Error construyendo PDF: {build_err}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                raise Exception(f"Error al construir el PDF: {str(build_err)}")
+            
+            # Añadir portada mística al inicio
+            if self.cover_image and COVER_AVAILABLE:
+                try:
+                    final_buffer = add_cover_to_pdf(buffer, self.cover_image)
+                    return final_buffer
+                except Exception as e:
+                    print(f"⚠️ Error añadiendo portada al PDF: {e}", file=sys.stderr)
+                    buffer.seek(0)
+                    return buffer
+            
+            return buffer
+        except Exception as e:
+            print(f"❌ Error en generate_pdf: {type(e).__name__}: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
     
     # ===================== GENERADOR DOCX =====================
     
     def generate_docx(self) -> BytesIO:
         """Genera informe en formato DOCX"""
+        import sys
+        
         if not DOCX_AVAILABLE:
             raise ImportError("python-docx no está instalado. Instala con: pip install python-docx")
         
-        doc = Document()
+        try:
+            doc = Document()
         
         # Configurar estilos del documento
         style = doc.styles['Normal']
@@ -615,11 +633,22 @@ class ReportGenerator:
         footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
         footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
-        # Guardar en buffer
-        buffer = BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
-        return buffer
+            # Guardar en buffer
+            buffer = BytesIO()
+            try:
+                doc.save(buffer)
+                buffer.seek(0)
+                return buffer
+            except Exception as save_err:
+                print(f"❌ Error guardando DOCX: {save_err}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                raise Exception(f"Error al guardar el documento DOCX: {str(save_err)}")
+        except Exception as e:
+            print(f"❌ Error en generate_docx: {type(e).__name__}: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
 
 
 def generate_report(carta_data: Dict, format: str, analysis_text: Optional[str] = None, nombre: str = ""):
