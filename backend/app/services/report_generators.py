@@ -632,7 +632,7 @@ class ReportGenerator:
             footer.runs[0].font.size = Pt(9)
             footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
             footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
+            
             # Guardar en buffer
             buffer = BytesIO()
             try:
