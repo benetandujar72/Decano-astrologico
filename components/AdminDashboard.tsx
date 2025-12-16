@@ -426,6 +426,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
         throw new Error(errorMsg);
       }
 
+      // Filtrar solo los campos que realmente han cambiado
+      const updateData: { username?: string; email?: string; role?: string } = {};
+      
+      if (userData.username !== undefined && userData.username !== selectedUser.username) {
+        updateData.username = userData.username;
+      }
+      
+      if (userData.email !== undefined && userData.email !== selectedUser.email) {
+        updateData.email = userData.email;
+      }
+      
+      if (userData.role !== undefined && userData.role !== selectedUser.role) {
+        updateData.role = userData.role;
+      }
+
+      // Si no hay cambios, no hacer nada
+      if (Object.keys(updateData).length === 0) {
+        setMessage({ type: 'success', text: 'No hay cambios para guardar' });
+        setLoading(false);
+        return;
+      }
+
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${API_URL}/admin/users/${selectedUser._id}`, {
@@ -434,7 +456,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(userData)
+        body: JSON.stringify(updateData)
       });
 
       if (response.ok) {
@@ -1690,7 +1712,29 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
     setError(null);
     
     try {
-      await onSave(formData);
+      // Solo enviar los campos que han cambiado
+      const changes: { username?: string; email?: string; role?: string } = {};
+      
+      if (formData.username !== user.username) {
+        changes.username = formData.username;
+      }
+      
+      if (formData.email !== user.email) {
+        changes.email = formData.email;
+      }
+      
+      if (formData.role !== user.role) {
+        changes.role = formData.role;
+      }
+      
+      // Si no hay cambios, mostrar mensaje y cerrar
+      if (Object.keys(changes).length === 0) {
+        setError('No hay cambios para guardar');
+        setSaving(false);
+        return;
+      }
+      
+      await onSave(changes);
       // Si onSave se completa sin error, el modal se cierra desde AdminDashboard
       // pero por si acaso, resetear el estado después de un breve delay
       setTimeout(() => {
