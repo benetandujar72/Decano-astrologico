@@ -69,6 +69,19 @@ class ReportGenerator:
         self.casas = carta_data.get('casas', [])
         self.angulos = carta_data.get('angulos', {})
         self.nombre = nombre
+
+        # Normalizar campos entre versiones (compatibilidad)
+        self.fecha_local = self.datos.get('fecha_local') or self.datos.get('fecha') or 'N/A'
+        self.hora_local = self.datos.get('hora_local') or self.datos.get('hora') or 'N/A'
+        self.zona_horaria = self.datos.get('zona_horaria') or 'UTC'
+        self.fecha_utc = self.datos.get('fecha_utc') or 'N/A'
+
+        # Inyectar nombre al payload para que otros generadores puedan usarlo si quieren
+        try:
+            if self.nombre and not self.datos.get('nombre'):
+                self.datos['nombre'] = self.nombre
+        except Exception:
+            pass
         
         # Generar imagen de carta astral
         self.chart_image = None
@@ -88,8 +101,8 @@ class ReportGenerator:
                 
                 self.cover_image = generate_mystical_cover(
                     nombre=nombre,
-                    fecha=self.datos.get('fecha', ''),
-                    hora=self.datos.get('hora', ''),
+                    fecha=self.fecha_local if self.fecha_local != 'N/A' else '',
+                    hora=self.hora_local if self.hora_local != 'N/A' else '',
                     lugar=f"Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}",
                     tipo_analisis="Carta Natal Completa",
                     ascendente=asc_signo,
@@ -107,10 +120,10 @@ class ReportGenerator:
 
 ## 📋 Datos Personales
 
-- **Fecha:** {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}
+- **Fecha:** {self.fecha_local} {self.hora_local}
 - **Ubicación:** Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}
-- **Zona Horaria:** {self.datos.get('zona_horaria', 'UTC')}
-- **Fecha UTC:** {self.datos.get('fecha_utc', 'N/A')}
+- **Zona Horaria:** {self.zona_horaria}
+- **Fecha UTC:** {self.fecha_utc}
 
 ---
 
@@ -258,10 +271,10 @@ class ReportGenerator:
         
         <div class="data-section">
             <h2>📋 Datos Personales</h2>
-            <p><strong>Fecha:</strong> {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}</p>
+            <p><strong>Fecha:</strong> {self.fecha_local} {self.hora_local}</p>
             <p><strong>Ubicación:</strong> Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}</p>
-            <p><strong>Zona Horaria:</strong> {self.datos.get('zona_horaria', 'UTC')}</p>
-            <p><strong>Fecha UTC:</strong> {self.datos.get('fecha_utc', 'N/A')}</p>
+            <p><strong>Zona Horaria:</strong> {self.zona_horaria}</p>
+            <p><strong>Fecha UTC:</strong> {self.fecha_utc}</p>
         </div>
         """
         
@@ -418,10 +431,10 @@ class ReportGenerator:
             # Datos Personales
             story.append(Paragraph("📋 Datos Personales", heading_style))
             datos_text = f"""
-            <b>Fecha:</b> {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}<br/>
+            <b>Fecha:</b> {self.fecha_local} {self.hora_local}<br/>
             <b>Ubicación:</b> Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}<br/>
-            <b>Zona Horaria:</b> {self.datos.get('zona_horaria', 'UTC')}<br/>
-            <b>Fecha UTC:</b> {self.datos.get('fecha_utc', 'N/A')}
+            <b>Zona Horaria:</b> {self.zona_horaria}<br/>
+            <b>Fecha UTC:</b> {self.fecha_utc}
             """
             story.append(Paragraph(datos_text, normal_style))
             story.append(Spacer(1, 0.2*inch))
@@ -565,10 +578,10 @@ class ReportGenerator:
             
             # Datos Personales
             doc.add_heading('📋 Datos Personales', level=1)
-            doc.add_paragraph(f"Fecha: {self.datos.get('fecha', 'N/A')} {self.datos.get('hora', 'N/A')}")
+            doc.add_paragraph(f"Fecha: {self.fecha_local} {self.hora_local}")
             doc.add_paragraph(f"Ubicación: Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}")
-            doc.add_paragraph(f"Zona Horaria: {self.datos.get('zona_horaria', 'UTC')}")
-            doc.add_paragraph(f"Fecha UTC: {self.datos.get('fecha_utc', 'N/A')}")
+            doc.add_paragraph(f"Zona Horaria: {self.zona_horaria}")
+            doc.add_paragraph(f"Fecha UTC: {self.fecha_utc}")
             
             # Posiciones Planetarias
             doc.add_heading('🪐 Posiciones Planetarias', level=1)

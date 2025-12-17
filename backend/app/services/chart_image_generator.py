@@ -263,7 +263,11 @@ def generate_chart_image_matplotlib(
     
     # Título
     datos_entrada = carta_data.get('datos_entrada', {})
-    titulo = f"Carta Natal - {datos_entrada.get('fecha', 'N/A')}"
+    fecha = datos_entrada.get('fecha_local') or datos_entrada.get('fecha') or 'N/A'
+    hora = datos_entrada.get('hora_local') or datos_entrada.get('hora') or ''
+    nombre = datos_entrada.get('nombre') or ''
+    titulo_base = f"Carta Natal - {fecha}" if hora == '' else f"Carta Natal - {fecha} {hora}"
+    titulo = f"{titulo_base} - {nombre}" if nombre else titulo_base
     ax.text(0, -1.35, titulo,
            fontsize=14, ha='center', va='center',
            color='#e2e8f0', weight='bold', zorder=8)
@@ -329,7 +333,11 @@ def generate_chart_image_simple(
     
     # Texto central
     datos_entrada = carta_data.get('datos_entrada', {})
-    texto = f"Carta Natal\n{datos_entrada.get('fecha', 'N/A')}"
+    fecha = datos_entrada.get('fecha_local') or datos_entrada.get('fecha') or 'N/A'
+    hora = datos_entrada.get('hora_local') or datos_entrada.get('hora') or ''
+    nombre = datos_entrada.get('nombre') or ''
+    linea_fecha = f"{fecha} {hora}".strip() if hora else fecha
+    texto = f"Carta Natal\n{linea_fecha}" if not nombre else f"Carta Natal\n{nombre}\n{linea_fecha}"
     draw.text((center_x, center_y), texto, fill='#e2e8f0', anchor='mm')
     
     # Guardar en buffer
