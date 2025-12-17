@@ -115,7 +115,7 @@ def calcular_julian_day(
         zona_horaria: Zona horaria IANA (opcional, se calcula automáticamente si no se provee)
 
     Returns:
-        Tupla (julian_day_et, datetime_utc, zona_horaria_detectada)
+        Tupla (julian_day_ut, datetime_utc, zona_horaria_detectada)
 
     Ejemplos:
         >>> # Madrid - Detección automática
@@ -139,14 +139,10 @@ def calcular_julian_day(
     # Hora decimal para Swiss Ephemeris
     hora_utc_dec = dt_utc.hour + dt_utc.minute/60.0 + dt_utc.second/3600.0
 
-    # Calcular Julian Day (UT)
+    # Calcular Julian Day (UT) - es el valor que espera swe.calc_ut() y swe.houses()
     jd_ut = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, hora_utc_dec)
 
-    # Convertir a Ephemeris Time (ET) para mayor precisión
-    delta_t = swe.deltat(jd_ut)
-    jd_et = jd_ut + delta_t
-
-    return jd_et, dt_utc, zona_horaria
+    return jd_ut, dt_utc, zona_horaria
 
 
 def calcular_posiciones_planetas(jd_ut: float, lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Dict]:
@@ -347,9 +343,8 @@ def calcular_carta_completa(
         >>> carta['datos_entrada']['zona_horaria']
         'Europe/Madrid'
     """
-    # 1. Calcular Julian Day (ahora con detección automática de timezone)
-    jd_et, dt_utc, zona_horaria_detectada = calcular_julian_day(fecha, hora, latitud, longitud, zona_horaria)
-    jd_ut = jd_et - swe.deltat(jd_et - swe.deltat(jd_et))  # Aproximación de UT
+    # 1. Calcular Julian Day (UT) con detección automática de timezone
+    jd_ut, dt_utc, zona_horaria_detectada = calcular_julian_day(fecha, hora, latitud, longitud, zona_horaria)
 
     # 2. Calcular posiciones planetarias (con corrección topocéntrica)
     posiciones = calcular_posiciones_planetas(jd_ut, latitud, longitud)

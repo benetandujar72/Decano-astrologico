@@ -128,9 +128,33 @@ const App: React.FC = () => {
   const stepIntervalRef = useRef<number | null>(null);
   const t = TRANSLATIONS[lang];
 
+  const getValidToken = (): string | null => {
+    const token = localStorage.getItem('fraktal_token');
+    if (!token) return null;
+
+    // JWT exp está en segundos desde epoch
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+      const payload = JSON.parse(atob(padded));
+      const expSeconds = payload?.exp;
+      if (typeof expSeconds !== 'number') return token;
+
+      // 10s de margen para clocks desincronizados
+      const expiresAtMs = expSeconds * 1000;
+      if (Date.now() > (expiresAtMs - 10_000)) return null;
+      return token;
+    } catch {
+      return null;
+    }
+  };
+
   // Check token on mount
   useEffect(() => {
-    const token = localStorage.getItem('fraktal_token');
+    const token = getValidToken();
     const savedUser = localStorage.getItem('fraktal_user');
     
     if (token) {
@@ -145,6 +169,9 @@ const App: React.FC = () => {
       setMode(AppMode.INPUT);
       loadChartsFromApi();
       fetchSystemPrompt(); // Cargar prompt dinámico
+    } else {
+      // Token ausente o expirado/corrupto
+      handleLogout();
     }
   }, []);
 
@@ -153,7 +180,10 @@ const App: React.FC = () => {
       const charts = await api.getCharts();
       setSavedCharts(charts);
     } catch (e) {
-      if ((e as Error).message === 'Unauthorized') handleLogout();
+      if ((e as Error).message === 'Unauthorized') {
+        handleLogout();
+        return;
+      }
       console.error(e);
     }
   };
@@ -783,7 +813,12 @@ const App: React.FC = () => {
     setIsExporting(true);
     
     try {
-      const token = localStorage.getItem('fraktal_token');
+      const token = getValidToken();
+      if (!token) {
+        alert('Necesitas iniciar sesión para exportar informes.');
+        handleLogout();
+        return;
+      }
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       
       // Compilar el análisis completo como texto
@@ -826,7 +861,24 @@ ${analysisText}
       });
       
       if (!response.ok) {
-        throw new Error('Error generando informe');
+        // Intentar mostrar el mensaje real del backend (por ejemplo 403 por plan)
+        let detail = '';
+        try {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await response.json();
+            detail = data?.detail || data?.message || '';
+          } else {
+            detail = await response.text();
+          }
+        } catch {
+          // ignore
+        }
+        if (response.status === 401) {
+          handleLogout();
+          throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+        }
+        throw new Error(detail || `Error generando informe (HTTP ${response.status})`);
       }
       
       // Determinar tipo de archivo

@@ -12,10 +12,15 @@ if (import.meta.env.DEV) {
 
 const getHeaders = () => {
   const token = localStorage.getItem('fraktal_token');
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
 };
 
 export const api = {
@@ -46,6 +51,8 @@ export const api = {
 
   // CHARTS
   getCharts: async (): Promise<SavedChart[]> => {
+    const token = localStorage.getItem('fraktal_token');
+    if (!token) return [];
     const res = await fetch(`${API_URL}/charts/`, {
       headers: getHeaders()
     });

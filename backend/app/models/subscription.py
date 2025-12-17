@@ -230,13 +230,14 @@ SUBSCRIPTION_PLANS = {
         price_yearly=0.00,
         features=[
             "5 cartas natales por mes",
+            "Exportación PDF",
             "Exportación HTML básica",
             "Análisis estándar",
             "Almacenamiento 500MB"
         ],
         max_charts=5,
         max_storage_mb=500,
-        can_export_pdf=False,
+        can_export_pdf=True,
         can_export_docx=False,
         can_export_html=True,
         can_use_advanced_techniques=False,
