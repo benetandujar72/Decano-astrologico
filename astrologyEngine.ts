@@ -19,16 +19,27 @@ const SIGN_ELEMENTS: Record<string, string> = {
  */
 function degreeToZodiac(deg: number): { sign: string; degreeStr: string; absoluteDeg: number } {
   const normalized = (deg + 360) % 360;
-  const signIndex = Math.floor(normalized / 30);
-  const sign = ZODIAC_SIGNS[signIndex];
+  // Convert to degrees + minutes, rounding to the nearest minute for maximum precision.
+  // This avoids systematic under-rounding caused by Math.floor.
   const degreesInSign = normalized % 30;
-  
-  const d = Math.floor(degreesInSign);
-  const m = Math.floor((degreesInSign - d) * 60);
-  
+  const totalMinutesRounded = Math.round(degreesInSign * 60); // 0..1800
+
+  let d = Math.floor(totalMinutesRounded / 60);
+  let m = totalMinutesRounded % 60;
+
+  // Carry overflow (e.g., 29°59.6' -> 30°00') into next sign
+  let signIndex = Math.floor(normalized / 30);
+  if (d >= 30) {
+    d = 0;
+    m = 0;
+    signIndex = (signIndex + 1) % 12;
+  }
+
+  const sign = ZODIAC_SIGNS[signIndex];
+
   return {
     sign,
-    degreeStr: `${d}°${m.toString().padStart(2, '0')}'`,
+    degreeStr: `${d}°${m.toString().padStart(2, '0')}′`,
     absoluteDeg: normalized
   };
 }

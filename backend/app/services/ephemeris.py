@@ -58,24 +58,37 @@ def grado_a_zodiaco(deg: float, incluir_segundos: bool = True) -> Dict[str, any]
     pos_en_signo = deg % 30
 
     # Extraer grados, minutos y segundos
-    grados = int(pos_en_signo)
-    minutos_decimales = (pos_en_signo - grados) * 60
-    minutos = int(minutos_decimales)
-    segundos_decimales = (minutos_decimales - minutos) * 60
-    segundos = int(round(segundos_decimales))  # Redondear segundos
+    if incluir_segundos:
+        grados = int(pos_en_signo)
+        minutos_decimales = (pos_en_signo - grados) * 60
+        minutos = int(minutos_decimales)
+        segundos_decimales = (minutos_decimales - minutos) * 60
+        segundos = int(round(segundos_decimales))  # Redondear segundos
 
-    # Ajustar overflow de segundos → minutos → grados
-    if segundos >= 60:
+        # Ajustar overflow de segundos → minutos → grados
+        if segundos >= 60:
+            segundos = 0
+            minutos += 1
+
+        if minutos >= 60:
+            minutos = 0
+            grados += 1
+
+        if grados >= 30:
+            grados = 0
+            signo_idx = (signo_idx + 1) % 12
+    else:
+        # Máxima precisión a nivel de minuto: redondear al minuto más cercano
+        total_minutos = int(round(pos_en_signo * 60))  # 0..1800
+        grados = total_minutos // 60
+        minutos = total_minutos % 60
         segundos = 0
-        minutos += 1
 
-    if minutos >= 60:
-        minutos = 0
-        grados += 1
-
-    if grados >= 30:
-        grados = 0
-        signo_idx = (signo_idx + 1) % 12
+        # Carry overflow 30°00' al signo siguiente
+        if grados >= 30:
+            grados = 0
+            minutos = 0
+            signo_idx = (signo_idx + 1) % 12
 
     # Obtener signo
     signo = SIGNOS[signo_idx]
@@ -186,8 +199,8 @@ def calcular_posiciones_planetas(jd_ut: float, lat: Optional[float] = None, lon:
             if velocidad < 0 and nombre not in ['Nodo Norte', 'Lilith med.']:
                 retro = True
             
-            # Convertir a formato zodiacal
-            pos_zodiacal = grado_a_zodiaco(longitud)
+            # Convertir a formato zodiacal (grados + minutos para máxima legibilidad/precisión)
+            pos_zodiacal = grado_a_zodiaco(longitud, incluir_segundos=False)
             
             posiciones[nombre] = {
                 'longitud': longitud,
@@ -227,7 +240,7 @@ def calcular_casas_y_angulos(jd_ut: float, lat: float, lon: float) -> Dict[str, 
     # Convertir cúspides a formato zodiacal
     casas = []
     for i, cusp in enumerate(cuspides):
-        pos_zodiacal = grado_a_zodiaco(cusp)
+        pos_zodiacal = grado_a_zodiaco(cusp, incluir_segundos=False)
         casas.append({
             'numero': i + 1,
             'cuspide': cusp,
@@ -235,8 +248,8 @@ def calcular_casas_y_angulos(jd_ut: float, lat: float, lon: float) -> Dict[str, 
         })
     
     # Ángulos principales
-    ascendente = grado_a_zodiaco(asc_mc[0])
-    medio_cielo = grado_a_zodiaco(asc_mc[1])
+    ascendente = grado_a_zodiaco(asc_mc[0], incluir_segundos=False)
+    medio_cielo = grado_a_zodiaco(asc_mc[1], incluir_segundos=False)
     
     return {
         'casas': casas,
@@ -271,7 +284,7 @@ def calcular_parte_fortuna(asc: float, sol: float, luna: float, es_diurno: bool 
         # Fórmula nocturna: ASC + Sol - Luna
         fortuna = (asc + sol - luna) % 360
     
-    pos_zodiacal = grado_a_zodiaco(fortuna)
+    pos_zodiacal = grado_a_zodiaco(fortuna, incluir_segundos=False)
     
     return {
         'longitud': fortuna,
