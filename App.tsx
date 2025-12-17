@@ -118,6 +118,52 @@ const App: React.FC = () => {
   const [cartaCompleta, setCartaCompleta] = useState<any>(null); // Datos completos de efemérides
   const [isExporting, setIsExporting] = useState(false); // Estado de exportación
   const [showAdminPromptEditor, setShowAdminPromptEditor] = useState(false); // Modal de edición de prompt principal
+
+  const SIGN_ELEMENTS: Record<string, PlanetPosition['element']> = {
+    'Aries': 'Fuego', 'Leo': 'Fuego', 'Sagitario': 'Fuego',
+    'Tauro': 'Tierra', 'Virgo': 'Tierra', 'Capricornio': 'Tierra',
+    'Géminis': 'Aire', 'Libra': 'Aire', 'Acuario': 'Aire',
+    'Cáncer': 'Agua', 'Escorpio': 'Agua', 'Piscis': 'Agua'
+  };
+
+  const buildPositionsFromCartaCompleta = (carta: any): PlanetPosition[] | null => {
+    if (!carta || !carta.planetas || !carta.angulos) return null;
+
+    const out: PlanetPosition[] = [];
+
+    const addPoint = (name: string, pos: any) => {
+      if (!pos) return;
+      const sign = pos.signo;
+      const element = (SIGN_ELEMENTS[sign] || 'Fuego') as PlanetPosition['element'];
+      const deg = typeof pos.grados === 'number' ? pos.grados : 0;
+      const min = typeof pos.minutos === 'number' ? pos.minutos : 0;
+      const degree = `${deg}°${String(min).padStart(2, '0')}′`;
+      out.push({
+        name,
+        sign,
+        degree,
+        house: String(pos.casa ?? '1'),
+        retrograde: Boolean(pos.retrogrado),
+        element,
+        longitude: Number(pos.longitud ?? 0)
+      });
+    };
+
+    // Ascendente
+    addPoint('Ascendente', carta.angulos?.ascendente);
+
+    // Planetas principales en orden clásico
+    const ordered = ['Sol', 'Luna', 'Mercurio', 'Venus', 'Marte', 'Júpiter', 'Saturno', 'Urano', 'Neptuno', 'Plutón', 'Lilith med.', 'Nodo Norte', 'Quirón'];
+    ordered.forEach((k) => addPoint(k, carta.planetas?.[k]));
+
+    // Añadir cualquier otro punto que venga del backend y no esté en la lista
+    Object.keys(carta.planetas || {}).forEach((k) => {
+      if (ordered.includes(k)) return;
+      addPoint(k, carta.planetas[k]);
+    });
+
+    return out;
+  };
   
   // Estado para autocomplete de lugares
   const [placeSuggestions, setPlaceSuggestions] = useState<Array<{nombre: string, lat: number, lon: number, timezone: string}>>([]);
@@ -545,13 +591,14 @@ const App: React.FC = () => {
         }
       }
       
-      // Primero calcular con el motor frontend (rápido para visualización)
+      // Primero calcular con el motor frontend (rápido para fallback)
       const realData = calculateChartData(inputToUse.date, inputToUse.time, lat, lon);
       
       // Paralelamente, calcular con Swiss Ephemeris en backend (precisión)
       const token = localStorage.getItem('fraktal_token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       
+      let cartaBackend: any | null = null;
       try {
         const ephemerisResponse = await fetch(`${API_URL}/ephemeris/calculate`, {
           method: 'POST',
@@ -571,6 +618,7 @@ const App: React.FC = () => {
         if (ephemerisResponse.ok) {
           const ephemerisData = await ephemerisResponse.json();
           console.log('✅ Efemérides calculadas con Swiss Ephemeris');
+          cartaBackend = ephemerisData.data;
           setCartaCompleta(ephemerisData.data); // Guardar para exportación
         } else {
           console.warn('⚠️ No se pudieron calcular efemérides con backend, usando motor frontend');
@@ -601,7 +649,9 @@ const App: React.FC = () => {
         ? "ENFOQUE: ANÁLISIS SISTÉMICO (Módulos 1-4)."
         : "ENFOQUE: AUDITORÍA TÉCNICA Y ESTRUCTURAL.";
 
-      const positionsText = realData.positions.map(p => `${p.name}: ${p.degree} ${p.sign} (Casa ${p.house})`).join('\n');
+      const swissPositions = cartaBackend ? buildPositionsFromCartaCompleta(cartaBackend) : null;
+      const positionsForAnalysis = (swissPositions && swissPositions.length > 0) ? swissPositions : realData.positions;
+      const positionsText = positionsForAnalysis.map(p => `${p.name}: ${p.degree} ${p.sign} (Casa ${p.house})`).join('\n');
       const prompt = `EJECUTAR PROTOCOLO "FRAKTAL v1.0" PARA: ${inputToUse.name}${techniqueContext} \n DATOS: \n ${positionsText} \n ${typePrompt} \n IDIOMA: ${lang}.`;
 
       const analysisSchema: Schema = {
@@ -761,7 +811,7 @@ const App: React.FC = () => {
           birthTime: inputToUse.time,
           birthPlace: inputToUse.place
         },
-        positions: realData.positions,
+        positions: positionsForAnalysis,
         elementalBalance: realData.balance,
         blocks: aiData.blocks || [],
         footerQuote: aiData.footerQuote || "Fraktal"

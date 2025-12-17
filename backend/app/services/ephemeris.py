@@ -172,21 +172,12 @@ def calcular_posiciones_planetas(jd_ut: float, lat: Optional[float] = None, lon:
     """
     posiciones = {}
 
-    # Flags profesionales para máxima precisión
-    if lat is not None and lon is not None:
-        # Si tenemos coordenadas, establecer posición topocéntrica
-        swe.set_topo(lon, lat, 0)  # lon, lat, altura_metros
-        flags = (
-            swe.FLG_SWIEPH |      # Usar archivos Swiss Ephemeris (o Moshier si no están)
-            swe.FLG_SPEED |       # Calcular velocidades planetarias
-            swe.FLG_TOPOCTR       # Corrección topocéntrica (desde ubicación geográfica)
-        )
-    else:
-        # Sin coordenadas, usar cálculo geocéntrico estándar
-        flags = (
-            swe.FLG_SWIEPH |      # Usar archivos Swiss Ephemeris (o Moshier si no están)
-            swe.FLG_SPEED         # Calcular velocidades planetarias
-        )
+    # Cálculo geocéntrico estándar (coincide con cosmogramas típicos y con el script del usuario).
+    # NOTA: la ubicación (lat/lon) se usa para casas/ángulos, no para corregir posiciones planetarias.
+    flags = (
+        swe.FLG_SWIEPH |  # Usar archivos Swiss Ephemeris (o Moshier si no están)
+        swe.FLG_SPEED     # Calcular velocidades planetarias
+    )
     
     for nombre, id_cuerpo in PLANETAS.items():
         try:
@@ -214,8 +205,14 @@ def calcular_posiciones_planetas(jd_ut: float, lat: Optional[float] = None, lon:
             }
             
         except swe.Error as e:
-            print(f"Error calculando {nombre}: {e}")
-            posiciones[nombre] = None
+            # Algunos cuerpos (p.ej. Quirón) pueden requerir ficheros .se1 externos.
+            # Si no están disponibles, no bloqueamos el cálculo de la carta.
+            msg = str(e)
+            if nombre == 'Quirón' and ('not found' in msg or 'not found in PATH' in msg):
+                posiciones[nombre] = None
+            else:
+                print(f"Error calculando {nombre}: {e}")
+                posiciones[nombre] = None
     
     return posiciones
 
