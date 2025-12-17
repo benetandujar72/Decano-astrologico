@@ -53,3 +53,6 @@ htmlcov/
 
 # Scripts locales (no commitear credenciales)
 backend/create_admin.py
+
+# Scripts temporals de comprovació
+backend/tmp_check_*.py
