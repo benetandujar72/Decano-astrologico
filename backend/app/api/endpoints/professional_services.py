@@ -43,6 +43,7 @@ client = AsyncIOMotorClient(MONGODB_URL, **mongodb_options)
 db = client.fraktal
 bookings_collection = db.service_bookings
 users_collection = db.users
+subscriptions_collection = db.subscriptions
 
 
 @router.get("/catalog")
@@ -62,25 +63,15 @@ async def get_services_catalog(
     try:
         user_id = str(current_user.get("_id"))
 
-        # Verificar acceso y obtener descuento
-        try:
-            plan, discount = await require_professional_services_access(user_id)
-        except HTTPException as e:
-            # Si no tiene acceso, mostrar catálogo pero con mensaje
-            services_list = []
-            for service_key, service in PROFESSIONAL_SERVICES_CATALOG.items():
-                if category and service.category.value != category:
-                    continue
-                services_list.append(service.dict())
+        # Descuento depende del plan, pero el acceso NO se bloquea
+        plan, discount = await require_professional_services_access(user_id)
 
-            return {
-                "services": services_list,
-                "has_access": False,
-                "discount": 0,
-                "message": "Actualiza tu plan a PREMIUM o ENTERPRISE para acceder a estos servicios"
-            }
+        # Obtener estado de suscripción (solo informativo)
+        subscription = await subscriptions_collection.find_one({"user_id": user_id})
+        subscription_tier = (subscription or {}).get("tier", "free")
+        subscription_status = (subscription or {}).get("status", "inactive")
+        subscription_end_date = (subscription or {}).get("end_date")
 
-        # Usuario tiene acceso - aplicar descuento
         services_list = []
         for service_key, service in PROFESSIONAL_SERVICES_CATALOG.items():
             if category and service.category.value != category:
@@ -101,7 +92,10 @@ async def get_services_catalog(
             "services": services_list,
             "has_access": True,
             "discount": discount,
-            "plan_name": plan.name
+            "plan_name": plan.name,
+            "subscription_tier": subscription_tier,
+            "subscription_status": subscription_status,
+            "subscription_end_date": subscription_end_date,
         }
 
     except HTTPException:
@@ -133,7 +127,7 @@ async def create_booking(
         user_email = current_user.get("email")
         user_name = current_user.get("username")
 
-        # Verificar acceso y obtener descuento
+        # Descuento depende del plan, pero el acceso NO se bloquea
         plan, discount = await require_professional_services_access(user_id)
 
         # Obtener servicio del catálogo

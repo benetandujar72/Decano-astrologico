@@ -63,6 +63,7 @@ export enum AppMode {
   RESULTS = 'RESULTS',
   LISTING = 'LISTING',
   ADMIN_PANEL = 'ADMIN_PANEL',
+  PROFESSIONAL_SERVICES = 'PROFESSIONAL_SERVICES', // 🆕 Servicios profesionales (Jon Landeta)
   USER_PROFILE = 'USER_PROFILE', // 🆕 Perfil de usuario
   SUBSCRIPTION_PLANS = 'SUBSCRIPTION_PLANS', // 🆕 Planes de suscripción
   SUBSCRIPTION_SUCCESS = 'SUBSCRIPTION_SUCCESS', // 🆕 Confirmación de suscripción

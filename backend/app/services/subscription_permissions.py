@@ -218,12 +218,8 @@ async def require_professional_services_access(user_id: str) -> tuple[Subscripti
     """
     plan = await get_user_plan(user_id)
 
-    if not plan.can_access_professional_services:
-        error_msg = f"Tu plan actual ({plan.name}) no incluye acceso a servicios profesionales de Jon Landeta. Actualiza tu plan a PREMIUM o superior para acceder."
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg
-        )
-
-    return (plan, plan.professional_services_discount)
+    # NOTE: Por requisito de producto, los servicios profesionales se pueden contratar
+    # independientemente del plan. El plan solo afecta al descuento.
+    discount = plan.professional_services_discount if plan.can_access_professional_services else 0
+    return (plan, discount)
 

@@ -14,6 +14,7 @@ class ServiceType(str, Enum):
     IN_PERSON_CONSULTATION = "in_person_consultation"  # Consulta presencial
     TRAINING_PROGRAM = "training_program"              # Programa de formación
     THERAPY_SESSION = "therapy_session"                # Sesión de terapia/coaching
+    CHART_REPORT = "chart_report"                      # Carta personalizada (informe)
 
 
 class ServiceCategory(str, Enum):
@@ -164,6 +165,21 @@ PROFESSIONAL_SERVICES_CATALOG = {
             "Ejercicios y herramientas prácticas",
             "Plan de acción personalizado",
             "Seguimiento entre sesiones"
+        ]
+    ),
+
+    "personalized_chart_report": ProfessionalService(
+        service_id="srv_chart_report",
+        name="Carta Personalizada (Informe PDF)",
+        description="Informe escrito y personalizado a partir de tu carta natal, con enfoque astrológico-psicológico",
+        service_type=ServiceType.CHART_REPORT,
+        category=ServiceCategory.CONSULTATION,
+        duration_minutes=45,
+        base_price=99.00,
+        includes=[
+            "Informe en PDF con lectura personalizada",
+            "Puntos clave y recomendaciones prácticas",
+            "Entrega digital (plazo a convenir)",
         ]
     )
 }

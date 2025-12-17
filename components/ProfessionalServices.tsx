@@ -10,8 +10,6 @@ import {
   GraduationCap,
   Heart,
   Clock,
-  Euro,
-  Lock,
   CheckCircle,
   AlertCircle,
   Tag
@@ -41,7 +39,9 @@ interface CatalogResponse {
   has_access: boolean;
   discount: number;
   plan_name?: string;
-  message?: string;
+  subscription_tier?: string;
+  subscription_status?: string;
+  subscription_end_date?: string | null;
 }
 
 const ProfessionalServices: React.FC = () => {
@@ -116,11 +116,6 @@ const ProfessionalServices: React.FC = () => {
   };
 
   const handleBookService = (service: Service) => {
-    if (!catalogData?.has_access) {
-      alert('Actualiza tu plan a PREMIUM o ENTERPRISE para acceder a estos servicios');
-      return;
-    }
-
     setSelectedService(service);
     setShowBookingModal(true);
   };
@@ -150,27 +145,44 @@ const ProfessionalServices: React.FC = () => {
           Servicios Profesionales de Jon Landeta
         </h1>
         <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-          Servicios especializados en astrología psicológica, formación y desarrollo personal
+          Acompañamiento terapéutico y astrológico-psicológico: presencial, online o en formato de carta personalizada.
         </p>
 
-        {/* Access Badge */}
+        {/* Disclaimer */}
+        <div className="mt-6 max-w-3xl mx-auto bg-amber-900/20 border border-amber-500/30 rounded-2xl p-5 text-left">
+          <p className="text-amber-200 font-semibold mb-2">Aviso importante</p>
+          <p className="text-amber-100/80 text-sm">
+            La información compartida tiene fines de orientación y desarrollo personal. Para cuestiones clínicas, diagnósticos o
+            decisiones de salud, debe ser valorada y seguida por un profesional cualificado.
+          </p>
+        </div>
+
+        {/* Subscription summary (read-only) */}
         {catalogData && (
           <div className="mt-6 inline-flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-full px-6 py-3">
-            {catalogData.has_access ? (
-              <>
-                <CheckCircle className="w-5 h-5 text-green-400" />
-                <span className="text-white">
-                  Plan {catalogData.plan_name} - Descuento {catalogData.discount}%
-                </span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-5 h-5 text-yellow-400" />
-                <span className="text-gray-300">{catalogData.message}</span>
-              </>
-            )}
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span className="text-white">
+              Suscripción: {catalogData.subscription_tier?.toUpperCase() || 'FREE'} ({catalogData.subscription_status || 'inactive'})
+              {typeof catalogData.discount === 'number' && catalogData.discount > 0 ? ` · Descuento ${catalogData.discount}%` : ''}
+            </span>
           </div>
         )}
+
+        {/* Modalities */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-5xl mx-auto">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5">
+            <p className="text-white font-bold mb-2">Presencial</p>
+            <p className="text-gray-300 text-sm">Sesiones profundas, trabajo práctico y seguimiento. Ideal si buscas proceso y contención.</p>
+          </div>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5">
+            <p className="text-white font-bold mb-2">Online</p>
+            <p className="text-gray-300 text-sm">Videollamada (Zoom/Meet). Flexible y eficaz para acompañamiento terapéutico y lectura guiada.</p>
+          </div>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5">
+            <p className="text-white font-bold mb-2">Carta personalizada</p>
+            <p className="text-gray-300 text-sm">Informe PDF con claves, recomendaciones y plan de acción. Perfecto si prefieres formato escrito.</p>
+          </div>
+        </div>
       </div>
 
       {/* Category Filter */}
@@ -295,7 +307,7 @@ const ProfessionalServices: React.FC = () => {
                 <ul className="space-y-1">
                   {service.includes.slice(0, 3).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-xs text-gray-300">
-                      <CheckCircle className="w-3 h-3 text-green-400 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="w-3 h-3 text-green-400 mt-0.5 shrink-0" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -311,14 +323,9 @@ const ProfessionalServices: React.FC = () => {
             {/* Book Button */}
             <button
               onClick={() => handleBookService(service)}
-              disabled={!catalogData?.has_access}
-              className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                catalogData?.has_access
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-              }`}
+              className="w-full py-3 rounded-xl font-semibold transition-all bg-purple-600 hover:bg-purple-700 text-white"
             >
-              {catalogData?.has_access ? 'Reservar Ahora' : 'Requiere PREMIUM+'}
+              Reservar Ahora
             </button>
           </div>
         ))}

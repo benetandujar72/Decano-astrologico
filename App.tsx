@@ -44,6 +44,7 @@ import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
 import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
 import SubscriptionSuccess from './components/SubscriptionSuccess'; // 🆕 Confirmación de pago
 import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técnicas
+import ProfessionalServices from './components/ProfessionalServices';
 import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualización de datos de carta
 import { calculateChartData } from './astrologyEngine'; 
 import { api } from './services/api';
@@ -237,8 +238,9 @@ const App: React.FC = () => {
     setCurrentUser(res.user);
     
     setIsAuthenticated(true);
-    if (res.user.role === 'admin') {
-        setIsAdmin(true);
+    const isUserAdmin = res.user.role === 'admin';
+    if (isUserAdmin) {
+      setIsAdmin(true);
     }
     
     // Si es un nuevo registro, mostrar planes de suscripción
@@ -246,8 +248,12 @@ const App: React.FC = () => {
     const wasRegistering = isRegistering;
     setIsRegistering(false);
     
-    if (wasRegistering) {
-      // Nuevo usuario: mostrar planes para que pueda elegir
+    // Experiencia capada para no-admin: solo Servicios Profesionales
+    // Mantiene toda la funcionalidad actual para admin.
+    if (!isUserAdmin) {
+      setMode(AppMode.PROFESSIONAL_SERVICES);
+    } else if (wasRegistering) {
+      // Nuevo usuario admin: mostrar planes para que pueda elegir
       setMode(AppMode.SUBSCRIPTION_PLANS);
     } else {
       setMode(AppMode.INPUT);
@@ -266,6 +272,14 @@ const App: React.FC = () => {
     setMode(AppMode.AUTH);
     setSavedCharts([]);
   };
+
+  // Si el usuario NO es admin, forzar el modo de Servicios (evita navegación accidental)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (currentUser?.role !== 'admin' && mode !== AppMode.PROFESSIONAL_SERVICES && mode !== AppMode.AUTH) {
+      setMode(AppMode.PROFESSIONAL_SERVICES);
+    }
+  }, [isAuthenticated, currentUser, mode]);
 
   const saveChartToDb = async (input: UserInput) => {
     try {
@@ -1627,6 +1641,9 @@ ${analysisText}
         {mode === AppMode.USER_PROFILE && (
           <UserProfilePage onBack={() => setMode(AppMode.INPUT)} />
         )}
+        {mode === AppMode.PROFESSIONAL_SERVICES && (
+          <ProfessionalServices />
+        )}
         {mode === AppMode.SUBSCRIPTION_PLANS && (
           <SubscriptionPlans 
             onSelectPlan={(tier, billing) => {
@@ -1711,7 +1728,7 @@ ${analysisText}
       </div>
       
       {/* Barra de navegación inferior tipo móvil - FUERA del contenido scrolleable */}
-      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
+      {isAuthenticated && isAdmin && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 safe-area-inset-bottom">
           <div className="max-w-2xl mx-auto flex justify-around items-center">
             <button 
@@ -1774,20 +1791,18 @@ ${analysisText}
               <FolderOpen size={20}/>
               <span className="text-[10px] font-medium">Cartas</span>
             </button>
-            {isAdmin && (
-              <button 
-                onClick={() => setMode(AppMode.ADMIN_PANEL)} 
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
-                  mode === AppMode.ADMIN_PANEL 
-                    ? 'text-red-400 bg-red-500/10' 
-                    : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
-                }`}
-                title="Admin"
-              >
-                <ShieldAlert size={20}/>
-                <span className="text-[10px] font-medium">Admin</span>
-              </button>
-            )}
+            <button 
+              onClick={() => setMode(AppMode.ADMIN_PANEL)} 
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                mode === AppMode.ADMIN_PANEL 
+                  ? 'text-red-400 bg-red-500/10' 
+                  : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
+              }`}
+              title="Admin"
+            >
+              <ShieldAlert size={20}/>
+              <span className="text-[10px] font-medium">Admin</span>
+            </button>
           </div>
         </div>
       )}
