@@ -336,37 +336,88 @@ const App: React.FC = () => {
   };
 
   // Función auxiliar para detectar si el input son coordenadas o texto
+  const parseCoordinatePart = (raw: string): number | null => {
+    if (!raw || !raw.trim()) return null;
+
+    // Normalize and detect hemisphere/direction
+    const trimmed = raw.trim();
+    const upper = trimmed.toUpperCase();
+
+    const hasNorth = /\bN\b/.test(upper);
+    const hasSouth = /\bS\b/.test(upper);
+    const hasEast = /\bE\b/.test(upper);
+    const hasWest = /\bW\b/.test(upper) || /\bO\b/.test(upper); // O = Oeste
+
+    const directionSign = (hasSouth || hasWest) ? -1 : (hasNorth || hasEast) ? 1 : 0;
+
+    // Strip direction letters and normalize symbols
+    const cleaned = upper
+      .replace(/[NSEO W]/g, ' ')
+      .replace(/º/g, '°')
+      .replace(/’/g, "'")
+      .replace(/′/g, "'")
+      .replace(/″/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const nums = cleaned.match(/-?\d+(?:\.\d+)?/g);
+    if (!nums || nums.length === 0) return null;
+
+    if (nums.length === 1) {
+      const val = Number(nums[0]);
+      if (Number.isNaN(val)) return null;
+      if (directionSign !== 0) return Math.abs(val) * directionSign;
+      return val;
+    }
+
+    // D°M′(S″) format
+    const deg = Number(nums[0]);
+    const min = Number(nums[1]);
+    const sec = nums.length >= 3 ? Number(nums[2]) : 0;
+    if ([deg, min, sec].some(n => Number.isNaN(n))) return null;
+
+    const abs = Math.abs(deg) + (Math.abs(min) / 60) + (Math.abs(sec) / 3600);
+    const explicitSign = deg < 0 ? -1 : 1;
+    const sign = directionSign !== 0 ? directionSign : explicitSign;
+    return abs * sign;
+  };
+
+  const parseLatLonFromPlace = (place: string): { lat: number; lon: number; timezone?: string } | null => {
+    if (!place || !place.trim()) return null;
+
+    if (place.includes(',')) {
+      const parts = place.split(',').map(p => p.trim()).filter(Boolean);
+      if (parts.length < 2) return null;
+
+      const lat = parseCoordinatePart(parts[0]);
+      const lon = parseCoordinatePart(parts[1]);
+      if (lat === null || lon === null) return null;
+
+      const timezone = parts[2]?.trim();
+      return timezone ? { lat, lon, timezone } : { lat, lon };
+    }
+
+    // Space-separated coordinates
+    const parts = place.trim().split(/\s+/);
+    if (parts.length === 2) {
+      const lat = parseCoordinatePart(parts[0]);
+      const lon = parseCoordinatePart(parts[1]);
+      if (lat === null || lon === null) return null;
+      return { lat, lon };
+    }
+
+    return null;
+  };
+
   const esCoordenadas = (place: string): boolean => {
     if (!place || !place.trim()) return false;
-    
-    // Si contiene coma, intentar parsear como coordenadas
-    if (place.includes(',')) {
-      const parts = place.split(',');
-      if (parts.length >= 2) {
-        const lat = parseFloat(parts[0].trim());
-        const lon = parseFloat(parts[1].trim());
-        // Si ambos son números válidos y están en rangos válidos, son coordenadas
-        if (!isNaN(lat) && !isNaN(lon) && 
-            lat >= -90 && lat <= 90 && 
-            lon >= -180 && lon <= 180) {
-          return true;
-        }
-      }
-    }
-    
-    // Si no contiene coma pero son solo números, podría ser coordenadas separadas por espacio
-    const numbers = place.trim().split(/\s+/);
-    if (numbers.length === 2) {
-      const lat = parseFloat(numbers[0]);
-      const lon = parseFloat(numbers[1]);
-      if (!isNaN(lat) && !isNaN(lon) && 
-          lat >= -90 && lat <= 90 && 
-          lon >= -180 && lon <= 180) {
-        return true;
-      }
-    }
-    
-    return false;
+
+    const parsed = parseLatLonFromPlace(place);
+    if (!parsed) return false;
+    return (
+      parsed.lat >= -90 && parsed.lat <= 90 &&
+      parsed.lon >= -180 && parsed.lon <= 180
+    );
   };
 
   // Función para geocodificar un lugar
@@ -473,24 +524,11 @@ const App: React.FC = () => {
       
       // Detectar si el input son coordenadas o texto
       if (esCoordenadas(inputToUse.place)) {
-        // Es formato de coordenadas, parsear como antes
-        if (inputToUse.place.includes(',')) {
-          const parts = inputToUse.place.split(',');
-          const parsedLat = parseFloat(parts[0].trim());
-          const parsedLon = parseFloat(parts[1].trim());
-          if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
-            lat = parsedLat;
-            lon = parsedLon;
-          }
-          // Si hay tercer parámetro, es la zona horaria
-          timezone = parts[2]?.trim() || 'UTC';
-        } else {
-          // Coordenadas separadas por espacio
-          const numbers = inputToUse.place.trim().split(/\s+/);
-          if (numbers.length === 2) {
-            lat = parseFloat(numbers[0]);
-            lon = parseFloat(numbers[1]);
-          }
+        const parsed = parseLatLonFromPlace(inputToUse.place);
+        if (parsed) {
+          lat = parsed.lat;
+          lon = parsed.lon;
+          timezone = parsed.timezone || 'UTC';
         }
       } else {
         // Es texto, geocodificar
@@ -770,14 +808,10 @@ const App: React.FC = () => {
     };
 
     let lat = 40.4168, lon = -3.7038;
-    if (newInput.place.includes(',')) {
-      const [latStr, lonStr] = newInput.place.split(',');
-      const parsedLat = parseFloat(latStr.trim());
-      const parsedLon = parseFloat(lonStr.trim());
-      if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
-        lat = parsedLat;
-        lon = parsedLon;
-      }
+    const parsed = parseLatLonFromPlace(newInput.place);
+    if (parsed) {
+      lat = parsed.lat;
+      lon = parsed.lon;
     }
 
     const realData = calculateChartData(dateStr, timeStr, lat, lon);
@@ -995,14 +1029,10 @@ ${analysisText}
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
     let lat = 40.4168, lon = -3.7038;
-    if (analysisResult.metadata.birthPlace.includes(',')) {
-      const [latStr, lonStr] = analysisResult.metadata.birthPlace.split(',');
-      const parsedLat = parseFloat(latStr.trim());
-      const parsedLon = parseFloat(lonStr.trim());
-      if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
-        lat = parsedLat;
-        lon = parsedLon;
-      }
+    const parsed = parseLatLonFromPlace(analysisResult.metadata.birthPlace);
+    if (parsed) {
+      lat = parsed.lat;
+      lon = parsed.lon;
     }
     const transitData = calculateChartData(dateStr, timeStr, lat, lon);
 

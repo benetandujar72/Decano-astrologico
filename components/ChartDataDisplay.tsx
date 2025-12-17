@@ -18,9 +18,17 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
 
   // Formatear latitud/longitud con dirección
   const formatCoord = (lat: number, lon: number) => {
+    const toDegMin = (value: number) => {
+      const abs = Math.abs(value);
+      const totalMinutes = Math.round(abs * 60);
+      const d = Math.floor(totalMinutes / 60);
+      const m = totalMinutes % 60;
+      return `${d}°${m.toString().padStart(2, '0')}′`;
+    };
+
     const latDir = lat >= 0 ? 'N' : 'S';
     const lonDir = lon >= 0 ? 'E' : 'O';
-    return `${Math.abs(lat).toFixed(4)}° ${latDir}, ${Math.abs(lon).toFixed(4)}° ${lonDir}`;
+    return `${toDegMin(lat)} ${latDir}, ${toDegMin(lon)} ${lonDir}`;
   };
 
   if (compacto) {
@@ -43,7 +51,7 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
 
   // Modo completo: Grid con toda la información
   return (
-    <div className="border border-white/10 rounded-xl p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/50 backdrop-blur-sm">
+    <div className="border border-white/10 rounded-xl p-6 bg-linear-to-br from-slate-900/80 to-slate-800/50 backdrop-blur-sm">
       <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
         <Globe size={20} className="text-indigo-400" />
         Datos de Nacimiento
