@@ -53,6 +53,7 @@ async def get_services_catalog(
 ):
     """
     Obtiene el catálogo de servicios profesionales disponibles.
+    El administrador siempre tiene acceso completo a todos los servicios.
 
     Args:
         category: Filtrar por categoría (consultation, training, therapy)
@@ -62,9 +63,16 @@ async def get_services_catalog(
     """
     try:
         user_id = str(current_user.get("_id"))
+        user_role = current_user.get("role", "user")
+        is_admin = (user_role == "admin")
 
         # Descuento depende del plan, pero el acceso NO se bloquea
         plan, discount = await require_professional_services_access(user_id)
+
+        # Si es admin, puede tener descuentos adicionales o ilimitados
+        if is_admin:
+            # El admin siempre tiene acceso completo, podemos darle el mejor descuento
+            discount = max(discount, 20)  # Al menos 20% de descuento para admin
 
         # Obtener estado de suscripción (solo informativo)
         subscription = await subscriptions_collection.find_one({"user_id": user_id})
@@ -80,7 +88,7 @@ async def get_services_catalog(
             service_dict = service.dict()
 
             # Calcular precio con descuento
-            if discount > 0:
+            if discount > 0 and service.base_price > 0:
                 discounted_price = service.base_price * (1 - discount / 100)
                 service_dict["discounted_price"] = round(discounted_price, 2)
                 service_dict["savings"] = round(service.base_price - discounted_price, 2)
@@ -96,6 +104,7 @@ async def get_services_catalog(
             "subscription_tier": subscription_tier,
             "subscription_status": subscription_status,
             "subscription_end_date": subscription_end_date,
+            "is_admin": is_admin,
         }
 
     except HTTPException:

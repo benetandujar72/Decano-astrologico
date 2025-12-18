@@ -42,6 +42,7 @@ interface CatalogResponse {
   subscription_tier?: string;
   subscription_status?: string;
   subscription_end_date?: string | null;
+  is_admin?: boolean;
 }
 
 const ProfessionalServices: React.FC = () => {
@@ -162,6 +163,7 @@ const ProfessionalServices: React.FC = () => {
           <div className="mt-6 inline-flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-full px-6 py-3">
             <CheckCircle className="w-5 h-5 text-green-400" />
             <span className="text-white">
+              {catalogData.is_admin && <span className="text-purple-400 font-bold">[ADMIN] </span>}
               Suscripción: {catalogData.subscription_tier?.toUpperCase() || 'FREE'} ({catalogData.subscription_status || 'inactive'})
               {typeof catalogData.discount === 'number' && catalogData.discount > 0 ? ` · Descuento ${catalogData.discount}%` : ''}
             </span>
@@ -231,19 +233,43 @@ const ProfessionalServices: React.FC = () => {
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {catalogData?.services.map((service) => (
+        {catalogData?.services.map((service) => {
+          const isContactService = service.service_type === 'contact_jon';
+          const isTrainingService = service.service_type === 'training_program';
+          const isFree = service.base_price === 0;
+
+          return (
           <div
             key={service.service_id}
-            className="bg-gray-900 border border-gray-700 rounded-2xl p-6 hover:border-purple-500 transition-all hover:shadow-xl hover:shadow-purple-500/20"
+            className={`bg-gray-900 border rounded-2xl p-6 transition-all hover:shadow-xl ${
+              isContactService
+                ? 'border-green-500 hover:border-green-400 hover:shadow-green-500/20'
+                : isTrainingService
+                ? 'border-blue-500 hover:border-blue-400 hover:shadow-blue-500/20'
+                : 'border-gray-700 hover:border-purple-500 hover:shadow-purple-500/20'
+            }`}
           >
             {/* Service Header */}
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-purple-600/20 rounded-xl text-purple-400">
+              <div className={`p-3 rounded-xl ${
+                isContactService
+                  ? 'bg-green-600/20 text-green-400'
+                  : isTrainingService
+                  ? 'bg-blue-600/20 text-blue-400'
+                  : 'bg-purple-600/20 text-purple-400'
+              }`}>
                 {getServiceIcon(service.service_type)}
               </div>
-              <span className="px-3 py-1 bg-gray-800 text-gray-300 text-xs rounded-full">
-                {getCategoryLabel(service.category)}
-              </span>
+              <div className="flex gap-2">
+                {isFree && (
+                  <span className="px-3 py-1 bg-green-600/20 text-green-400 text-xs rounded-full font-bold">
+                    GRATIS
+                  </span>
+                )}
+                <span className="px-3 py-1 bg-gray-800 text-gray-300 text-xs rounded-full">
+                  {getCategoryLabel(service.category)}
+                </span>
+              </div>
             </div>
 
             {/* Service Name */}
@@ -276,7 +302,11 @@ const ProfessionalServices: React.FC = () => {
 
             {/* Price */}
             <div className="mb-4">
-              {service.discounted_price ? (
+              {isFree ? (
+                <div className="text-3xl font-bold text-green-400">
+                  GRATIS
+                </div>
+              ) : service.discounted_price ? (
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-3xl font-bold text-white">
@@ -323,12 +353,19 @@ const ProfessionalServices: React.FC = () => {
             {/* Book Button */}
             <button
               onClick={() => handleBookService(service)}
-              className="w-full py-3 rounded-xl font-semibold transition-all bg-purple-600 hover:bg-purple-700 text-white"
+              className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                isContactService
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : isTrainingService
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+              }`}
             >
-              Reservar Ahora
+              {isContactService ? 'Contactar Ahora' : 'Reservar Ahora'}
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* No services message */}

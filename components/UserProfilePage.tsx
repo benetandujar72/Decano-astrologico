@@ -2,9 +2,10 @@
  * Perfil de usuario completo con todas las secciones
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  User, CreditCard, FileText, History, Settings, 
-  Crown, TrendingUp, Download, Eye, Trash2
+import {
+  User, CreditCard, FileText, History, Settings,
+  Crown, TrendingUp, Download, Eye, Trash2, MessageCircle,
+  Calendar, ShoppingBag, Mail, BookOpen
 } from 'lucide-react';
 
 interface UserProfilePageProps {
@@ -33,11 +34,32 @@ interface UsageStats {
   percentage_used: number;
 }
 
+interface Booking {
+  booking_id: string;
+  service_name: string;
+  service_type: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  status: string;
+  final_price: number;
+  created_at: string;
+}
+
+interface Chart {
+  chart_id: string;
+  name: string;
+  birth_date: string;
+  location: string;
+  created_at: string;
+}
+
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'bookings' | 'messages' | 'settings'>('overview');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [usage, setUsage] = useState<UsageStats | null>(null);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [charts, setCharts] = useState<Chart[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -76,6 +98,24 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
         setUsage(usageData);
       }
 
+      // Obtener reservas de servicios
+      const bookingsResponse = await fetch(`${API_URL}/professional-services/my-bookings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (bookingsResponse.ok) {
+        const bookingsData = await bookingsResponse.json();
+        setBookings(bookingsData.bookings || []);
+      }
+
+      // Obtener cartas generadas
+      const chartsResponse = await fetch(`${API_URL}/charts/my-charts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (chartsResponse.ok) {
+        const chartsData = await chartsResponse.json();
+        setCharts(chartsData.charts || []);
+      }
+
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -86,8 +126,10 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
   const tabs = [
     { id: 'overview', name: 'Resumen', icon: User },
     { id: 'subscription', name: 'Suscripción', icon: Crown },
-    { id: 'billing', name: 'Facturación', icon: CreditCard },
+    { id: 'bookings', name: 'Mis Servicios', icon: Calendar },
     { id: 'charts', name: 'Mis Cartas', icon: FileText },
+    { id: 'billing', name: 'Facturación', icon: CreditCard },
+    { id: 'messages', name: 'Mensajes', icon: MessageCircle },
     { id: 'settings', name: 'Configuración', icon: Settings }
   ];
 
@@ -288,11 +330,145 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
             </div>
           )}
 
+          {activeTab === 'bookings' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Mis Servicios Contratados</h2>
+
+              {bookings.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <ShoppingBag className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p>No has contratado ningún servicio aún</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bookings.map((booking) => (
+                    <div key={booking.booking_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-white font-bold text-lg mb-2">{booking.service_name}</h3>
+                          <div className="space-y-1 text-sm text-gray-400">
+                            {booking.scheduled_date && (
+                              <p className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                {new Date(booking.scheduled_date).toLocaleDateString()} {booking.scheduled_time && `a las ${booking.scheduled_time}`}
+                              </p>
+                            )}
+                            <p>Reservado el: {new Date(booking.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            booking.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                            booking.status === 'pending_payment' ? 'bg-yellow-500/20 text-yellow-400' :
+                            booking.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {booking.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                          <p className="text-white font-bold text-xl mt-2">
+                            {booking.final_price > 0 ? `€${booking.final_price.toFixed(2)}` : 'GRATIS'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'charts' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-4">Mis Cartas Astrales</h2>
-              <div className="text-center py-12 text-gray-400">
-                Funcionalidad en desarrollo...
+
+              {charts.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p>No has generado ninguna carta astral aún</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {charts.map((chart) => (
+                    <div key={chart.chart_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all">
+                      <div className="flex items-center justify-between mb-4">
+                        <FileText className="w-8 h-8 text-purple-400" />
+                        <button
+                          type="button"
+                          className="text-gray-400 hover:text-white"
+                          title="Ver carta"
+                          aria-label="Ver carta astral"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <h3 className="text-white font-bold mb-2">{chart.name || 'Carta sin nombre'}</h3>
+                      <div className="text-sm text-gray-400 space-y-1">
+                        <p>Fecha: {new Date(chart.birth_date).toLocaleDateString()}</p>
+                        <p>Lugar: {chart.location}</p>
+                        <p className="text-xs">Creada: {new Date(chart.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          type="button"
+                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all"
+                        >
+                          <Download className="w-4 h-4 inline mr-1" />
+                          Descargar
+                        </button>
+                        <button
+                          type="button"
+                          className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all"
+                          title="Eliminar carta"
+                          aria-label="Eliminar carta"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'messages' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Mensajes y Comunicaciones</h2>
+
+              <div className="bg-gradient-to-r from-green-500/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-6 mb-6">
+                <div className="flex items-start gap-4">
+                  <Mail className="w-8 h-8 text-green-400 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-white font-bold text-lg mb-2">Contacta con Jon Landeta</h3>
+                    <p className="text-gray-300 mb-4">
+                      ¿Tienes alguna pregunta? ¿Necesitas orientación personalizada?
+                      Contacta directamente con Jon Landeta para recibir asesoramiento profesional.
+                    </p>
+                    <button
+                      type="button"
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                      onClick={() => {
+                        // Redirigir a la sección de servicios profesionales con el servicio de contacto
+                        window.location.href = '#/professional-services';
+                      }}
+                    >
+                      <MessageCircle className="w-5 h-5 inline mr-2" />
+                      Iniciar Conversación
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-xl p-6">
+                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                  <History className="w-5 h-5" />
+                  Historial de Comunicaciones
+                </h3>
+                <div className="text-center py-12 text-gray-400">
+                  <Mail className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p>No tienes comunicaciones previas</p>
+                  <p className="text-sm mt-2">Inicia una conversación para recibir orientación personalizada</p>
+                </div>
               </div>
             </div>
           )}

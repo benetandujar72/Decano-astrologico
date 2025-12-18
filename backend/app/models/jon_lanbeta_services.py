@@ -15,6 +15,7 @@ class ServiceType(str, Enum):
     TRAINING_PROGRAM = "training_program"              # Programa de formación
     THERAPY_SESSION = "therapy_session"                # Sesión de terapia/coaching
     CHART_REPORT = "chart_report"                      # Carta personalizada (informe)
+    CONTACT_JON = "contact_jon"                        # Contacto directo con Jon Landeta
 
 
 class ServiceCategory(str, Enum):
@@ -180,6 +181,22 @@ PROFESSIONAL_SERVICES_CATALOG = {
             "Informe en PDF con lectura personalizada",
             "Puntos clave y recomendaciones prácticas",
             "Entrega digital (plazo a convenir)",
+        ]
+    ),
+
+    "contact_jon_landeta": ProfessionalService(
+        service_id="srv_contact_jon",
+        name="Contacto con Jon Landeta",
+        description="Solicita contacto directo con Jon Landeta para consultas personalizadas, información sobre servicios o cualquier pregunta relacionada con astrología y desarrollo personal",
+        service_type=ServiceType.CONTACT_JON,
+        category=ServiceCategory.CONSULTATION,
+        duration_minutes=0,  # No aplica duración fija
+        base_price=0.00,  # Servicio gratuito
+        is_available=True,
+        includes=[
+            "Respuesta personalizada por email",
+            "Información sobre servicios disponibles",
+            "Orientación sobre qué servicio se adapta mejor a tus necesidades"
         ]
     )
 }

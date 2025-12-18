@@ -56,6 +56,11 @@ class SubscriptionPlan(BaseModel):
     expert_consultations_per_month: int  # Número de consultas mensuales con experto IA (-1 = ilimitado)
     can_access_professional_services: bool  # Acceso a servicios de Jon Landeta
     professional_services_discount: int  # Porcentaje de descuento en servicios profesionales (0-100)
+
+    # Capacitación y formación
+    can_access_training: bool  # Acceso a programas de capacitación
+    training_credits_per_year: int  # Créditos de capacitación por año (-1 = ilimitado, 0 = sin acceso)
+    can_contact_jon_landeta: bool  # Puede contactar directamente con Jon Landeta
     
     class Config:
         json_schema_extra = {
@@ -84,7 +89,10 @@ class SubscriptionPlan(BaseModel):
                 "can_access_expert_chat": True,
                 "expert_consultations_per_month": 1,
                 "can_access_professional_services": False,
-                "professional_services_discount": 0
+                "professional_services_discount": 0,
+                "can_access_training": False,
+                "training_credits_per_year": 0,
+                "can_contact_jon_landeta": True
             }
         }
 
@@ -233,7 +241,8 @@ SUBSCRIPTION_PLANS = {
             "Exportación PDF",
             "Exportación HTML básica",
             "Análisis estándar",
-            "Almacenamiento 500MB"
+            "Almacenamiento 500MB",
+            "Contacto con Jon Landeta"
         ],
         max_charts=5,
         max_storage_mb=500,
@@ -248,7 +257,10 @@ SUBSCRIPTION_PLANS = {
         can_access_expert_chat=False,
         expert_consultations_per_month=0,
         can_access_professional_services=False,
-        professional_services_discount=0
+        professional_services_discount=0,
+        can_access_training=False,
+        training_credits_per_year=0,
+        can_contact_jon_landeta=True  # Todos pueden contactar con Jon
     ),
     
     SubscriptionTier.PRO: SubscriptionPlan(
@@ -263,7 +275,9 @@ SUBSCRIPTION_PLANS = {
             "Revolución Solar",
             "Almacenamiento 5GB",
             "Soporte prioritario",
-            "1 consulta con experto IA por mes"
+            "1 consulta con experto IA por mes",
+            "Contacto con Jon Landeta",
+            "1 crédito de capacitación anual"
         ],
         max_charts=-1,  # Ilimitado
         max_storage_mb=5000,
@@ -278,7 +292,10 @@ SUBSCRIPTION_PLANS = {
         can_access_expert_chat=True,
         expert_consultations_per_month=1,
         can_access_professional_services=False,
-        professional_services_discount=0
+        professional_services_discount=0,
+        can_access_training=True,
+        training_credits_per_year=1,
+        can_contact_jon_landeta=True
     ),
     
     SubscriptionTier.PREMIUM: SubscriptionPlan(
@@ -297,7 +314,9 @@ SUBSCRIPTION_PLANS = {
             "API privada",
             "3 consultas con experto IA por mes",
             "Acceso a servicios de Jon Landeta",
-            "10% descuento en servicios profesionales"
+            "10% descuento en servicios profesionales",
+            "Contacto con Jon Landeta",
+            "3 créditos de capacitación anuales"
         ],
         max_charts=-1,
         max_storage_mb=20000,
@@ -312,7 +331,10 @@ SUBSCRIPTION_PLANS = {
         can_access_expert_chat=True,
         expert_consultations_per_month=3,
         can_access_professional_services=True,
-        professional_services_discount=10
+        professional_services_discount=10,
+        can_access_training=True,
+        training_credits_per_year=3,
+        can_contact_jon_landeta=True
     ),
     
     SubscriptionTier.ENTERPRISE: SubscriptionPlan(
@@ -331,7 +353,9 @@ SUBSCRIPTION_PLANS = {
             "Formación incluida",
             "Consultas ilimitadas con experto IA",
             "Acceso prioritario a Jon Landeta",
-            "20% descuento en servicios profesionales"
+            "20% descuento en servicios profesionales",
+            "Contacto directo con Jon Landeta",
+            "Capacitación ilimitada"
         ],
         max_charts=-1,
         max_storage_mb=-1,  # Ilimitado
@@ -346,7 +370,10 @@ SUBSCRIPTION_PLANS = {
         can_access_expert_chat=True,
         expert_consultations_per_month=-1,  # Ilimitado
         can_access_professional_services=True,
-        professional_services_discount=20
+        professional_services_discount=20,
+        can_access_training=True,
+        training_credits_per_year=-1,  # Ilimitado
+        can_contact_jon_landeta=True
     )
 }
 
