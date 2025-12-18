@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { 
+import {
   Sparkles,
-  Activity, 
+  Activity,
   Database,
   ChevronRight,
   ChevronLeft,
@@ -26,7 +26,11 @@ import {
   Info,
   ShieldAlert,
   Crown,
-  Zap
+  Zap,
+  ChevronDown,
+  Calendar,
+  Settings,
+  CreditCard
 } from 'lucide-react';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
 import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User } from './types';
@@ -102,12 +106,13 @@ const App: React.FC = () => {
 
   // Modal State
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const [userInput, setUserInput] = useState<UserInput>({
     name: '',
     date: '',
     time: '',
-    place: '', 
+    place: '',
     context: ''
   });
   
@@ -319,10 +324,17 @@ const App: React.FC = () => {
     setSavedCharts([]);
   };
 
-  // Si el usuario NO es admin, forzar el modo de Servicios (evita navegación accidental)
+  // Si el usuario NO es admin, permitir solo ciertos modos
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (currentUser?.role !== 'admin' && mode !== AppMode.PROFESSIONAL_SERVICES && mode !== AppMode.AUTH) {
+    const allowedModesForNonAdmin = [
+      AppMode.PROFESSIONAL_SERVICES,
+      AppMode.USER_PROFILE,
+      AppMode.SUBSCRIPTION_PLANS,
+      AppMode.SUBSCRIPTION_SUCCESS,
+      AppMode.AUTH
+    ];
+    if (currentUser?.role !== 'admin' && !allowedModesForNonAdmin.includes(mode)) {
       setMode(AppMode.PROFESSIONAL_SERVICES);
     }
   }, [isAuthenticated, currentUser, mode]);
@@ -1153,7 +1165,7 @@ ${analysisText}
             <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{t.appSubtitle}</p>
           </div>
         </div>
-        {/* Idiomas y logout al lado del logo */}
+        {/* Idiomas y menú de usuario */}
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
             {(['es', 'ca', 'eu'] as Language[]).map((l) => (
@@ -1161,8 +1173,8 @@ ${analysisText}
                 key={l}
                 onClick={() => setLang(l)}
                 className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border ${
-                  lang === l 
-                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' 
+                  lang === l
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
                   : 'text-gray-500 border-transparent hover:bg-white/5'
                 }`}
                 title={l === 'es' ? 'Español' : l === 'ca' ? 'Català' : 'Euskera'}
@@ -1172,14 +1184,83 @@ ${analysisText}
             ))}
           </div>
           {isAuthenticated && (
-            <button 
-              onClick={handleLogout} 
-              className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all" 
-              title={t.authLogout}
-              aria-label={t.authLogout}
-            >
-              <LogOut size={16} />
-            </button>
+            <div className="relative">
+              {/* User Menu Button */}
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 p-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-all"
+                title="Menú de usuario"
+                aria-label="Menú de usuario"
+              >
+                <div className="w-8 h-8 bg-indigo-500/20 rounded-full flex items-center justify-center border border-indigo-500/50">
+                  <UserIcon size={16} className="text-indigo-400" />
+                </div>
+                <ChevronDown size={14} className={`transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  {/* User Info Header */}
+                  <div className="px-4 py-3 border-b border-gray-700 bg-gradient-to-r from-indigo-900/50 to-purple-900/50">
+                    <p className="text-sm font-semibold text-white">{currentUser?.username || 'Usuario'}</p>
+                    <p className="text-xs text-gray-400">{currentUser?.email || ''}</p>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setMode(AppMode.USER_PROFILE);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-indigo-500/10 hover:text-white transition-colors"
+                    >
+                      <UserIcon size={16} />
+                      <span className="text-sm">Mi Perfil</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setMode(AppMode.SUBSCRIPTION_PLANS);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-indigo-500/10 hover:text-white transition-colors"
+                    >
+                      <Crown size={16} />
+                      <span className="text-sm">Mi Suscripción</span>
+                    </button>
+
+                    {!isAdmin && (
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setMode(AppMode.PROFESSIONAL_SERVICES);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-indigo-500/10 hover:text-white transition-colors"
+                      >
+                        <Calendar size={16} />
+                        <span className="text-sm">Servicios</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Logout */}
+                  <div className="border-t border-gray-700 py-2">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors"
+                    >
+                      <LogOut size={16} />
+                      <span className="text-sm">{t.authLogout}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

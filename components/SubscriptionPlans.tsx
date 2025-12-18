@@ -66,7 +66,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
 
   const getPlanColor = (tier: string) => {
     switch (tier) {
-      case 'free': return 'from-gray-500 to-gray-700';
+      case 'free': return 'from-green-400 to-emerald-600';
       case 'pro': return 'from-indigo-500 to-purple-600';
       case 'premium': return 'from-yellow-500 to-orange-600';
       case 'enterprise': return 'from-emerald-500 to-teal-600';
@@ -148,12 +148,15 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
           {plans.map((plan) => {
             const priceInfo = getPrice(plan);
             const isPopular = plan.tier === 'pro';
-            
+            const isFree = plan.tier === 'free';
+
             return (
               <div
                 key={plan.tier}
                 className={`relative group ${
                   isPopular ? 'lg:-mt-4 lg:mb-4' : ''
+                } ${
+                  isFree ? 'lg:-mt-2' : ''
                 }`}
               >
                 {/* Popular badge */}
@@ -161,6 +164,14 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                       ⭐ MÁS POPULAR
+                    </div>
+                  </div>
+                )}
+                {/* Free badge */}
+                {isFree && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                    <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                      🎁 COMIENZA AQUÍ
                     </div>
                   </div>
                 )}
@@ -227,21 +238,24 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                     {/* CTA Button */}
                     <button
                       onClick={() => {
-                        if (plan.tier === 'free') return;
+                        if (plan.tier === 'free') {
+                          // Para plan gratuito, simplemente cerrar o mostrar mensaje
+                          if (onClose) onClose();
+                          return;
+                        }
                         setSelectedPlan({...plan, id: plan.tier} as any);
                         setShowCheckoutWizard(true);
                       }}
-                      disabled={plan.tier === 'free'}
                       className={`
                         w-full py-4 rounded-xl font-bold text-lg
                         transition-all transform hover:scale-105
                         ${plan.tier === 'free'
-                          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                          ? 'bg-gradient-to-r from-green-400 to-emerald-600 text-white shadow-lg hover:shadow-xl'
                           : `bg-gradient-to-r ${getPlanColor(plan.tier)} text-white shadow-lg hover:shadow-xl`
                         }
                       `}
                     >
-                      {plan.tier === 'free' ? 'Plan Actual' : 'Seleccionar Plan'}
+                      {plan.tier === 'free' ? 'Comenzar Gratis' : 'Seleccionar Plan'}
                     </button>
                   </div>
                 </div>

@@ -12,9 +12,12 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Tag
+  Tag,
+  Sparkles,
+  Star
 } from 'lucide-react';
 import ServiceBookingModal from './ServiceBookingModal';
+import AstrologyDemo from './AstrologyDemo';
 
 interface Service {
   service_id: string;
@@ -51,6 +54,7 @@ const ProfessionalServices: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -156,6 +160,45 @@ const ProfessionalServices: React.FC = () => {
             La información compartida tiene fines de orientación y desarrollo personal. Para cuestiones clínicas, diagnósticos o
             decisiones de salud, debe ser valorada y seguida por un profesional cualificado.
           </p>
+        </div>
+
+        {/* FREE DEMO CTA - Destacado */}
+        <div className="mt-8 max-w-4xl mx-auto">
+          <div className="relative bg-gradient-to-r from-green-900/40 via-emerald-900/40 to-teal-900/40 border-2 border-green-500/50 rounded-3xl p-8 overflow-hidden shadow-2xl">
+            {/* Background effects */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"></div>
+
+            {/* Content */}
+            <div className="relative z-10 text-center">
+              <div className="inline-flex items-center gap-2 bg-green-500/20 border border-green-400/50 rounded-full px-4 py-2 mb-4">
+                <Star className="w-5 h-5 text-green-400" />
+                <span className="text-green-300 font-bold text-sm">100% GRATUITO</span>
+              </div>
+
+              <h2 className="text-3xl font-bold text-white mb-3 flex items-center justify-center gap-3">
+                <Sparkles className="w-8 h-8 text-green-400" />
+                Prueba tu Demo Astrológica Gratis
+              </h2>
+
+              <p className="text-gray-200 text-lg mb-6 max-w-2xl mx-auto">
+                Descubre una interpretación básica de tu carta natal con tu Sol, Luna y Ascendente.
+                <span className="block mt-2 text-green-300 font-semibold">Sin coste · Sin compromiso · Resultados inmediatos</span>
+              </p>
+
+              <button
+                onClick={() => setShowDemoModal(true)}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold text-lg px-8 py-4 rounded-xl transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/50"
+              >
+                <Sparkles className="w-6 h-6" />
+                <span>Generar Mi Demo Gratis</span>
+              </button>
+
+              <p className="mt-4 text-gray-400 text-sm">
+                Solo necesitas tu fecha, hora y lugar de nacimiento
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Subscription summary (read-only) */}
@@ -386,6 +429,22 @@ const ProfessionalServices: React.FC = () => {
           service={selectedService}
           discount={catalogData?.discount || 0}
         />
+      )}
+
+      {/* Astrology Demo Modal */}
+      {showDemoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 overflow-y-auto">
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowDemoModal(false)}
+              className="absolute top-4 right-4 z-10 bg-gray-900/80 hover:bg-gray-800 text-white p-2 rounded-full transition-colors"
+              aria-label="Cerrar demo"
+            >
+              <span className="text-2xl leading-none">×</span>
+            </button>
+            <AstrologyDemo />
+          </div>
+        </div>
       )}
     </div>
   );
