@@ -16,7 +16,7 @@ class DemoAIService:
         else:
             genai.configure(api_key=api_key)
             # Usar modelo flash por defecto por ser más rápido y estable
-            self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+            self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
 
     def _get_system_prompt(self, step: DemoStep, chart_data: Dict[str, Any]) -> str:
         """Genera el prompt del sistema según el paso actual y los datos de la carta"""
