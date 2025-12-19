@@ -34,12 +34,52 @@ const AstrologyDemo: React.FC = () => {
   });
   const [demoReport, setDemoReport] = useState<DemoReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const handleInputChange = (field: keyof DemoData, value: string) => {
     setDemoData(prev => ({ ...prev, [field]: value }));
     setError(null);
+  };
+
+  const geocodeBirthPlace = async () => {
+    if (!demoData.birthPlace || demoData.birthPlace.trim().length < 3) {
+      setError('Por favor ingresa un lugar de nacimiento válido');
+      return;
+    }
+
+    setIsGeocoding(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('fraktal_token');
+      const response = await fetch(`${API_URL}/geolocation/geocode`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ place: demoData.birthPlace })
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo encontrar el lugar');
+      }
+
+      const data = await response.json();
+      setDemoData(prev => ({
+        ...prev,
+        latitude: data.lat.toString(),
+        longitude: data.lon.toString(),
+        birthPlace: data.nombre
+      }));
+    } catch (err: any) {
+      console.error('Error geocoding:', err);
+      setError(`No se pudo geocodificar "${demoData.birthPlace}". Intenta con otro formato (ej: "Madrid, España")`);
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -238,10 +278,29 @@ const AstrologyDemo: React.FC = () => {
                   type="text"
                   value={demoData.birthPlace}
                   onChange={(e) => handleInputChange('birthPlace', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      geocodeBirthPlace();
+                    }
+                  }}
                   className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
                   placeholder="Ciudad, País"
                 />
+                <button
+                  type="button"
+                  onClick={geocodeBirthPlace}
+                  disabled={isGeocoding || !demoData.birthPlace}
+                  className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-semibold text-sm"
+                >
+                  {isGeocoding ? 'Buscando...' : 'Buscar'}
+                </button>
               </div>
+              {demoData.latitude && demoData.longitude && (
+                <p className="text-green-400 text-sm mt-2">
+                  ✓ Coordenadas: {parseFloat(demoData.latitude).toFixed(4)}, {parseFloat(demoData.longitude).toFixed(4)}
+                </p>
+              )}
             </div>
 
             {/* Error Message */}
