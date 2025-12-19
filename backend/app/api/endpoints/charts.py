@@ -123,23 +123,37 @@ async def generate_chart(chart_data: ChartGenerate):
     Returns:
         Dict con planetas, casas, ángulos y datos de entrada
     """
+    import sys
+    import traceback
+
     try:
+        print(f"[GENERATE_CHART] Recibiendo request: {chart_data.model_dump()}", file=sys.stderr)
+
         # Convertir coordenadas a float
         latitude = float(chart_data.latitude)
         longitude = float(chart_data.longitude)
 
+        print(f"[GENERATE_CHART] Coordenadas: lat={latitude}, lon={longitude}", file=sys.stderr)
+
         # Calcular carta natal completa usando Swiss Ephemeris
+        print(f"[GENERATE_CHART] Calculando carta natal...", file=sys.stderr)
         carta_completa = calcular_carta_completa(
             fecha=chart_data.birth_date,
             hora=chart_data.birth_time,
             latitud=latitude,
             longitud=longitude
         )
+        print(f"[GENERATE_CHART] Carta calculada exitosamente", file=sys.stderr)
 
         # Formatear respuesta para el frontend
         # Convertir posiciones de planetas a formato esperado
         planets = []
         for nombre, data in carta_completa['planetas'].items():
+            # Filtrar planetas que no tienen datos (ej: Quirón puede ser None)
+            if data is None:
+                print(f"[GENERATE_CHART] Advertencia: {nombre} es None, omitiendo", file=sys.stderr)
+                continue
+
             planets.append({
                 'name': nombre,
                 'sign': data['signo'],
@@ -150,13 +164,23 @@ async def generate_chart(chart_data: ChartGenerate):
             })
 
         # Formatear casas
+        # Calcular signo desde la cúspide (grados / 30)
+        signos = ['Aries', 'Tauro', 'Géminis', 'Cáncer', 'Leo', 'Virgo',
+                  'Libra', 'Escorpio', 'Sagitario', 'Capricornio', 'Acuario', 'Piscis']
+
         houses = []
         for casa_data in carta_completa['casas']:
+            cuspide = casa_data['cuspide']
+            signo_idx = int(cuspide // 30) % 12
+            signo = signos[signo_idx]
+            grados_en_signo = int(cuspide % 30)
+            minutos = int((cuspide % 1) * 60)
+
             houses.append({
                 'house': casa_data['numero'],
-                'sign': casa_data['signo'],
-                'degree': f"{casa_data['grados']}°{casa_data['minutos']:02d}'",
-                'longitude': casa_data['cuspide']
+                'sign': signo,
+                'degree': f"{grados_en_signo}°{minutos:02d}'",
+                'longitude': cuspide
             })
 
         # Respuesta final
@@ -189,11 +213,15 @@ async def generate_chart(chart_data: ChartGenerate):
         }
 
     except ValueError as e:
+        print(f"[GENERATE_CHART] ERROR ValueError: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Coordenadas inválidas: {str(e)}"
         )
     except Exception as e:
+        print(f"[GENERATE_CHART] ERROR Exception: {type(e).__name__}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al generar carta natal: {str(e)}"
