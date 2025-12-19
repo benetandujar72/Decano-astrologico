@@ -122,6 +122,12 @@ DEFAULT_PROMPTS = {
 
 **ESTILO:** Impersonal, técnico, sistémico. Sin predicciones genéricas.
 **IDIOMA:** Español (adaptable)
+
+**FORMATO DE SALIDA:**
+- Usa **negritas** para resaltar conceptos clave.
+- Estructura el texto en párrafos claros con saltos de línea.
+- Usa listas con viñetas para enumerar puntos.
+- Estilo moderno y profesional.
 """,
 
     PromptType.SOLAR_RETURN: """
@@ -158,6 +164,12 @@ DEFAULT_PROMPTS = {
    - Meses clave
 
 **IMPORTANTE:** Toda interpretación debe relacionarse con la carta natal base.
+
+**FORMATO DE SALIDA:**
+- Usa **negritas** para resaltar conceptos clave.
+- Estructura el texto en párrafos claros con saltos de línea.
+- Usa listas con viñetas para enumerar puntos.
+- Estilo moderno y profesional.
 """,
 
     PromptType.TRANSITS: """
@@ -196,6 +208,12 @@ DEFAULT_PROMPTS = {
    - Recomendaciones de manejo
 
 **ORBES:** Máximo 1° para tránsitos (2° para luminares)
+
+**FORMATO DE SALIDA:**
+- Usa **negritas** para resaltar conceptos clave.
+- Estructura el texto en párrafos claros con saltos de línea.
+- Usa listas con viñetas para enumerar puntos.
+- Estilo moderno y profesional.
 """,
 
     PromptType.SYNASTRY: """
@@ -234,6 +252,12 @@ DEFAULT_PROMPTS = {
    - Potencial evolutivo
 
 **IMPORTANTE:** No juzgar, solo describir dinámica.
+
+**FORMATO DE SALIDA:**
+- Usa **negritas** para resaltar conceptos clave.
+- Estructura el texto en párrafos claros con saltos de línea.
+- Usa listas con viñetas para enumerar puntos.
+- Estilo moderno y profesional.
 """
 }
 
