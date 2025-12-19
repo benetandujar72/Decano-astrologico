@@ -1803,7 +1803,7 @@ ${analysisText}
           <UserProfilePage onBack={() => setMode(AppMode.INPUT)} />
         )}
         {mode === AppMode.PROFESSIONAL_SERVICES && (
-          <ProfessionalServices />
+          <ProfessionalServices onBack={() => setMode(AppMode.INPUT)} />
         )}
         {mode === AppMode.SUBSCRIPTION_PLANS && (
           <SubscriptionPlans 
@@ -1889,7 +1889,7 @@ ${analysisText}
       </div>
       
       {/* Barra de navegación inferior tipo móvil - FUERA del contenido scrolleable */}
-      {isAuthenticated && isAdmin && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
+      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 safe-area-inset-bottom">
           <div className="max-w-2xl mx-auto flex justify-around items-center">
             <button 

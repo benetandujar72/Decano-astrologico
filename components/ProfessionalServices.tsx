@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Tag,
   Sparkles,
-  Star
+  Star,
+  ArrowLeft
 } from 'lucide-react';
 import ServiceBookingModal from './ServiceBookingModal';
 import AstrologyDemo from './AstrologyDemo';
@@ -48,7 +49,11 @@ interface CatalogResponse {
   is_admin?: boolean;
 }
 
-const ProfessionalServices: React.FC = () => {
+interface ProfessionalServicesProps {
+  onBack?: () => void;
+}
+
+const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) => {
   const [catalogData, setCatalogData] = useState<CatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +150,16 @@ const ProfessionalServices: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="text-center mb-12">
+      <div className="relative text-center mb-12">
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="absolute left-0 top-0 p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft size={24} />
+          </button>
+        )}
         <h1 className="text-4xl font-bold text-white mb-4">
           Servicios Profesionales de Jon Landeta
         </h1>

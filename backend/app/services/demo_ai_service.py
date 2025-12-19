@@ -9,12 +9,14 @@ from app.models.demo_chat import DemoStep, DemoSession, MessageRole, DemoMessage
 class DemoAIService:
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
+        self.model = None
         if not api_key:
             # Fallback para desarrollo si no hay key, aunque debería haber
             print("WARNING: GEMINI_API_KEY not found")
         else:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
+            # Usar modelo flash por defecto por ser más rápido y estable
+            self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
 
     def _get_system_prompt(self, step: DemoStep, chart_data: Dict[str, Any]) -> str:
         """Genera el prompt del sistema según el paso actual y los datos de la carta"""
@@ -111,6 +113,9 @@ Analiza:
             
         # Generar respuesta
         try:
+            if not self.model:
+                return "Lo siento, el servicio de IA no está configurado correctamente (Falta API Key). Por favor contacta al administrador."
+
             chat = self.model.start_chat(history=history)
             response = chat.send_message(system_prompt + f"\n\nUsuario dice: {user_message}\n(Si el usuario pide continuar, genera el análisis del PASO ACTUAL descrito en el system prompt. Si hace una pregunta, responde la pregunta).")
             return response.text

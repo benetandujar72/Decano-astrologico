@@ -76,11 +76,15 @@ async def chat_demo(request: ChatDemoRequest):
     session.messages.append(user_msg)
     
     # Procesar con IA
-    ai_response_text = await demo_ai_service.process_step(
-        session, 
-        request.message, 
-        request.next_step
-    )
+    try:
+        ai_response_text = await demo_ai_service.process_step(
+            session, 
+            request.message, 
+            request.next_step
+        )
+    except Exception as e:
+        print(f"Error en demo_ai_service: {e}")
+        ai_response_text = "Lo siento, ha ocurrido un error interno al procesar tu mensaje. Por favor intenta de nuevo."
     
     # Agregar respuesta de IA
     ai_msg = DemoMessage(
