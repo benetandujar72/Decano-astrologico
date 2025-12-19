@@ -453,7 +453,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-4">Mensajes y Comunicaciones</h2>
 
-              <div className="bg-gradient-to-r from-green-500/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-6 mb-6">
+              <div className="bg-linear-to-r from-green-500/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-6 mb-6">
                 <div className="flex items-start gap-4">
                   <Mail className="w-8 h-8 text-green-400 flex-shrink-0" />
                   <div>

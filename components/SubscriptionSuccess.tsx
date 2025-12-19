@@ -113,7 +113,7 @@ export const SubscriptionSuccess: React.FC<SubscriptionSuccessProps> = ({ sessio
           </p>
           <button
             onClick={onContinue}
-            className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full bg-linear-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
           >
             <span>Volver a intentar</span>
             <ArrowRight size={20} />
@@ -132,7 +132,7 @@ export const SubscriptionSuccess: React.FC<SubscriptionSuccessProps> = ({ sessio
           <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
             <CheckCircle className="text-green-400" size={48} />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-3">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-3">
             ¡Suscripción Activada!
           </h1>
           <p className="text-slate-400 text-lg">
@@ -218,7 +218,7 @@ export const SubscriptionSuccess: React.FC<SubscriptionSuccessProps> = ({ sessio
         {/* Continue Button */}
         <button
           onClick={onContinue}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
+          className="w-full bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
         >
           <span>Ir a mi Perfil</span>
           <ArrowRight size={20} />

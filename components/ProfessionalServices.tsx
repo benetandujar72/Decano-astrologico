@@ -178,7 +178,7 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
 
         {/* FREE DEMO CTA - Destacado */}
         <div className="mt-8 max-w-4xl mx-auto">
-          <div className="relative bg-gradient-to-r from-green-900/40 via-emerald-900/40 to-teal-900/40 border-2 border-green-500/50 rounded-3xl p-8 overflow-hidden shadow-2xl">
+          <div className="relative bg-linear-to-r from-green-900/40 via-emerald-900/40 to-teal-900/40 border-2 border-green-500/50 rounded-3xl p-8 overflow-hidden shadow-2xl">
             {/* Background effects */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"></div>
@@ -202,7 +202,7 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
 
               <button
                 onClick={() => setShowDemoModal(true)}
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold text-lg px-8 py-4 rounded-xl transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/50"
+                className="inline-flex items-center gap-3 bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold text-lg px-8 py-4 rounded-xl transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/50"
               >
                 <Sparkles className="w-6 h-6" />
                 <span>Generar Mi Demo Gratis</span>

@@ -98,7 +98,7 @@ const ServiceBookingModal: React.FC<ServiceBookingModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
       <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-purple-500/30">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 sticky top-0 z-10">
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-linear-to-r from-purple-900/50 to-indigo-900/50 sticky top-0 z-10">
           <h2 className="text-2xl font-bold text-white">Reservar Servicio</h2>
           <button
             onClick={handleClose}

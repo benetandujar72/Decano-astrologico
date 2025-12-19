@@ -167,7 +167,7 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
       <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col border border-purple-500/30">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-purple-900/50 to-indigo-900/50">
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-linear-to-r from-purple-900/50 to-indigo-900/50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-600 rounded-lg">
               <Sparkles className="w-6 h-6 text-white" />

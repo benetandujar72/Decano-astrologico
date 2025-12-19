@@ -1206,7 +1206,7 @@ ${analysisText}
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                   {/* User Info Header */}
-                  <div className="px-4 py-3 border-b border-gray-700 bg-gradient-to-r from-indigo-900/50 to-purple-900/50">
+                  <div className="px-4 py-3 border-b border-gray-700 bg-linear-to-r from-indigo-900/50 to-purple-900/50">
                     <p className="text-sm font-semibold text-white">{currentUser?.username || 'Usuario'}</p>
                     <p className="text-xs text-gray-400">{currentUser?.email || ''}</p>
                   </div>
@@ -1295,6 +1295,7 @@ ${analysisText}
             <label htmlFor="auth-username" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authUser}</label>
             <div className="relative">
               <input id="auth-username" required type="text" 
+                placeholder="Usuario"
                 value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})}
                 className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
               <UserIcon className="absolute left-3 top-3.5 text-gray-500" size={16} />
@@ -1304,6 +1305,7 @@ ${analysisText}
             <label htmlFor="auth-password" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authPass}</label>
             <div className="relative">
               <input id="auth-password" required type="password" 
+                 placeholder="Contraseña"
                  value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})}
                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
               <Lock className="absolute left-3 top-3.5 text-gray-500" size={16} />
@@ -1385,18 +1387,18 @@ ${analysisText}
           <div className="space-y-4">
             <div>
               <label htmlFor="input-name" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputName}</label>
-              <input id="input-name" required type="text" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} 
+              <input id="input-name" required type="text" placeholder="Nombre completo" value={userInput.name} onChange={e => setUserInput({...userInput, name: e.target.value})} 
                 className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none" />
             </div>
             <div className="grid grid-cols-2 gap-4">
                <div>
                  <label htmlFor="input-date" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputDate}</label>
-                 <input id="input-date" required type="date" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} 
+                 <input id="input-date" required type="date" title="Fecha de nacimiento" value={userInput.date} onChange={e => setUserInput({...userInput, date: e.target.value})} 
                    className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none text-sm" />
                </div>
                <div>
                  <label htmlFor="input-time" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider ml-1">{t.inputTime}</label>
-                 <input id="input-time" required type="time" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} 
+                 <input id="input-time" required type="time" title="Hora de nacimiento" value={userInput.time} onChange={e => setUserInput({...userInput, time: e.target.value})} 
                    className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none text-sm" />
                </div>
             </div>
@@ -1408,6 +1410,7 @@ ${analysisText}
                   ref={placeInputRef}
                   required 
                   type="text" 
+                  placeholder="Ciudad, País"
                   value={userInput.place} 
                   onChange={handlePlaceChange}
                   onFocus={() => {

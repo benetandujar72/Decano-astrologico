@@ -106,7 +106,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+          <h1 className="text-5xl font-bold text-white mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
             Elige tu Plan
           </h1>
           <p className="text-xl text-gray-300">
@@ -121,7 +121,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
               onClick={() => setBilling('monthly')}
               className={`px-8 py-3 rounded-full transition-all ${
                 billing === 'monthly'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                  ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
@@ -131,7 +131,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
               onClick={() => setBilling('yearly')}
               className={`px-8 py-3 rounded-full transition-all ${
                 billing === 'yearly'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                  ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
@@ -162,7 +162,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                 {/* Popular badge */}
                 {isPopular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                    <div className="bg-linear-to-r from-yellow-400 to-orange-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                       ⭐ MÁS POPULAR
                     </div>
                   </div>
@@ -170,7 +170,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                 {/* Free badge */}
                 {isFree && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                    <div className="bg-linear-to-r from-green-400 to-emerald-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                       🎁 COMIENZA AQUÍ
                     </div>
                   </div>
@@ -250,8 +250,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                         w-full py-4 rounded-xl font-bold text-lg
                         transition-all transform hover:scale-105
                         ${plan.tier === 'free'
-                          ? 'bg-gradient-to-r from-green-400 to-emerald-600 text-white shadow-lg hover:shadow-xl'
-                          : `bg-gradient-to-r ${getPlanColor(plan.tier)} text-white shadow-lg hover:shadow-xl`
+                          ? 'bg-linear-to-r from-green-400 to-emerald-600 text-white shadow-lg hover:shadow-xl'
+                          : `bg-linear-to-r ${getPlanColor(plan.tier)} text-white shadow-lg hover:shadow-xl`
                         }
                       `}
                     >

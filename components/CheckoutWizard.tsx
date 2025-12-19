@@ -95,7 +95,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-slate-700">
           <div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h2 className="text-2xl font-bold bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Suscripción a {plan.name}
             </h2>
             <p className="text-slate-400 text-sm mt-1">
@@ -141,7 +141,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
           </div>
           <div className="h-2 bg-slate-700 rounded-full mt-2">
             <div
-              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
+              className="h-full bg-linear-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
               style={{ width: step === 1 ? '50%' : '100%' }}
             />
           </div>
@@ -244,7 +244,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
               <button
                 onClick={handleProceedToPayment}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 px-6 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 px-6 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>

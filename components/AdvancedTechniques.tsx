@@ -115,7 +115,7 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
           >
             ← Volver
           </button>
-          <h1 className="text-5xl font-bold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+          <h1 className="text-5xl font-bold text-white mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
             Técnicas Avanzadas
           </h1>
           <p className="text-xl text-gray-300">
@@ -150,7 +150,7 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
 
                 {/* Pro Badge */}
                 {technique.isPro && !technique.comingSoon && (
-                  <div className="absolute -top-3 -left-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="absolute -top-3 -left-3 z-10 bg-linear-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full">
                     PRO
                   </div>
                 )}
