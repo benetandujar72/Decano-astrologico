@@ -19,7 +19,7 @@ class AIExpertService:
         # Configurar Gemini
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(
-            model_name=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+            model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
             system_instruction=self._get_system_prompt()
         )
 
