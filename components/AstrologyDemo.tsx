@@ -2,8 +2,9 @@
  * Componente de Demo de Informe Astrológico
  * Permite a los usuarios generar una pequeña demo con sus datos
  */
-import React, { useState } from 'react';
-import { Sparkles, Calendar, MapPin, Clock, AlertCircle, Download, Mail } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Calendar, MapPin, Clock, AlertCircle, Download, Mail, Send, User, Bot, ArrowRight } from 'lucide-react';
+import { api } from '../services/api';
 
 interface DemoData {
   name: string;
@@ -14,16 +15,14 @@ interface DemoData {
   longitude: string;
 }
 
-interface DemoReport {
-  sun_sign: string;
-  moon_sign: string;
-  ascendant: string;
-  summary: string;
-  key_traits: string[];
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  step?: string;
 }
 
 const AstrologyDemo: React.FC = () => {
-  const [step, setStep] = useState<'form' | 'generating' | 'result'>('form');
+  const [step, setStep] = useState<'form' | 'chat'>('form');
   const [demoData, setDemoData] = useState<DemoData>({
     name: '',
     birthDate: '',
@@ -32,11 +31,23 @@ const AstrologyDemo: React.FC = () => {
     latitude: '',
     longitude: ''
   });
-  const [demoReport, setDemoReport] = useState<DemoReport | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleInputChange = (field: keyof DemoData, value: string) => {
     setDemoData(prev => ({ ...prev, [field]: value }));
@@ -90,77 +101,74 @@ const AstrologyDemo: React.FC = () => {
     return true;
   };
 
-  const generateDemo = async () => {
+  const startDemo = async () => {
     if (!validateForm()) return;
 
-    setStep('generating');
+    setIsLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('fraktal_token');
-
       // Preparar datos para el backend
       const chartData = {
         name: demoData.name,
         birth_date: demoData.birthDate,
-        birth_time: demoData.birthTime || '12:00', // Usar mediodía si no se proporciona
+        birth_time: demoData.birthTime || '12:00',
         birth_place: demoData.birthPlace || 'Madrid, España',
         latitude: demoData.latitude || '40.4168',
         longitude: demoData.longitude || '-3.7038',
-        is_demo: true // Marcar como demo
+        is_demo: true
       };
 
-      // Llamar al endpoint de generación de carta natal
-      const response = await fetch(`${API_URL}/charts/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(chartData)
+      // Iniciar sesión de chat
+      const session = await api.startDemoSession({
+        user_name: demoData.name,
+        ...chartData,
+        chart_data: chartData // Pasamos los datos para que el backend los use
       });
 
-      if (!response.ok) {
-        throw new Error('Error al generar la carta natal');
-      }
-
-      const chartResult = await response.json();
-
-      // Extraer información para la demo
-      const planets = chartResult.planets || [];
-      const sun = planets.find((p: any) => p.name === 'Sun');
-      const moon = planets.find((p: any) => p.name === 'Moon');
-      const ascendant = chartResult.houses?.[0]; // Primera casa = Ascendente
-
-      // Función para obtener el signo zodiacal desde los grados
-      const getZodiacSign = (degrees: number): string => {
-        const signs = [
-          'Aries', 'Tauro', 'Géminis', 'Cáncer', 'Leo', 'Virgo',
-          'Libra', 'Escorpio', 'Sagitario', 'Capricornio', 'Acuario', 'Piscis'
-        ];
-        const signIndex = Math.floor(degrees / 30);
-        return signs[signIndex] || 'Desconocido';
-      };
-
-      const demoReport: DemoReport = {
-        sun_sign: sun ? getZodiacSign(sun.longitude) : 'Calculando...',
-        moon_sign: moon ? getZodiacSign(moon.longitude) : 'Calculando...',
-        ascendant: ascendant ? getZodiacSign(ascendant.longitude) : 'Calculando...',
-        summary: `Basado en tu fecha de nacimiento (${new Date(demoData.birthDate).toLocaleDateString()}), tu Sol está en ${sun ? getZodiacSign(sun.longitude) : '...'}, lo que indica tu esencia central y propósito de vida. Tu Luna en ${moon ? getZodiacSign(moon.longitude) : '...'} revela tus necesidades emocionales y tu mundo interior. ${ascendant ? `Con ${getZodiacSign(ascendant.longitude)} ascendente, proyectas esta energía al mundo exterior.` : ''}\n\nEste es un análisis preliminar. Para una interpretación completa y personalizada que considere todos los aspectos planetarios, casas y tránsitos actuales, te recomendamos contactar con Jon Landeta.`,
-        key_traits: [
-          `Energía ${sun ? getZodiacSign(sun.longitude) : 'solar'} que define tu identidad y expresión personal`,
-          `Mundo emocional ${moon ? getZodiacSign(moon.longitude) : 'lunar'} que guía tus reacciones y necesidades afectivas`,
-          `${ascendant ? getZodiacSign(ascendant.longitude) : 'Ascendente'} como máscara social y primera impresión que causas`,
-          'Potencial único revelado en la configuración completa de tu carta natal'
-        ]
-      };
-
-      setDemoReport(demoReport);
-      setStep('result');
+      setSessionId(session.session_id);
+      setMessages(session.messages);
+      setStep('chat');
     } catch (err) {
-      console.error('Error generando demo:', err);
-      setError('Error al generar la demo. Por favor verifica tus datos e intenta de nuevo.');
-      setStep('form');
+      console.error('Error iniciando demo:', err);
+      setError('Error al iniciar la demo. Por favor intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputMessage.trim() || !sessionId || isLoading) return;
+
+    const msg = inputMessage;
+    setInputMessage('');
+    setIsLoading(true);
+
+    // Optimistic update
+    setMessages(prev => [...prev, { role: 'user', content: msg }]);
+
+    try {
+      const updatedSession = await api.sendDemoMessage(sessionId, msg);
+      setMessages(updatedSession.messages);
+    } catch (err) {
+      console.error('Error enviando mensaje:', err);
+      // Revert optimistic update or show error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNextStep = async () => {
+    if (!sessionId || isLoading) return;
+    setIsLoading(true);
+    try {
+      const updatedSession = await api.sendDemoMessage(sessionId, "Continuar al siguiente paso", true);
+      setMessages(updatedSession.messages);
+    } catch (err) {
+      console.error('Error avanzando paso:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -174,7 +182,8 @@ const AstrologyDemo: React.FC = () => {
       latitude: '',
       longitude: ''
     });
-    setDemoReport(null);
+    setSessionId(null);
+    setMessages([]);
     setError(null);
   };
 
@@ -185,27 +194,10 @@ const AstrologyDemo: React.FC = () => {
         <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600/20 rounded-full mb-4">
           <Sparkles className="w-8 h-8 text-purple-400" />
         </div>
-        <h1 className="text-4xl font-bold text-white mb-4">Demo de Informe Astrológico</h1>
+        <h1 className="text-4xl font-bold text-white mb-4">Demo de Informe Astrológico IA</h1>
         <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-          Descubre una vista previa de tu perfil astrológico. Introduce tus datos para generar una pequeña muestra.
+          Descubre tu perfil astrológico paso a paso con nuestra IA especializada (Método Carutti).
         </p>
-      </div>
-
-      {/* Disclaimer */}
-      <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl p-6 mb-8">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-6 h-6 text-amber-400 shrink-0 mt-1" />
-          <div>
-            <h3 className="text-amber-200 font-semibold mb-2">Aviso Importante</h3>
-            <p className="text-amber-100/80 text-sm mb-2">
-              Esta demo es solo una muestra simplificada con fines informativos. Los datos astrológicos requieren
-              interpretación profesional para su correcto entendimiento.
-            </p>
-            <p className="text-amber-100/80 text-sm">
-              Para un análisis completo y personalizado, te recomendamos contactar con un astrólogo profesional.
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Form Step */}
@@ -314,130 +306,138 @@ const AstrologyDemo: React.FC = () => {
             {/* Submit Button */}
             <button
               type="button"
-              onClick={generateDemo}
-              className="w-full py-4 bg-linear-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition-all"
+              onClick={startDemo}
+              disabled={isLoading}
+              className="w-full py-4 bg-linear-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Sparkles className="w-5 h-5 inline mr-2" />
-              Generar Demo de Informe
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Iniciando...
+                </span>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 inline mr-2" />
+                  Comenzar Análisis Interactivo
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {/* Generating Step */}
-      {step === 'generating' && (
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-12 border border-white/20 text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500 mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-white mb-2">Generando tu demo...</h2>
-          <p className="text-gray-300">Calculando posiciones planetarias y aspectos astrológicos</p>
-        </div>
-      )}
-
-      {/* Result Step */}
-      {step === 'result' && demoReport && (
-        <div className="space-y-6">
-          {/* Report Card */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-white mb-2">
-                Hola, {demoData.name} ✨
-              </h2>
-              <p className="text-gray-300">Aquí está tu vista previa astrológica</p>
-            </div>
-
-            {/* Signos Principales */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-linear-to-br from-orange-500/20 to-red-600/20 border border-orange-500/30 rounded-xl p-6 text-center">
-                <div className="text-4xl mb-2">☀️</div>
-                <h3 className="text-white font-bold mb-1">Sol</h3>
-                <p className="text-orange-300 text-xl font-semibold">{demoReport.sun_sign}</p>
+      {/* Chat Step */}
+      {step === 'chat' && (
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden flex flex-col h-[600px]">
+          {/* Chat Header */}
+          <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-600/30 flex items-center justify-center">
+                <Bot className="w-6 h-6 text-purple-300" />
               </div>
-              <div className="bg-linear-to-br from-blue-500/20 to-indigo-600/20 border border-blue-500/30 rounded-xl p-6 text-center">
-                <div className="text-4xl mb-2">🌙</div>
-                <h3 className="text-white font-bold mb-1">Luna</h3>
-                <p className="text-blue-300 text-xl font-semibold">{demoReport.moon_sign}</p>
-              </div>
-              <div className="bg-linear-to-br from-purple-500/20 to-pink-600/20 border border-purple-500/30 rounded-xl p-6 text-center">
-                <div className="text-4xl mb-2">⬆️</div>
-                <h3 className="text-white font-bold mb-1">Ascendente</h3>
-                <p className="text-purple-300 text-xl font-semibold">{demoReport.ascendant}</p>
+              <div>
+                <h3 className="text-white font-bold">Asistente Astrológico</h3>
+                <p className="text-xs text-purple-300">Método Carutti • IA Generativa</p>
               </div>
             </div>
-
-            {/* Resumen */}
-            <div className="bg-white/5 rounded-xl p-6 mb-6">
-              <h3 className="text-white font-bold text-lg mb-3">Resumen General</h3>
-              <p className="text-gray-300 leading-relaxed">{demoReport.summary}</p>
-            </div>
-
-            {/* Rasgos Clave */}
-            <div className="bg-white/5 rounded-xl p-6">
-              <h3 className="text-white font-bold text-lg mb-4">Rasgos Clave</h3>
-              <ul className="space-y-3">
-                {demoReport.key_traits.map((trait, idx) => (
-                  <li key={idx} className="flex items-start gap-3 text-gray-300">
-                    <span className="text-purple-400 shrink-0">✦</span>
-                    <span>{trait}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <button 
+              onClick={resetDemo}
+              className="text-gray-400 hover:text-white text-sm"
+            >
+              Reiniciar
+            </button>
           </div>
 
-          {/* Disclaimer en resultados */}
-          <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-6">
-            <h3 className="text-amber-200 font-semibold mb-2">⚠️ Recuerda</h3>
-            <p className="text-amber-100/80 text-sm mb-3">
-              Esta es una interpretación básica y generalizada. Un análisis astrológico completo requiere
-              la interpretación de un profesional cualificado que considere todos los aspectos de tu carta natal.
-            </p>
-            <p className="text-amber-100/80 text-sm font-semibold">
-              Para decisiones importantes sobre tu vida, salud o bienestar, consulta siempre con profesionales
-              especializados.
-            </p>
-          </div>
-
-          {/* Call to Action */}
-          <div className="bg-linear-to-r from-green-500/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex-1">
-                <h3 className="text-white font-bold text-lg mb-2">
-                  ¿Quieres un análisis completo y personalizado?
-                </h3>
-                <p className="text-gray-300 text-sm">
-                  Contacta con Jon Landeta para recibir un informe profesional detallado
-                  con interpretación personalizada de tu carta natal.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap"
-                onClick={() => {
-                  window.location.href = '#/professional-services';
-                }}
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-purple-600/30 scrollbar-track-transparent">
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <Mail className="w-5 h-5 inline mr-2" />
-                Contactar Ahora
+                {msg.role !== 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-purple-600/30 flex items-center justify-center shrink-0 mt-1">
+                    <Bot className="w-5 h-5 text-purple-300" />
+                  </div>
+                )}
+                
+                <div
+                  className={`max-w-[80%] rounded-2xl p-4 ${
+                    msg.role === 'user'
+                      ? 'bg-purple-600 text-white rounded-tr-none'
+                      : 'bg-white/10 text-gray-200 rounded-tl-none'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap leading-relaxed text-sm">
+                    {msg.content}
+                  </div>
+                </div>
+
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-gray-600/30 flex items-center justify-center shrink-0 mt-1">
+                    <User className="w-5 h-5 text-gray-300" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-8 h-8 rounded-full bg-purple-600/30 flex items-center justify-center shrink-0 mt-1">
+                  <Bot className="w-5 h-5 text-purple-300" />
+                </div>
+                <div className="bg-white/10 rounded-2xl p-4 rounded-tl-none">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="p-4 border-t border-white/10 bg-black/20">
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+               <button
+                onClick={handleNextStep}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-full text-purple-200 text-sm transition-all whitespace-nowrap"
+              >
+                Siguiente Paso <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setInputMessage("Explícame más sobre esto")}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+              >
+                Explícame más
+              </button>
+              <button
+                onClick={() => setInputMessage("¿Qué significa esto para mi vida?")}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+              >
+                ¿Qué significa?
               </button>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-4 justify-center">
-            <button
-              type="button"
-              onClick={resetDemo}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all"
-            >
-              Nueva Demo
-            </button>
-            <button
-              type="button"
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all"
-            >
-              <Download className="w-5 h-5 inline mr-2" />
-              Descargar PDF
-            </button>
+            
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Escribe tu pregunta..."
+                className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || isLoading}
+                className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </form>
           </div>
         </div>
       )}

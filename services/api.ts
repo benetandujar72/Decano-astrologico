@@ -98,6 +98,35 @@ export const api = {
     return res.json();
   },
 
+  // DEMO CHAT
+  startDemoSession: async (data: any): Promise<any> => {
+    const res = await fetch(`${API_URL}/demo-chat/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Error iniciando demo');
+    return res.json();
+  },
+
+  sendDemoMessage: async (sessionId: string, message: string, nextStep: boolean = false): Promise<any> => {
+    const res = await fetch(`${API_URL}/demo-chat/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, message, next_step: nextStep })
+    });
+    if (!res.ok) throw new Error('Error enviando mensaje');
+    return res.json();
+  },
+
+  getDemoHistory: async (sessionId: string): Promise<any> => {
+    const res = await fetch(`${API_URL}/demo-chat/history/${sessionId}`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Error obteniendo historial');
+    return res.json();
+  },
+
   // SPECIALIZED PROMPTS
   getSpecializedPrompt: async (promptType: string): Promise<{ content: string }> => {
     const res = await fetch(`${API_URL}/config/prompts/specialized/${promptType}`, {

@@ -13,7 +13,8 @@ from app.api.endpoints import (
     admin,
     geolocation,
     expert_chat,
-    professional_services
+    professional_services,
+    demo_chat
 )
 
 # Crear router principal
@@ -32,6 +33,7 @@ router.include_router(admin.router, prefix="/admin", tags=["admin"])
 # Nuevos endpoints para sistema de expertos y servicios profesionales
 router.include_router(expert_chat.router, prefix="/expert-chat", tags=["expert-chat"])
 router.include_router(professional_services.router, prefix="/professional-services", tags=["professional-services"])
+router.include_router(demo_chat.router, prefix="/demo-chat", tags=["demo-chat"])
 
 # Alias para compatibilidad
 app = router
