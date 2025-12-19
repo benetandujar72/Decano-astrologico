@@ -46,7 +46,7 @@ async def start_demo_session(request: StartDemoRequest):
     # Mensaje inicial de bienvenida
     welcome_msg = DemoMessage(
         role=MessageRole.ASSISTANT,
-        content="¡Hola! Soy tu asistente astrológico personal. He analizado tu carta natal y estoy listo para guiarte a través de un viaje de autodescubrimiento. Empezaremos analizando tu estructura energética base (Elementos y Modalidades). ¿Estás listo para comenzar?",
+        content="¡Hola! Soy tu asistente astrológico personal. He analizado tu carta natal y estoy listo para guiarte a través de un viaje de autodescubrimiento. Empezaremos analizando tu estructura energética base (Elementos y Modalidades). Ten en cuenta que el análisis puede tardar unos minutos. ¡Gracias por tu paciencia! ¿Estás listo para comenzar?",
         step=DemoStep.INITIAL
     )
     session.messages.append(welcome_msg)
