@@ -73,6 +73,7 @@ const App: React.FC = () => {
   
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false); // Nuevo estado Admin
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -269,6 +270,7 @@ const App: React.FC = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setIsAuthLoading(true);
     try {
       if (isRegistering) {
         await api.register(authForm.username, authForm.password);
@@ -280,6 +282,8 @@ const App: React.FC = () => {
       }
     } catch (err) {
       setErrorMsg('Error en credenciales o conexión.');
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -1308,8 +1312,19 @@ ${analysisText}
           
           {errorMsg && <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded border border-red-500/20">{errorMsg}</div>}
 
-          <button type="submit" className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20">
-             {isRegistering ? t.authBtnRegister : t.authBtnLogin}
+          <button 
+            type="submit" 
+            disabled={isAuthLoading}
+            className={`w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center ${isAuthLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          >
+             {isAuthLoading ? (
+               <>
+                 <CircleDashed className="animate-spin mr-2" size={20} />
+                 {isRegistering ? 'Registrando...' : 'Iniciando sesión...'}
+               </>
+             ) : (
+               isRegistering ? t.authBtnRegister : t.authBtnLogin
+             )}
           </button>
         </form>
 

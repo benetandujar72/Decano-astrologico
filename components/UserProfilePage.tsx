@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import {
   User, CreditCard, FileText, History, Settings,
   Crown, TrendingUp, Download, Eye, Trash2, MessageCircle,
-  Calendar, ShoppingBag, Mail, BookOpen
+  Calendar, ShoppingBag, Mail, BookOpen, CheckCircle2
 } from 'lucide-react';
 
 interface UserProfilePageProps {
@@ -61,6 +61,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [charts, setCharts] = useState<Chart[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [targetFeature, setTargetFeature] = useState('');
 
   useEffect(() => {
     fetchUserData();
@@ -143,6 +145,19 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
     return colors[tier as keyof typeof colors] || 'bg-gray-500';
   };
 
+  const handleTabClick = (tabId: string, tabName: string) => {
+    // Definir qué pestañas son exclusivas de PRO
+    const proTabs = ['billing', 'messages', 'settings', 'bookings'];
+    const isPro = subscription?.tier && ['pro', 'premium', 'enterprise'].includes(subscription.tier);
+    
+    if (proTabs.includes(tabId) && !isPro) {
+      setTargetFeature(tabName);
+      setShowUpsellModal(true);
+      return;
+    }
+    setActiveTab(tabId as any);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -173,7 +188,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => handleTabClick(tab.id, tab.name)}
                 className={`
                   flex items-center px-6 py-3 rounded-lg whitespace-nowrap transition-all
                   ${activeTab === tab.id
@@ -184,6 +199,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
               >
                 <Icon className="w-5 h-5 mr-2" />
                 {tab.name}
+                {['billing', 'messages', 'settings', 'bookings'].includes(tab.id) && (!subscription?.tier || subscription.tier === 'free') && (
+                  <Crown className="w-3 h-3 ml-2 text-yellow-500" />
+                )}
               </button>
             );
           })}
@@ -483,6 +501,66 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
           )}
         </div>
       </div>
+
+      {/* Upsell Modal */}
+      {showUpsellModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl p-8 max-w-md w-full shadow-2xl relative animate-slide-up">
+            <button 
+              onClick={() => setShowUpsellModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/50">
+                <Crown className="w-8 h-8 text-yellow-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Función Premium</h3>
+              <p className="text-gray-300">
+                La sección <span className="text-indigo-400 font-bold">{targetFeature}</span> está disponible exclusivamente para usuarios PRO.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                <ul className="space-y-2 text-sm text-gray-300 text-left">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    Acceso a historial completo
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    Mensajería prioritaria
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    Configuración avanzada
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowUpsellModal(false);
+                  setActiveTab('subscription');
+                }}
+                className="w-full bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/25"
+              >
+                Ver Planes Disponibles
+              </button>
+              
+              <button
+                onClick={() => setShowUpsellModal(false)}
+                className="w-full text-gray-400 hover:text-white text-sm py-2"
+              >
+                Quizás más tarde
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
