@@ -40,7 +40,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onUpdatePrompt }) => {
       onUpdatePrompt(promptContent); // Actualizar estado global
       setMessage({
         type: 'success',
-        text: `Protocolo del sistema actualizado correctamente. (${(updated.size || promptContent.length)} caracteres)`
+        text: `Protocolo del sistema actualizado correctamente. (${(updated.content?.length || promptContent.length)} caracteres)`
       });
     } catch (e) {
       console.error('Error guardando prompt:', e);
