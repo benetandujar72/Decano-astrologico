@@ -10,13 +10,28 @@ class DemoAIService:
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         self.model = None
+        self.current_model = None
         if not api_key:
             # Fallback para desarrollo si no hay key, aunque debería haber
             print("WARNING: GEMINI_API_KEY not found")
         else:
             genai.configure(api_key=api_key)
-            # Usar modelo flash por defecto por ser más rápido y estable
-            self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
+            # Intentar primero con gemini-3-pro-preview, fallback a gemini-2.5-pro
+            preferred_model = os.getenv("GEMINI_MODEL", "gemini-3-pro-preview")
+            try:
+                self.model = genai.GenerativeModel(preferred_model)
+                self.current_model = preferred_model
+                print(f"✅ Modelo Gemini inicializado: {preferred_model}")
+            except Exception as e:
+                print(f"⚠️ No se pudo inicializar {preferred_model}, intentando con gemini-2.5-pro...")
+                try:
+                    self.model = genai.GenerativeModel("gemini-2.5-pro")
+                    self.current_model = "gemini-2.5-pro"
+                    print(f"✅ Modelo Gemini inicializado (fallback): gemini-2.5-pro")
+                except Exception as e2:
+                    print(f"❌ Error al inicializar modelos Gemini: {e2}")
+                    self.model = None
+                    self.current_model = None
 
     def _get_system_prompt(self, step: DemoStep, chart_data: Dict[str, Any]) -> str:
         """Genera el prompt del sistema según el paso actual y los datos de la carta"""
@@ -138,6 +153,7 @@ Indica claramente que:
             if not self.model:
                 return "Lo siento, el servicio de IA no está configurado correctamente (Falta API Key). Por favor contacta al administrador."
 
+            print(f"🤖 Generando respuesta con modelo: {self.current_model}")
             chat = self.model.start_chat(history=history)
             response = chat.send_message(
                 system_prompt
@@ -145,9 +161,10 @@ Indica claramente que:
                 + "(Si el usuario pide continuar, genera el análisis del PASO ACTUAL descrito en el system prompt. Si hace una pregunta, responde la pregunta).\n"
                 + "Recuerda: tu salida debe ser SOLO JSON con preview y full."
             )
+            print(f"✅ Respuesta generada correctamente con {self.current_model}")
             return response.text
         except Exception as e:
-            print(f"Error generating content: {e}")
+            print(f"❌ Error generating content con {self.current_model}: {e}")
             return "Lo siento, hubo un error al procesar tu solicitud. Por favor intenta de nuevo."
 
 demo_ai_service = DemoAIService()

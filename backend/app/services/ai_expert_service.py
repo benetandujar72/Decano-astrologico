@@ -18,10 +18,28 @@ class AIExpertService:
 
         # Configurar Gemini
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(
-            model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-            system_instruction=self._get_system_prompt()
-        )
+
+        # Intentar primero con gemini-3-pro-preview, fallback a gemini-2.5-pro
+        preferred_model = os.getenv("GEMINI_MODEL", "gemini-3-pro-preview")
+        try:
+            self.model = genai.GenerativeModel(
+                model_name=preferred_model,
+                system_instruction=self._get_system_prompt()
+            )
+            self.current_model = preferred_model
+            print(f"✅ AIExpertService - Modelo Gemini inicializado: {preferred_model}")
+        except Exception as e:
+            print(f"⚠️ AIExpertService - No se pudo inicializar {preferred_model}, intentando con gemini-2.5-pro...")
+            try:
+                self.model = genai.GenerativeModel(
+                    model_name="gemini-2.5-pro",
+                    system_instruction=self._get_system_prompt()
+                )
+                self.current_model = "gemini-2.5-pro"
+                print(f"✅ AIExpertService - Modelo Gemini inicializado (fallback): gemini-2.5-pro")
+            except Exception as e2:
+                print(f"❌ AIExpertService - Error al inicializar modelos Gemini: {e2}")
+                raise ValueError(f"No se pudo inicializar ningún modelo Gemini: {e2}")
 
     def _get_system_prompt(self) -> str:
         """Obtiene el prompt del sistema para el experto astrológico"""
@@ -114,12 +132,14 @@ Utiliza este informe como contexto para responder las preguntas del usuario de m
                 full_message = "\n\n".join(context_parts) + "\n\n" + full_message
 
             # Obtener respuesta de Gemini
+            print(f"🤖 AIExpertService - Generando respuesta con modelo: {self.current_model}")
             response = await self._generate_async(chat, full_message)
+            print(f"✅ AIExpertService - Respuesta generada correctamente con {self.current_model}")
 
             return response
 
         except Exception as e:
-            print(f"❌ Error en AIExpertService.get_chat_response: {e}")
+            print(f"❌ Error en AIExpertService.get_chat_response con {self.current_model}: {e}")
             raise Exception(f"Error al obtener respuesta del experto IA: {str(e)}")
 
     async def _generate_async(self, chat, message: str) -> str:
