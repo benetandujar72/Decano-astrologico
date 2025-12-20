@@ -9,8 +9,8 @@ Aplicación full‑stack para análisis astrológico con:
 
 \- `backend/` FastAPI (API, auth, MongoDB, Stripe, PDF)
 \- `components/`, `services/`, `src/`, `styles/` Frontend React
-\- `DEPLOYMENT.md` guía de despliegue (Render + Vercel)
-\- `VARIABLES_ENTORNO.md` referencia de variables de entorno
+\- `docs/DEPLOYMENT.md` guía de despliegue (Render + Vercel)
+\- `docs/VARIABLES_ENTORNO.md` referencia de variables de entorno
 
 ## Requisitos
 
@@ -50,7 +50,7 @@ Endpoints útiles:
 
 ## Deploy (producción)
 
-Sigue la guía paso a paso en `DEPLOYMENT.md`.
+Sigue la guía paso a paso en `docs/DEPLOYMENT.md`.
 
 ## Seguridad (importante)
 
