@@ -127,6 +127,10 @@ export const api = {
     return res.json();
   },
 
+  getDemoPdfUrl: (sessionId: string): string => {
+    return `${API_URL}/demo-chat/pdf/${sessionId}`;
+  },
+
   // SPECIALIZED PROMPTS
   getSpecializedPrompt: async (promptType: string): Promise<{ content: string }> => {
     const res = await fetch(`${API_URL}/config/prompts/specialized/${promptType}`, {

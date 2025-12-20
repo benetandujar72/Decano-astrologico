@@ -218,6 +218,13 @@ const App: React.FC = () => {
         if (user.role === 'admin' || user.username === 'admin@programafraktal.com') {
             setIsAdmin(true);
         }
+
+        // Refresh subscription status
+        api.getUserSubscription().then(sub => {
+            const updatedUser = { ...user, subscription_tier: sub.tier };
+            setCurrentUser(updatedUser);
+            localStorage.setItem('fraktal_user', JSON.stringify(updatedUser));
+        }).catch(console.error);
       }
       setMode(AppMode.INPUT);
       loadChartsFromApi();
@@ -1775,6 +1782,32 @@ ${analysisText}
     );
   };
 
+  const handleNavigation = (targetMode: AppMode) => {
+    // Admin always allowed
+    if (isAdmin) {
+      setMode(targetMode);
+      if (targetMode === AppMode.LISTING) loadChartsFromApi();
+      return;
+    }
+
+    const tier = currentUser?.subscription_tier || 'free';
+    const isPaid = tier !== 'free';
+
+    // Gating logic
+    if (targetMode === AppMode.ADVANCED_TECHNIQUES && !isPaid) {
+      setMode(AppMode.SUBSCRIPTION_PLANS);
+      return;
+    }
+
+    if (targetMode === AppMode.LISTING && !isPaid) {
+      setMode(AppMode.SUBSCRIPTION_PLANS);
+      return;
+    }
+
+    setMode(targetMode);
+    if (targetMode === AppMode.LISTING) loadChartsFromApi();
+  };
+
   return (
     <MysticBackground>
       {/* Contenido con scroll tipo móvil */}
@@ -1911,7 +1944,7 @@ ${analysisText}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 safe-area-inset-bottom">
           <div className="max-w-2xl mx-auto flex justify-around items-center">
             <button 
-              onClick={() => setMode(AppMode.USER_PROFILE)} 
+              onClick={() => handleNavigation(AppMode.USER_PROFILE)} 
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                 mode === AppMode.USER_PROFILE 
                   ? 'text-indigo-400 bg-indigo-500/10' 
@@ -1923,7 +1956,7 @@ ${analysisText}
               <span className="text-[10px] font-medium">Perfil</span>
             </button>
             <button 
-              onClick={() => setMode(AppMode.SUBSCRIPTION_PLANS)} 
+              onClick={() => handleNavigation(AppMode.SUBSCRIPTION_PLANS)} 
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                 mode === AppMode.SUBSCRIPTION_PLANS 
                   ? 'text-yellow-400 bg-yellow-500/10' 
@@ -1935,7 +1968,7 @@ ${analysisText}
               <span className="text-[10px] font-medium">Planes</span>
             </button>
             <button 
-              onClick={() => setMode(AppMode.INPUT)} 
+              onClick={() => handleNavigation(AppMode.INPUT)} 
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                 mode === AppMode.INPUT || mode === AppMode.MODE_SELECTION
                   ? 'text-purple-400 bg-purple-500/10' 
@@ -1947,7 +1980,7 @@ ${analysisText}
               <span className="text-[10px] font-medium">Nueva</span>
             </button>
             <button 
-              onClick={() => { setMode(AppMode.ADVANCED_TECHNIQUES); }} 
+              onClick={() => handleNavigation(AppMode.ADVANCED_TECHNIQUES)} 
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                 mode === AppMode.ADVANCED_TECHNIQUES 
                   ? 'text-emerald-400 bg-emerald-500/10' 
@@ -1959,7 +1992,7 @@ ${analysisText}
               <span className="text-[10px] font-medium">Técnicas</span>
             </button>
             <button 
-              onClick={() => { setMode(AppMode.LISTING); loadChartsFromApi(); }} 
+              onClick={() => handleNavigation(AppMode.LISTING)} 
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                 mode === AppMode.LISTING 
                   ? 'text-blue-400 bg-blue-500/10' 
@@ -1971,7 +2004,7 @@ ${analysisText}
               <span className="text-[10px] font-medium">Cartas</span>
             </button>
             <button 
-              onClick={() => setMode(AppMode.ADMIN_PANEL)} 
+              onClick={() => handleNavigation(AppMode.ADMIN_PANEL)} 
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                 mode === AppMode.ADMIN_PANEL 
                   ? 'text-red-400 bg-red-500/10' 

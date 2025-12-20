@@ -116,3 +116,41 @@ async def get_session_history(session_id: str):
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     
     return DemoSession(**session_data)
+
+from fastapi.responses import StreamingResponse
+from app.services.report_generators import ReportGenerator
+from io import BytesIO
+
+@router.get("/pdf/{session_id}")
+async def generate_demo_pdf(session_id: str):
+    """Genera un PDF a partir de una sesión de demo"""
+    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    session = DemoSession(**session_data)
+    
+    # Compilar el reporte desde los mensajes o el campo generated_report
+    report_text = ""
+    for step, text in session.generated_report.items():
+        report_text += f"\n\n{text}"
+        
+    if not report_text:
+        # Fallback a mensajes si no hay reporte estructurado
+        report_text = "\n\n".join([m.content for m in session.messages if m.role == MessageRole.ASSISTANT])
+
+    # Generar PDF
+    generator = ReportGenerator(
+        carta_data=session.chart_data,
+        analysis_text=report_text,
+        nombre=session.chart_data.get("name", "Visitante")
+    )
+    
+    pdf_buffer = generator.create_pdf() # Asumiendo que este método existe y retorna BytesIO
+    pdf_buffer.seek(0)
+    
+    return StreamingResponse(
+        pdf_buffer, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=demo_report_{session_id}.pdf"}
+    )

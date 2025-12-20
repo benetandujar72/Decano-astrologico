@@ -33,6 +33,7 @@ export interface User {
   username: string;
   email: string;
   role: 'user' | 'admin';
+  subscription_tier?: string;
 }
 
 export interface AnalysisResult {

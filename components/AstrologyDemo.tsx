@@ -49,6 +49,31 @@ const AstrologyDemo: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Recuperar sesión guardada al montar
+  useEffect(() => {
+    const savedSessionId = localStorage.getItem('demo_session_id');
+    if (savedSessionId) {
+      setSessionId(savedSessionId);
+      setStep('chat');
+      fetchHistory(savedSessionId);
+    }
+  }, []);
+
+  const fetchHistory = async (id: string) => {
+    try {
+      const history = await api.getDemoHistory(id);
+      if (history && history.messages) {
+        setMessages(history.messages);
+      }
+    } catch (e) {
+      console.error("Error recuperando historial:", e);
+      // Si falla, limpiar storage
+      localStorage.removeItem('demo_session_id');
+      setSessionId(null);
+      setStep('form');
+    }
+  };
+
   const handleInputChange = (field: keyof DemoData, value: string) => {
     setDemoData(prev => ({ ...prev, [field]: value }));
     setError(null);
@@ -127,6 +152,7 @@ const AstrologyDemo: React.FC = () => {
       });
 
       setSessionId(session.session_id);
+      localStorage.setItem('demo_session_id', session.session_id); // Guardar sesión
       setMessages(session.messages);
       setStep('chat');
     } catch (err) {
@@ -183,8 +209,14 @@ const AstrologyDemo: React.FC = () => {
       longitude: ''
     });
     setSessionId(null);
+    localStorage.removeItem('demo_session_id'); // Limpiar sesión
     setMessages([]);
     setError(null);
+  };
+
+  const downloadPdf = () => {
+    if (!sessionId) return;
+    window.open(api.getDemoPdfUrl(sessionId), '_blank');
   };
 
   return (
@@ -340,12 +372,22 @@ const AstrologyDemo: React.FC = () => {
                 <p className="text-xs text-purple-300">Método Carutti • IA Generativa</p>
               </div>
             </div>
-            <button 
-              onClick={resetDemo}
-              className="text-gray-400 hover:text-white text-sm"
-            >
-              Reiniciar
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={downloadPdf}
+                className="text-purple-300 hover:text-white text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                title="Descargar chat como PDF"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Guardar PDF</span>
+              </button>
+              <button 
+                onClick={resetDemo}
+                className="text-gray-400 hover:text-white text-sm"
+              >
+                Reiniciar
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}

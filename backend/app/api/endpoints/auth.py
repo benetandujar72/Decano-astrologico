@@ -211,13 +211,22 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     print(f"[AUTH] Token generation time: {token_time:.3f}s")
     print(f"[AUTH] Total login time: {total_time:.3f}s - SUCCESS for {form_data.username}")
 
+    # Obtener suscripción
+    subscription = await db.user_subscriptions.find_one({"user_id": str(user["_id"])})
+    subscription_tier = "free"
+    if subscription:
+        subscription_tier = subscription.get("tier", "free")
+    elif user.get("role") == "admin":
+        subscription_tier = "enterprise"
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user": {
             "username": user["username"],
             "email": user.get("email", user["username"]),
-            "role": user.get("role", "user")
+            "role": user.get("role", "user"),
+            "subscription_tier": subscription_tier
         }
     }
 
