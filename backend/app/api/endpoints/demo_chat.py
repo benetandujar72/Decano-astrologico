@@ -17,6 +17,7 @@ from app.models.demo_chat import (
 )
 from app.services.demo_ai_service import demo_ai_service
 from app.api.endpoints.auth import get_current_user
+from app.services.ephemeris import calcular_carta_completa
 
 router = APIRouter()
 
@@ -37,10 +38,41 @@ demo_sessions_collection = db.demo_sessions
 async def start_demo_session(request: StartDemoRequest):
     """Inicia una nueva sesión de demo"""
     
+    chart_data = request.chart_data
+    
+    # Calcular carta completa si faltan datos astrológicos
+    if "planetas" not in chart_data:
+        try:
+            # Extraer datos necesarios
+            fecha = chart_data.get("birth_date")
+            hora = chart_data.get("birth_time", "12:00")
+            lat = float(chart_data.get("latitude", 0))
+            lon = float(chart_data.get("longitude", 0))
+            
+            # Calcular carta completa
+            full_chart = calcular_carta_completa(
+                fecha=fecha,
+                hora=hora,
+                latitud=lat,
+                longitud=lon
+            )
+            
+            # Fusionar con datos existentes (preservando nombre, lugar, etc.)
+            chart_data.update(full_chart)
+            
+            # Asegurar que el nombre esté en datos_entrada también
+            if "name" in chart_data:
+                chart_data["datos_entrada"]["nombre"] = chart_data["name"]
+                
+        except Exception as e:
+            print(f"Error calculando carta astral: {e}")
+            # Continuar con datos básicos si falla el cálculo
+            pass
+
     # Crear nueva sesión
     session = DemoSession(
         user_id=request.user_id or "anonymous", 
-        chart_data=request.chart_data,
+        chart_data=chart_data,
         current_step=DemoStep.INITIAL
     )
     
