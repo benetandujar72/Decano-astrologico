@@ -101,9 +101,12 @@ Agrega las variables en: **Settings → Environment Variables**
 ### Railway
 Agrega las variables en: **Variables** tab del proyecto
 
-## Archivo .env.local (Desarrollo)
+## Archivos .env (Desarrollo)
 
-Para desarrollo local, crea un archivo `.env` en la raíz del proyecto:
+Para desarrollo local, usa las plantillas `.env.example` y crea tus archivos reales (no se commitean):
+
+- Frontend: copia `.env.example` → `.env`
+- Backend: copia `backend/.env.example` → `backend/.env`
 
 ```env
 # Backend

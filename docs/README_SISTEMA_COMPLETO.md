@@ -201,10 +201,14 @@ Decano-astrologico-1/
 ├── types.ts                         # Tipos TypeScript
 ├── constants.ts                     # Constantes y traducciones
 │
-├── GUIA_USUARIO.md                  # ✨ NUEVO: Manual de usuario
-├── NUEVAS_FUNCIONALIDADES.md        # ✨ NUEVO: Docs técnicas
-├── RESUMEN_IMPLEMENTACION.md        # ✨ NUEVO: Resumen del proyecto
-└── README_SISTEMA_COMPLETO.md       # ✨ NUEVO: Este archivo
+├── docs/                            # Documentación (guías, troubleshooting, etc.)
+│   ├── GUIA_USUARIO.md              # Manual de usuario
+│   ├── NUEVAS_FUNCIONALIDADES.md    # Docs técnicas
+│   ├── RESUMEN_IMPLEMENTACION.md    # Resumen del proyecto
+│   ├── DEPLOYMENT.md                # Guía de despliegue
+│   └── README_SISTEMA_COMPLETO.md   # Este archivo
+
+└── README.md                        # README principal del repo
 ```
 
 ---

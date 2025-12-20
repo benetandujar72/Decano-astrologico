@@ -131,11 +131,11 @@ Al final del análisis:
 
 ## 📚 Documentación Completa
 
-- **GUIA_USUARIO.md** - Manual completo de usuario
-- **NUEVAS_FUNCIONALIDADES.md** - Documentación técnica
-- **RESUMEN_IMPLEMENTACION.md** - Resumen del proyecto
-- **README_SISTEMA_COMPLETO.md** - README principal
-- **backend/INSTALL_DEPENDENCIES.md** - Guía de instalación detallada
+- [GUIA_USUARIO.md](GUIA_USUARIO.md) - Manual completo de usuario
+- [NUEVAS_FUNCIONALIDADES.md](NUEVAS_FUNCIONALIDADES.md) - Documentación técnica
+- [RESUMEN_IMPLEMENTACION.md](RESUMEN_IMPLEMENTACION.md) - Resumen del proyecto
+- [README_SISTEMA_COMPLETO.md](README_SISTEMA_COMPLETO.md) - README principal (técnico)
+- [../backend/INSTALL_DEPENDENCIES.md](../backend/INSTALL_DEPENDENCIES.md) - Guía de instalación detallada
 
 ---
 

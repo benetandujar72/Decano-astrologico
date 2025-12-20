@@ -3,7 +3,7 @@
 ## 🎯 ¿Qué quieres hacer?
 
 ### 1️⃣ "Solo dime cómo usar esto" (5 minutos)
-👉 **Lee:** `QUICK_START_ADMIN_PLAN.md`
+👉 **Lee:** [QUICK_START_ADMIN_PLAN.md](QUICK_START_ADMIN_PLAN.md)
 - Instrucciones paso a paso
 - Verificación rápida
 - Troubleshooting básico
@@ -11,7 +11,7 @@
 ---
 
 ### 2️⃣ "Quiero entender qué cambió" (10 minutos)
-👉 **Lee:** `ANTES_VS_DESPUES.md`
+👉 **Lee:** [ANTES_VS_DESPUES.md](ANTES_VS_DESPUES.md)
 - Comparación visual
 - Flujos antes/después
 - Cambios en UI
@@ -19,7 +19,7 @@
 ---
 
 ### 3️⃣ "Necesito la explicación completa" (20 minutos)
-👉 **Lee:** `SOLUCION_PAGO_ADMIN.md`
+👉 **Lee:** [SOLUCION_PAGO_ADMIN.md](SOLUCION_PAGO_ADMIN.md)
 - Problema original
 - Soluciones implementadas
 - Endpoints disponibles
@@ -28,7 +28,7 @@
 ---
 
 ### 4️⃣ "Quiero probar y verificar todo funciona" (30 minutos)
-👉 **Lee:** `TEST_ADMIN_PLAN.md`
+👉 **Lee:** [TEST_ADMIN_PLAN.md](TEST_ADMIN_PLAN.md)
 - Pasos detallados de prueba
 - Cómo debuggear
 - Verificación en BD
@@ -37,7 +37,7 @@
 ---
 
 ### 5️⃣ "Soy desarrollador y quiero los detalles técnicos" (45 minutos)
-👉 **Lee:** `IMPLEMENTACION_ADMIN_PLANES.md`
+👉 **Lee:** [IMPLEMENTACION_ADMIN_PLANES.md](IMPLEMENTACION_ADMIN_PLANES.md)
 - Detalles técnicos completos
 - Arquitectura de la solución
 - Seguridad implementada
@@ -47,7 +47,7 @@
 ---
 
 ### 6️⃣ "Quiero saber exactamente qué código cambió" (20 minutos)
-👉 **Lee:** `RESUMEN_DETALLADO_CAMBIOS.md`
+👉 **Lee:** [RESUMEN_DETALLADO_CAMBIOS.md](RESUMEN_DETALLADO_CAMBIOS.md)
 - Línea por línea qué cambió
 - Estadísticas de cambios
 - Cambios en BD
@@ -65,7 +65,8 @@
 📄 TEST_ADMIN_PLAN.md                  Testing checklist
 📄 IMPLEMENTACION_ADMIN_PLANES.md      Detalles técnicos
 📄 RESUMEN_DETALLADO_CAMBIOS.md        Código cambiado
-📄 INDICE.md                           Este archivo
+📄 INDICE_DOCUMENTACION.md             Este archivo
+📄 README.md                           Punto de entrada en docs/
 ```
 
 ### Archivos Modificados:
@@ -161,28 +162,28 @@
 ### "¿Cómo hago X?"
 
 **"¿Cómo activo el plan como admin?"**
-→ `QUICK_START_ADMIN_PLAN.md` → Sección "Cómo Usar"
+→ [QUICK_START_ADMIN_PLAN.md](QUICK_START_ADMIN_PLAN.md) → Sección "Cómo Usar"
 
 **"¿Qué cambios se hicieron?"**
-→ `RESUMEN_DETALLADO_CAMBIOS.md` → Sección "Archivos Modificados"
+→ [RESUMEN_DETALLADO_CAMBIOS.md](RESUMEN_DETALLADO_CAMBIOS.md) → Sección "Archivos Modificados"
 
 **"¿Qué código se agregó?"**
-→ `RESUMEN_DETALLADO_CAMBIOS.md` → Sección "Cambios en el Código"
+→ [RESUMEN_DETALLADO_CAMBIOS.md](RESUMEN_DETALLADO_CAMBIOS.md) → Sección "Cambios en el Código"
 
 **"¿Cómo verifico que funciona?"**
-→ `TEST_ADMIN_PLAN.md` → Sección "Paso a Paso"
+→ [TEST_ADMIN_PLAN.md](TEST_ADMIN_PLAN.md) → Sección "Paso a Paso"
 
 **"¿Cuál es el endpoint?"**
-→ `SOLUCION_PAGO_ADMIN.md` → Sección "Nuevo Endpoint"
+→ [SOLUCION_PAGO_ADMIN.md](SOLUCION_PAGO_ADMIN.md) → Sección "Nuevo Endpoint"
 
 **"¿Qué pasa en la BD?"**
-→ `RESUMEN_DETALLADO_CAMBIOS.md` → Sección "Cambios en BD"
+→ [RESUMEN_DETALLADO_CAMBIOS.md](RESUMEN_DETALLADO_CAMBIOS.md) → Sección "Cambios en BD"
 
 **"¿Cómo debuggeo?"**
-→ `TEST_ADMIN_PLAN.md` → Sección "Si Algo Falla"
+→ [TEST_ADMIN_PLAN.md](TEST_ADMIN_PLAN.md) → Sección "Si Algo Falla"
 
 **"¿Cuál es la UI nueva?"**
-→ `ANTES_VS_DESPUES.md` → Sección "UI: Cambio Visual"
+→ [ANTES_VS_DESPUES.md](ANTES_VS_DESPUES.md) → Sección "UI: Cambio Visual"
 
 ---
 
@@ -205,22 +206,22 @@
 
 ### Soy ADMIN (usuario final)
 **Lee en este orden:**
-1. `QUICK_START_ADMIN_PLAN.md` (cómo usar)
-2. `TEST_ADMIN_PLAN.md` (verifica que funciona)
+1. [QUICK_START_ADMIN_PLAN.md](QUICK_START_ADMIN_PLAN.md) (cómo usar)
+2. [TEST_ADMIN_PLAN.md](TEST_ADMIN_PLAN.md) (verifica que funciona)
 3. Listo ✅
 
 ### Soy DESARROLLADOR
 **Lee en este orden:**
-1. `RESUMEN_DETALLADO_CAMBIOS.md` (qué cambió)
-2. `IMPLEMENTACION_ADMIN_PLANES.md` (detalles técnicos)
-3. `TEST_ADMIN_PLAN.md` (testing)
+1. [RESUMEN_DETALLADO_CAMBIOS.md](RESUMEN_DETALLADO_CAMBIOS.md) (qué cambió)
+2. [IMPLEMENTACION_ADMIN_PLANES.md](IMPLEMENTACION_ADMIN_PLANES.md) (detalles técnicos)
+3. [TEST_ADMIN_PLAN.md](TEST_ADMIN_PLAN.md) (testing)
 4. Listo ✅
 
 ### Soy GESTOR/CLIENTE
 **Lee en este orden:**
-1. `ANTES_VS_DESPUES.md` (impacto)
-2. `SOLUCION_PAGO_ADMIN.md` (solución)
-3. `QUICK_START_ADMIN_PLAN.md` (cómo usar)
+1. [ANTES_VS_DESPUES.md](ANTES_VS_DESPUES.md) (impacto)
+2. [SOLUCION_PAGO_ADMIN.md](SOLUCION_PAGO_ADMIN.md) (solución)
+3. [QUICK_START_ADMIN_PLAN.md](QUICK_START_ADMIN_PLAN.md) (cómo usar)
 4. Listo ✅
 
 ---
