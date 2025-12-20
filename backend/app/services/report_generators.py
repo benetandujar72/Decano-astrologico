@@ -567,9 +567,9 @@ class ReportGenerator:
                     print(f"⚠️ Error añadiendo imagen al PDF: {e}", file=sys.stderr)
             
             # Tabla de Planetas
-            story.append(Paragraph("🪐 Posiciones Planetarias", heading_style))
+            story.append(Paragraph("🪐 Posiciones Planetarias (Efemérides)", heading_style))
             
-            planetas_data = [['Planeta', 'Posición', 'Casa', 'Estado']]
+            planetas_data = [['Planeta', 'Longitud Eclíptica', 'Casa', 'Estado']]
             for nombre, pos in self.planetas.items():
                 if pos:
                     retro = 'Retrógrado' if pos.get('retrogrado', False) else ''
@@ -596,22 +596,24 @@ class ReportGenerator:
             story.append(planetas_table)
             story.append(Spacer(1, 0.3*inch))
             
-            # Ángulos
-            story.append(Paragraph("🔺 Ángulos Principales", heading_style))
-            angulos_text = f"""
-            <b>Ascendente:</b> {self.angulos.get('ascendente', {}).get('texto', 'N/A')}<br/>
-            <b>Medio Cielo:</b> {self.angulos.get('medio_cielo', {}).get('texto', 'N/A')}
-            """
-            story.append(Paragraph(angulos_text, normal_style))
-            story.append(Spacer(1, 0.2*inch))
+            # Ángulos y Cúspides
+            story.append(Paragraph("🔺 Ángulos y Cúspides de Casas", heading_style))
             
-            # Casas
-            story.append(Paragraph("🏠 Cúspides de Casas (Placidus)", heading_style))
-            casas_data = [['Casa', 'Cúspide']]
+            # Preparar datos de casas con etiquetas especiales
+            casas_data = [['Casa', 'Cúspide', 'Significado']]
+            etiquetas_casas = {
+                '1': 'Ascendente (AC)',
+                '4': 'Fondo Cielo (IC)',
+                '7': 'Descendente (DC)',
+                '10': 'Medio Cielo (MC)'
+            }
+            
             for casa in self.casas:
-                casas_data.append([f"Casa {casa['numero']}", casa['texto']])
+                num = str(casa['numero'])
+                etiqueta = etiquetas_casas.get(num, '-')
+                casas_data.append([f"Casa {num}", casa['texto'], etiqueta])
             
-            casas_table = Table(casas_data, colWidths=[1.5*inch, 4.5*inch])
+            casas_table = Table(casas_data, colWidths=[1.5*inch, 3*inch, 2*inch])
             casas_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),

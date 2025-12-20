@@ -114,20 +114,41 @@ def generate_mystical_cover(
         bbox = draw.textbbox((x, y), signo, font=font_zodiac, anchor="mm")
         draw.text((x, y), signo, fill=(255, 215, 0), font=font_zodiac, anchor="mm")
     
-    # Título principal
+    # Fuentes
     try:
         font_title = ImageFont.truetype("arial.ttf", 120)
         font_subtitle = ImageFont.truetype("arial.ttf", 60)
         font_name = ImageFont.truetype("arialbd.ttf", 80)
         font_details = ImageFont.truetype("arial.ttf", 45)
+        font_logo = ImageFont.truetype("times.ttf", 70) # Para logo Jon Landeta
     except:
         font_title = ImageFont.load_default()
         font_subtitle = font_title
         font_name = font_title
         font_details = font_title
+        font_logo = font_title
     
+    # --- LOGO JON LANDETA (Superior Izquierda) ---
+    logo_x = 150
+    logo_y = 150
+    draw.text((logo_x, logo_y), "JON LANDETA", fill=(255, 215, 0), font=font_logo, anchor="lt")
+    draw.text((logo_x, logo_y + 80), "ASTROLOGÍA", fill=(200, 200, 200), font=font_details, anchor="lt")
+
+    # --- FOTO DEL USUARIO (Placeholder) ---
+    # Círculo para la foto debajo del título principal o en el centro si se prefiere
+    # El usuario pidió "una foto". Pondremos un placeholder circular en el centro del mandala
+    photo_radius = 150
+    draw.ellipse(
+        [center_x - photo_radius, center_y - photo_radius, center_x + photo_radius, center_y + photo_radius],
+        fill=(20, 20, 40),
+        outline=(255, 215, 0),
+        width=3
+    )
+    # Texto "FOTO" en el centro
+    draw.text((center_x, center_y), "FOTO", fill=(100, 100, 100), font=font_details, anchor="mm")
+
     # Título "FRAKTAL"
-    title_y = height // 12
+    title_y = height // 12 + 100 # Bajamos un poco por el logo
     draw.text(
         (width // 2, title_y),
         "FRAKTAL",
@@ -176,7 +197,7 @@ def generate_mystical_cover(
     )
     
     # Datos de nacimiento (en la parte inferior)
-    details_y = height - 600
+    details_y = height - 700
     details = [
         f"📅  {fecha}  |  🕐  {hora}",
         f"🌍  {lugar}",
@@ -201,9 +222,9 @@ def generate_mystical_cover(
                 anchor="mm"
             )
     
-    # Fecha de generación
-    footer_y = height - 150
-    fecha_generacion = datetime.now().strftime("%d de %B de %Y")
+    # Fecha de generación y Jon Landeta (Footer)
+    footer_y = height - 200
+    fecha_generacion = datetime.now().strftime("%d de %B de %Y - %H:%M")
     meses = {
         'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo',
         'April': 'Abril', 'May': 'Mayo', 'June': 'Junio',
@@ -213,9 +234,18 @@ def generate_mystical_cover(
     for en, es in meses.items():
         fecha_generacion = fecha_generacion.replace(en, es)
     
+    # Footer con nombre de Jon Landeta y fecha
     draw.text(
         (width // 2, footer_y),
-        f"Informe generado el {fecha_generacion}",
+        f"Realizado por Jon Landeta",
+        fill=(255, 215, 0),
+        font=font_subtitle,
+        anchor="mm"
+    )
+    
+    draw.text(
+        (width // 2, footer_y + 80),
+        f"Generado el {fecha_generacion}",
         fill=(150, 150, 150),
         font=font_details,
         anchor="mm"
