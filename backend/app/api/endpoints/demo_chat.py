@@ -174,10 +174,38 @@ async def generate_demo_pdf(session_id: str):
 
     # Generar PDF
     try:
+        chart_data = session.chart_data
+        
+        # RECALCULAR SI FALTAN DATOS (Fix para sesiones antiguas o incompletas)
+        if chart_data and ("planetas" not in chart_data or "datos_entrada" not in chart_data):
+            try:
+                print(f"Recalculando datos astrológicos para PDF (sesión {session_id})...")
+                from app.services.ephemeris import calcular_carta_completa
+                
+                fecha = chart_data.get("birth_date")
+                hora = chart_data.get("birth_time", "12:00")
+                # Manejar lat/lon que pueden venir como strings
+                lat = float(chart_data.get("latitude", 0))
+                lon = float(chart_data.get("longitude", 0))
+                
+                if fecha:
+                    full_chart = calcular_carta_completa(fecha, hora, lat, lon)
+                    chart_data.update(full_chart)
+                    
+                    # Asegurar nombre en datos_entrada
+                    if "name" in chart_data:
+                        if "datos_entrada" not in chart_data:
+                            chart_data["datos_entrada"] = {}
+                        chart_data["datos_entrada"]["nombre"] = chart_data["name"]
+            except Exception as calc_err:
+                print(f"Error recalculando carta en PDF: {calc_err}")
+                import traceback
+                traceback.print_exc()
+
         generator = ReportGenerator(
-            carta_data=session.chart_data,
+            carta_data=chart_data,
             analysis_text=report_text,
-            nombre=session.chart_data.get("name", "Visitante")
+            nombre=chart_data.get("name", "Visitante")
         )
         
         # Usar generate_pdf en lugar de create_pdf si ese es el nombre correcto en la clase
