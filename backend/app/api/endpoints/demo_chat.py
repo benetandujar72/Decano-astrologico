@@ -19,8 +19,95 @@ from app.models.demo_chat import (
 from app.services.demo_ai_service import demo_ai_service
 from app.api.endpoints.auth import get_current_user, get_optional_user, require_admin
 from app.services.ephemeris import calcular_carta_completa
+from app.services.subscription_permissions import get_user_subscription_tier
+from app.models.subscription import SubscriptionTier
 
 router = APIRouter()
+
+
+def _safe_model_copy(model: DemoSession) -> DemoSession:
+    try:
+        return model.model_copy(deep=True)  # pydantic v2
+    except Exception:
+        return model.copy(deep=True)  # pydantic v1
+
+
+def _make_preview_fallback(text: str, max_chars: int = 900) -> str:
+    if not text:
+        return ""
+    t = str(text).strip()
+    if len(t) <= max_chars:
+        return t
+    cut = t[: max_chars - 1].rsplit(" ", 1)[0]
+    return (
+        f"{cut}…\n\n"
+        "Para ver el informe completo y profundizar (interpretación por pasos + síntesis final), "
+        "suscríbete o contrata los servicios profesionales de Jon Landeta."
+    )
+
+
+def _extract_preview_and_full(ai_text: str) -> tuple[str, str]:
+    """Parsea salida JSON {preview, full}. Si falla, usa fallback por truncado."""
+    if not ai_text:
+        return ("", "")
+
+    import json
+
+    raw = str(ai_text).strip()
+    try:
+        data = json.loads(raw)
+        preview = str(data.get("preview", "") or "").strip()
+        full = str(data.get("full", "") or "").strip()
+        if preview or full:
+            return (preview or _make_preview_fallback(full), full or preview)
+    except Exception:
+        pass
+
+    return (_make_preview_fallback(raw), raw)
+
+
+def _step_order_keys() -> list[str]:
+    return [
+        DemoStep.ELEMENTS.value,
+        DemoStep.PLANETS.value,
+        DemoStep.ASPECTS.value,
+        DemoStep.HOUSES.value,
+        DemoStep.SYNTHESIS.value,
+        DemoStep.COMPLETED.value,
+    ]
+
+
+async def _viewer_can_see_full(current_user: Optional[dict]) -> bool:
+    if not current_user:
+        return False
+    if current_user.get("role") == "admin":
+        return True
+    tier = await get_user_subscription_tier(str(current_user.get("_id")))
+    return tier != SubscriptionTier.FREE
+
+
+async def _project_session_for_view(session: DemoSession, current_user: Optional[dict]) -> DemoSession:
+    """Devuelve una versión segura de la sesión según el plan del viewer.
+
+    FREE/anónimo: solo preview, sin permitir leer el informe completo.
+    PRO+/admin: full.
+    """
+    can_full = await _viewer_can_see_full(current_user)
+    if can_full:
+        return session
+
+    projected = _safe_model_copy(session)
+
+    # Redactar mensajes del asistente (no filtrar full)
+    for msg in projected.messages:
+        if msg.role == MessageRole.ASSISTANT:
+            step_key = getattr(msg.step, "value", str(msg.step))
+            preview = projected.generated_report_preview.get(step_key)
+            msg.content = preview or _make_preview_fallback(msg.content)
+
+    # Exponer solo report preview (reutilizar el mismo campo para el frontend)
+    projected.generated_report = dict(projected.generated_report_preview or {})
+    return projected
 
 
 def _is_anonymous_user_id(user_id: Optional[str]) -> bool:
@@ -170,6 +257,14 @@ async def chat_demo(
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
     """Envía un mensaje a la sesión de demo"""
+
+    # Freemium: plan gratuito = proceso guiado (sin preguntas libres)
+    can_full = await _viewer_can_see_full(current_user)
+    if not can_full and not request.next_step:
+        raise HTTPException(
+            status_code=403,
+            detail="En el plan gratuito, el demo es guiado. Usa el botón 'Siguiente Paso' para avanzar.",
+        )
     
     # Recuperar sesión
     session_data = await _find_session_data(request.session_id)
@@ -190,26 +285,29 @@ async def chat_demo(
     
     # Procesar con IA
     try:
-        ai_response_text = await demo_ai_service.process_step(
+        ai_raw = await demo_ai_service.process_step(
             session, 
             request.message, 
             request.next_step
         )
     except Exception as e:
         print(f"Error en demo_ai_service: {e}")
-        ai_response_text = "Lo siento, ha ocurrido un error interno al procesar tu mensaje. Por favor intenta de nuevo."
+        ai_raw = "Lo siento, ha ocurrido un error interno al procesar tu mensaje. Por favor intenta de nuevo."
+
+    ai_preview, ai_full = _extract_preview_and_full(ai_raw)
     
-    # Agregar respuesta de IA
+    # Agregar respuesta de IA (guardar FULL en DB)
     ai_msg = DemoMessage(
         role=MessageRole.ASSISTANT,
-        content=ai_response_text,
+        content=ai_full,
         step=session.current_step
     )
     session.messages.append(ai_msg)
     
-    # Actualizar informe generado si es un paso de análisis
-    if session.current_step != DemoStep.INITIAL and session.current_step != DemoStep.COMPLETED:
-        session.generated_report[session.current_step.value] = ai_response_text
+    # Guardar informe generado (full + preview)
+    if session.current_step != DemoStep.INITIAL:
+        session.generated_report[session.current_step.value] = ai_full
+        session.generated_report_preview[session.current_step.value] = ai_preview
         
     session.updated_at = datetime.utcnow().isoformat()
     
@@ -219,7 +317,7 @@ async def chat_demo(
         session.model_dump()
     )
     
-    return session
+    return await _project_session_for_view(session, current_user)
 
 @router.get("/history/{session_id}", response_model=DemoSession)
 async def get_session_history(
@@ -234,7 +332,8 @@ async def get_session_history(
     session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
-    return session
+
+    return await _project_session_for_view(session, current_user)
 
 from fastapi.responses import StreamingResponse
 from app.services.report_generators import ReportGenerator
@@ -254,10 +353,20 @@ async def generate_demo_pdf(
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
     
-    # Compilar el reporte desde los mensajes o el campo generated_report
+    # Compilar el reporte (FULL para PRO+/admin, PREVIEW para FREE)
+    can_full = await _viewer_can_see_full(current_user)
+    sections = session.generated_report if can_full else (session.generated_report_preview or {})
+
     report_text = ""
-    for step, text in session.generated_report.items():
-        report_text += f"\n\n{text}"
+    if sections:
+        for key in _step_order_keys():
+            if key in sections and sections[key]:
+                report_text += f"\n\n=== {key.upper()} ===\n\n{sections[key]}"
+    else:
+        assistant_messages = [m.content for m in session.messages if m.role == MessageRole.ASSISTANT]
+        if not can_full:
+            assistant_messages = [_make_preview_fallback(m) for m in assistant_messages]
+        report_text = "\n\n".join(assistant_messages)
         
     if not report_text:
         # Fallback a mensajes si no hay reporte estructurado
@@ -327,7 +436,7 @@ async def get_my_demo_sessions(current_user: dict = Depends(get_current_user)):
         s_data = await _normalize_session_id_in_doc(s_data)
         session = DemoSession(**s_data)
         # Si hay mensajes o reporte, asumimos que se puede generar PDF
-        if session.messages or session.generated_report:
+        if session.messages or session.generated_report or session.generated_report_preview:
             session.pdf_generated = True
         sessions.append(session)
         
@@ -347,7 +456,7 @@ async def get_demo_session(
     session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
-    return session
+    return await _project_session_for_view(session, current_user)
 
 
 @router.delete("/session/{session_id}")

@@ -11,7 +11,8 @@ from app.models.subscription import SubscriptionTier, SUBSCRIPTION_PLANS, Subscr
 MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client.fraktal
-subscriptions_collection = db.subscriptions
+subscriptions_collection = db.user_subscriptions
+legacy_subscriptions_collection = db.subscriptions
 charts_collection = db.charts
 
 
@@ -21,6 +22,9 @@ async def get_user_subscription_tier(user_id: str) -> SubscriptionTier:
     Si no tiene suscripción, retorna FREE.
     """
     subscription = await subscriptions_collection.find_one({"user_id": user_id})
+    if not subscription:
+        # Compatibilidad: algunas instalaciones antiguas usaban `subscriptions`
+        subscription = await legacy_subscriptions_collection.find_one({"user_id": user_id})
     if not subscription:
         return SubscriptionTier.FREE
     

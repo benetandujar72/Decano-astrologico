@@ -45,6 +45,9 @@ class DemoSession(BaseModel):
     
     # Informe generado progresivamente
     generated_report: Dict[str, str] = {}  # step -> content
+
+    # Versión preview (freemium) del informe
+    generated_report_preview: Dict[str, str] = {}  # step -> preview content
     
     # Flag virtual para el frontend
     pdf_generated: bool = False

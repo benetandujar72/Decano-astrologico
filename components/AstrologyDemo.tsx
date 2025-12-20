@@ -41,6 +41,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isGuidedOnly, setIsGuidedOnly] = useState<boolean>(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -52,6 +53,46 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Freemium gating (UX): FREE/anonymous = guided-only (no preguntas libres)
+  useEffect(() => {
+    const token = localStorage.getItem('fraktal_token');
+    const savedUser = localStorage.getItem('fraktal_user');
+
+    let isAdmin = false;
+    let tier: string | undefined;
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        isAdmin = user?.role === 'admin' || user?.username === 'admin@programafraktal.com';
+        tier = user?.subscription_tier;
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!token) {
+      setIsGuidedOnly(true);
+      return;
+    }
+    if (isAdmin) {
+      setIsGuidedOnly(false);
+      return;
+    }
+    if (tier && tier.toLowerCase() !== 'free') {
+      setIsGuidedOnly(false);
+      return;
+    }
+
+    api.getUserSubscription()
+      .then((sub) => {
+        const nextTier = (sub?.tier || 'free').toLowerCase();
+        setIsGuidedOnly(nextTier === 'free');
+      })
+      .catch(() => {
+        setIsGuidedOnly(true);
+      });
+  }, []);
 
   // Recuperar sesión guardada al montar
   useEffect(() => {
@@ -182,6 +223,10 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isGuidedOnly) {
+      setError('En el plan FREE la demo es guiada. Pulsa “Siguiente Paso”.');
+      return;
+    }
     if (!inputMessage.trim() || !sessionId || isLoading) return;
 
     const msg = inputMessage;
@@ -233,7 +278,22 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
 
   const downloadPdf = () => {
     if (!sessionId) return;
-    window.open(api.getDemoPdfUrl(sessionId), '_blank');
+    (async () => {
+      try {
+        const { blobUrl, filename } = await api.downloadDemoPdf(sessionId);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Dejar tiempo al navegador para iniciar la descarga
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5_000);
+      } catch (err) {
+        console.error('Error descargando PDF:', err);
+        setError('No se pudo descargar el PDF. Inténtalo de nuevo.');
+      }
+    })();
   };
 
   return (
@@ -503,38 +563,48 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                   >
                     Siguiente Paso <ArrowRight className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => setInputMessage("Explícame más sobre esto")}
-                    className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
-                  >
-                    Explícame más
-                  </button>
-                  <button
-                    onClick={() => setInputMessage("¿Qué significa esto para mi vida?")}
-                    className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
-                  >
-                    ¿Qué significa?
-                  </button>
+                  {!isGuidedOnly && (
+                    <>
+                      <button
+                        onClick={() => setInputMessage("Explícame más sobre esto")}
+                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+                      >
+                        Explícame más
+                      </button>
+                      <button
+                        onClick={() => setInputMessage("¿Qué significa esto para mi vida?")}
+                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+                      >
+                        ¿Qué significa?
+                      </button>
+                    </>
+                  )}
                 </div>
-                
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Escribe tu pregunta..."
-                    className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!inputMessage.trim() || isLoading}
-                    className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
-                    aria-label="Enviar mensaje"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </form>
+
+                {isGuidedOnly ? (
+                  <p className="text-xs text-purple-200/80">
+                    Plan FREE: demo guiada (sin preguntas libres). Usa “Siguiente Paso” para continuar.
+                  </p>
+                ) : (
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      placeholder="Escribe tu pregunta..."
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!inputMessage.trim() || isLoading}
+                      className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+                      aria-label="Enviar mensaje"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </form>
+                )}
               </>
             )}
           </div>

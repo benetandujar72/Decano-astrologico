@@ -25,6 +25,12 @@ class DemoAIService:
 Tu objetivo es guiar al usuario a través de una interpretación profunda de su carta natal, paso a paso.
 Mantén un tono profesional, empático y psicológico. Evita el determinismo.
 
+    IMPORTANTE (FORMATO ESTRICTO):
+    - Devuelve tu respuesta como JSON VÁLIDO y ÚNICAMENTE JSON (sin markdown, sin texto extra, sin backticks).
+    - El JSON debe tener EXACTAMENTE estas claves: "preview" y "full".
+    - "preview": un resumen potente, claro y seductor (máx. ~900 caracteres) que muestre valor sin revelar todo. Debe incluir una invitación directa a comprar el informe completo o contratar los servicios profesionales de Jon Landeta.
+    - "full": el análisis completo del paso actual.
+
 FORMATO DE RESPUESTA:
 - Usa **negritas** para resaltar conceptos clave, planetas y aspectos importantes.
 - Estructura tu respuesta en párrafos claros y legibles.
@@ -133,7 +139,12 @@ Indica claramente que:
                 return "Lo siento, el servicio de IA no está configurado correctamente (Falta API Key). Por favor contacta al administrador."
 
             chat = self.model.start_chat(history=history)
-            response = chat.send_message(system_prompt + f"\n\nUsuario dice: {user_message}\n(Si el usuario pide continuar, genera el análisis del PASO ACTUAL descrito en el system prompt. Si hace una pregunta, responde la pregunta).")
+            response = chat.send_message(
+                system_prompt
+                + f"\n\nUsuario dice: {user_message}\n"
+                + "(Si el usuario pide continuar, genera el análisis del PASO ACTUAL descrito en el system prompt. Si hace una pregunta, responde la pregunta).\n"
+                + "Recuerda: tu salida debe ser SOLO JSON con preview y full."
+            )
             return response.text
         except Exception as e:
             print(f"Error generating content: {e}")

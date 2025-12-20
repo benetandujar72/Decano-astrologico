@@ -63,19 +63,43 @@ interface Booking {
   created_at: string;
 }
 
+interface DemoSessionSummary {
+  session_id: string;
+  created_at?: string;
+  updated_at?: string;
+  current_step?: string;
+  name?: string;
+  birth_date?: string;
+}
+
+interface DemoSessionDetail {
+  session_id?: string;
+  _id?: string;
+  created_at?: string;
+  updated_at?: string;
+  current_step?: string;
+  messages?: Array<{ role: string; content: string; step?: string }>;
+  generated_report?: Record<string, any>;
+}
+
 const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [charts, setCharts] = useState<Chart[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [demoSessions, setDemoSessions] = useState<DemoSessionSummary[]>([]);
+  const [selectedDemoSessionId, setSelectedDemoSessionId] = useState<string | null>(null);
+  const [demoSessionDetail, setDemoSessionDetail] = useState<DemoSessionDetail | null>(null);
+  const [demoSessionLoading, setDemoSessionLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     charts: false,
     payments: false,
     consultations: false,
-    bookings: false
+    bookings: false,
+    demoSessions: false
   });
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -204,11 +228,54 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
         setBookings([]);
       }
 
+      // Obtener sesiones de demo (endpoint de admin)
+      try {
+        const demoResponse = await fetch(`${API_URL}/admin/users/${userId}/demo-sessions`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (demoResponse.ok) {
+          const demoData = await demoResponse.json();
+          setDemoSessions(demoData.sessions || []);
+        } else if (demoResponse.status === 403) {
+          console.warn('No tienes permisos para ver demos de este usuario');
+          setDemoSessions([]);
+        } else {
+          console.warn('Error cargando demos:', demoResponse.status);
+          setDemoSessions([]);
+        }
+      } catch (err) {
+        console.error('Error loading demo sessions:', err);
+        setDemoSessions([]);
+      }
+
     } catch (err: any) {
       console.error('Error fetching user details:', err);
       setError(err.message || 'Error al cargar datos del usuario');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDemoSessionDetail = async (sessionId: string) => {
+    setSelectedDemoSessionId(sessionId);
+    setDemoSessionLoading(true);
+    setDemoSessionDetail(null);
+
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${userId}/demo-sessions/${encodeURIComponent(sessionId)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Error cargando detalle de la demo');
+      }
+      const data = await res.json();
+      setDemoSessionDetail(data);
+    } catch (e) {
+      console.error(e);
+      setDemoSessionDetail(null);
+    } finally {
+      setDemoSessionLoading(false);
     }
   };
 
@@ -278,7 +345,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
         <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+              <div className="w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
                 {userDetails.username[0].toUpperCase()}
               </div>
               <div>
@@ -488,6 +555,120 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
                       </span>
                     </div>
                   ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Demos Astrológicas */}
+          <div className="bg-gray-800 rounded-xl p-6">
+            <button
+              onClick={() => toggleSection('demoSessions')}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Demos Astrológicas ({demoSessions.length})
+              </h3>
+              {expandedSections.demoSessions ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+
+            {expandedSections.demoSessions && (
+              <div className="mt-4 space-y-3">
+                {demoSessions.length === 0 ? (
+                  <p className="text-gray-400 text-sm">No hay demos registradas</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {demoSessions.map((s) => (
+                      <div key={s.session_id} className="bg-gray-700 rounded-lg p-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-white font-semibold truncate">
+                            {s.name ? `Demo: ${s.name}` : 'Demo'}
+                          </p>
+                          <p className="text-gray-300 text-xs truncate">
+                            {s.created_at ? new Date(s.created_at).toLocaleString('es-ES') : 'Fecha desconocida'}
+                            {s.current_step ? ` · paso: ${s.current_step}` : ''}
+                            {s.birth_date ? ` · nac.: ${s.birth_date}` : ''}
+                          </p>
+                          <p className="text-gray-400 text-[11px] font-mono truncate">{s.session_id}</p>
+                        </div>
+                        <button
+                          onClick={() => fetchDemoSessionDetail(s.session_id)}
+                          className="shrink-0 px-3 py-2 rounded-lg bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/30 text-purple-100 text-xs font-semibold transition-colors"
+                        >
+                          Ver detalle
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(demoSessionLoading || demoSessionDetail) && (
+                  <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <p className="text-white font-bold truncate">Detalle de la demo</p>
+                        <p className="text-gray-400 text-xs truncate">{selectedDemoSessionId || ''}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedDemoSessionId(null);
+                          setDemoSessionDetail(null);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold transition-colors"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+
+                    {demoSessionLoading ? (
+                      <p className="text-gray-300 text-sm">Cargando detalle...</p>
+                    ) : demoSessionDetail ? (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-gray-200 font-semibold mb-2">Chat</p>
+                          <div className="max-h-64 overflow-y-auto space-y-2">
+                            {(demoSessionDetail.messages || []).length === 0 ? (
+                              <p className="text-gray-400 text-sm">Sin mensajes</p>
+                            ) : (
+                              (demoSessionDetail.messages || []).map((m, idx) => (
+                                <div key={idx} className="bg-gray-800 rounded-lg p-3">
+                                  <p className="text-xs text-gray-400 mb-1">
+                                    {m.role}{m.step ? ` · ${m.step}` : ''}
+                                  </p>
+                                  <p className="text-gray-100 text-sm whitespace-pre-wrap">{m.content}</p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-200 font-semibold mb-2">Informe completo</p>
+                          <div className="max-h-64 overflow-y-auto space-y-2">
+                            {demoSessionDetail.generated_report && Object.keys(demoSessionDetail.generated_report).length > 0 ? (
+                              Object.entries(demoSessionDetail.generated_report).map(([k, v]) => (
+                                <div key={k} className="bg-gray-800 rounded-lg p-3">
+                                  <p className="text-xs text-purple-300 font-semibold mb-2">{k}</p>
+                                  <p className="text-gray-100 text-sm whitespace-pre-wrap">
+                                    {typeof v === 'string' ? v : JSON.stringify(v, null, 2)}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-gray-400 text-sm">Sin informe generado</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">No se pudo cargar el detalle.</p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

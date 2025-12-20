@@ -31,6 +31,7 @@ subscriptions_collection = db.user_subscriptions
 payments_collection = db.payments
 invoices_collection = db.invoices
 quotes_collection = db.quotes
+demo_sessions_collection = db.demo_sessions
 
 
 def require_admin(current_user: dict = Depends(get_current_user)):
@@ -330,6 +331,93 @@ async def get_user_charts(
         chart["chart_id"] = chart.get("chart_id") or str(chart["_id"])
     
     return {"charts": charts, "total": len(charts)}
+
+
+@router.get("/users/{user_id}/demo-sessions")
+async def get_user_demo_sessions(
+    user_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    admin: dict = Depends(require_admin),
+):
+    """Lista sesiones de demo de un usuario (solo admin)."""
+    from bson import ObjectId
+
+    # Normalizar user_id (ObjectId o email)
+    user = None
+    try:
+        if ObjectId.is_valid(user_id):
+            user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        user = None
+    if not user:
+        user = await users_collection.find_one({"email": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    user_id_str = str(user["_id"])
+
+    cursor = demo_sessions_collection.find({"user_id": user_id_str}).sort("created_at", -1).limit(limit)
+    sessions = await cursor.to_list(length=limit)
+    result = []
+    for s in sessions:
+        sid = s.get("session_id") or str(s.get("_id"))
+        cd = s.get("chart_data") or {}
+        result.append(
+            {
+                "session_id": sid,
+                "created_at": s.get("created_at", ""),
+                "updated_at": s.get("updated_at", ""),
+                "current_step": s.get("current_step", ""),
+                "name": cd.get("name") or cd.get("datos_entrada", {}).get("nombre") or "",
+                "birth_date": cd.get("birth_date") or cd.get("datos_entrada", {}).get("fecha") or "",
+            }
+        )
+
+    return {"sessions": result, "total": len(result)}
+
+
+@router.get("/users/{user_id}/demo-sessions/{session_id}")
+async def get_user_demo_session_detail(
+    user_id: str,
+    session_id: str,
+    admin: dict = Depends(require_admin),
+):
+    """Obtiene detalle completo de una demo (mensajes + informe) para un usuario (solo admin)."""
+    from bson import ObjectId
+
+    # Normalizar user_id
+    user = None
+    try:
+        if ObjectId.is_valid(user_id):
+            user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        user = None
+    if not user:
+        user = await users_collection.find_one({"email": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user_id_str = str(user["_id"])
+
+    # Buscar sesión por session_id o por _id (compat)
+    session = await demo_sessions_collection.find_one({"session_id": session_id, "user_id": user_id_str})
+    if not session:
+        if ObjectId.is_valid(session_id):
+            session = await demo_sessions_collection.find_one({"_id": ObjectId(session_id), "user_id": user_id_str})
+    if not session:
+        if session_id.startswith("demo_"):
+            maybe_oid = session_id[5:]
+            if ObjectId.is_valid(maybe_oid):
+                session = await demo_sessions_collection.find_one({"_id": ObjectId(maybe_oid), "user_id": user_id_str})
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    # Normalizar ids
+    if session.get("_id") is not None:
+        session["_id"] = str(session["_id"])
+    if not session.get("session_id"):
+        session["session_id"] = session.get("_id")
+
+    return session
 
 
 class UpdateUserRequest(BaseModel):
