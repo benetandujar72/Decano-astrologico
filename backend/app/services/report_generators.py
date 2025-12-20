@@ -5,6 +5,7 @@ Soporta: PDF, DOCX, Markdown, HTML
 from typing import Dict, Optional
 from io import BytesIO
 import json
+import re
 from datetime import datetime
 import base64
 
@@ -379,6 +380,121 @@ class ReportGenerator:
     
     # ===================== GENERADOR PDF =====================
     
+    def _format_inline(self, text: str) -> str:
+        """Aplica formato inline (negrita, cursiva)"""
+        # Negrita: **texto** -> <b>texto</b>
+        text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+        # Cursiva: *texto* -> <i>texto</i> (evitando bullets al inicio)
+        text = re.sub(r'(?<!\*)\*(?!\*)(.*?)\*', r'<i>\1</i>', text)
+        
+        # Saltos de línea
+        text = text.replace('\n', '<br/>')
+        return text
+
+    def _parse_markdown(self, text: str, styles) -> list:
+        """Convierte texto Markdown básico a objetos ReportLab"""
+        story_elements = []
+        
+        # Estilos
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=11,
+            spaceAfter=12,
+            alignment=TA_JUSTIFY,
+            leading=14
+        )
+        
+        h1_style = ParagraphStyle(
+            'CustomH1',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#667eea'),
+            spaceAfter=12,
+            spaceBefore=12,
+            fontName='Helvetica-Bold'
+        )
+        
+        h2_style = ParagraphStyle(
+            'CustomH2',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#764ba2'),
+            spaceAfter=10,
+            spaceBefore=10,
+            fontName='Helvetica-Bold'
+        )
+        
+        h3_style = ParagraphStyle(
+            'CustomH3',
+            parent=styles['Heading3'],
+            fontSize=14,
+            textColor=colors.HexColor('#4a5568'),
+            spaceAfter=8,
+            spaceBefore=8,
+            fontName='Helvetica-Bold'
+        )
+        
+        bullet_style = ParagraphStyle(
+            'CustomBullet',
+            parent=normal_style,
+            leftIndent=20,
+            firstLineIndent=0,
+            spaceAfter=6,
+            bulletIndent=10
+        )
+
+        # Procesar bloques
+        blocks = text.split('\n\n')
+        
+        for block in blocks:
+            block = block.strip()
+            if not block:
+                continue
+                
+            # Detectar Headers
+            if block.startswith('### '):
+                content = block[4:]
+                content = self._format_inline(content)
+                story_elements.append(Paragraph(content, h3_style))
+            elif block.startswith('## '):
+                content = block[3:]
+                content = self._format_inline(content)
+                story_elements.append(Paragraph(content, h2_style))
+            elif block.startswith('# '):
+                content = block[2:]
+                content = self._format_inline(content)
+                story_elements.append(Paragraph(content, h1_style))
+            elif block.startswith('---'):
+                story_elements.append(Spacer(1, 0.2*inch))
+            else:
+                # Detectar listas
+                lines = block.split('\n')
+                is_list = False
+                for line in lines:
+                    if line.strip().startswith('* ') or line.strip().startswith('- '):
+                        is_list = True
+                        break
+                
+                if is_list:
+                    for line in lines:
+                        line = line.strip()
+                        if line.startswith('* ') or line.startswith('- '):
+                            content = line[2:]
+                            content = self._format_inline(content)
+                            story_elements.append(Paragraph(f"• {content}", bullet_style))
+                        else:
+                            content = self._format_inline(line)
+                            story_elements.append(Paragraph(content, normal_style))
+                else:
+                    # Párrafo normal
+                    content = self._format_inline(block)
+                    story_elements.append(Paragraph(content, normal_style))
+            
+            story_elements.append(Spacer(1, 0.05*inch))
+            
+        return story_elements
+
     def generate_pdf(self) -> BytesIO:
         """Genera informe en formato PDF"""
         import sys
@@ -510,13 +626,12 @@ class ReportGenerator:
             story.append(casas_table)
             story.append(PageBreak())
             
-            # Análisis
+            # Análisis (USANDO PARSER MARKDOWN)
             story.append(Paragraph("📖 Análisis Psico-Astrológico", heading_style))
-            # Dividir el análisis en párrafos
-            for parrafo in self.analysis.split('\n\n'):
-                if parrafo.strip():
-                    story.append(Paragraph(parrafo.strip(), normal_style))
-                    story.append(Spacer(1, 0.1*inch))
+            
+            # Usar el nuevo parser
+            markdown_elements = self._parse_markdown(self.analysis, styles)
+            story.extend(markdown_elements)
             
             # Footer
             story.append(Spacer(1, 0.3*inch))
