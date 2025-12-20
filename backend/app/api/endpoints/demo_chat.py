@@ -52,18 +52,45 @@ def _extract_preview_and_full(ai_text: str) -> tuple[str, str]:
         return ("", "")
 
     import json
+    import re
 
     raw = str(ai_text).strip()
-    try:
-        data = json.loads(raw)
-        preview = str(data.get("preview", "") or "").strip()
-        full = str(data.get("full", "") or "").strip()
-        if preview or full:
-            return (preview or _make_preview_fallback(full), full or preview)
-    except Exception:
-        pass
 
-    return (_make_preview_fallback(raw), raw)
+    def _strip_code_fences(text: str) -> str:
+        t = str(text or "").strip()
+        # Strip leading ```lang and trailing ```
+        if t.startswith("```"):
+            t = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", t)
+            if t.endswith("```"):
+                t = t[:-3]
+        return t.strip()
+
+    candidates = [raw]
+    stripped = _strip_code_fences(raw)
+    if stripped and stripped != raw:
+        candidates.append(stripped)
+
+    # If response contains extra text, try to extract JSON object portion
+    for base in list(candidates):
+        start = base.find("{")
+        end = base.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            maybe = base[start : end + 1].strip()
+            if maybe and maybe not in candidates:
+                candidates.append(maybe)
+
+    for cand in candidates:
+        try:
+            data = json.loads(cand)
+            if isinstance(data, dict):
+                preview = str(data.get("preview", "") or "").strip()
+                full = str(data.get("full", "") or "").strip()
+                if preview or full:
+                    return (preview or _make_preview_fallback(full), full or preview)
+        except Exception:
+            continue
+
+    return (_make_preview_fallback(stripped or raw), stripped or raw)
 
 
 def _step_order_keys() -> list[str]:
@@ -103,7 +130,11 @@ async def _project_session_for_view(session: DemoSession, current_user: Optional
         if msg.role == MessageRole.ASSISTANT:
             step_key = getattr(msg.step, "value", str(msg.step))
             preview = projected.generated_report_preview.get(step_key)
-            msg.content = preview or _make_preview_fallback(msg.content)
+            if preview:
+                msg.content = preview
+            else:
+                extracted_preview, _ = _extract_preview_and_full(msg.content)
+                msg.content = extracted_preview or _make_preview_fallback(msg.content)
 
     # Exponer solo report preview (reutilizar el mismo campo para el frontend)
     projected.generated_report = dict(projected.generated_report_preview or {})

@@ -6,6 +6,55 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Calendar, MapPin, Clock, AlertCircle, Download, Mail, Send, User, Bot, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
 
+const formatAssistantMessage = (raw: string, isGuidedOnly: boolean): string => {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+
+  const stripCodeFences = (t: string) => {
+    let out = t.trim();
+    if (out.startsWith('```')) {
+      out = out.replace(/^```[a-zA-Z0-9_-]*\s*/g, '');
+      if (out.endsWith('```')) out = out.slice(0, -3);
+    }
+    return out.trim();
+  };
+
+  const tryParsePreview = (t: string): string | null => {
+    const cleaned = stripCodeFences(t);
+    const candidates: string[] = [cleaned];
+
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      candidates.push(cleaned.slice(start, end + 1));
+    }
+
+    for (const cand of candidates) {
+      try {
+        const obj = JSON.parse(cand);
+        if (obj && typeof obj === 'object') {
+          const preview = String((obj as any).preview || '').trim();
+          const full = String((obj as any).full || '').trim();
+          const chosen = isGuidedOnly ? preview : (full || preview);
+          if (chosen) return chosen;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  };
+
+  const parsed = tryParsePreview(text);
+  const withoutFences = stripCodeFences(parsed ?? text);
+
+  // Make it look professional in plain-text rendering:
+  // - remove markdown **bold** markers
+  // - collapse excessive leading/trailing whitespace
+  const noBold = withoutFences.replace(/\*\*(.*?)\*\*/g, '$1');
+  return noBold.trim();
+};
+
 interface DemoData {
   name: string;
   birthDate: string;
@@ -510,7 +559,9 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                   }`}
                 >
                   <div className="whitespace-pre-wrap leading-relaxed text-sm">
-                    {msg.content}
+                    {msg.role === 'assistant'
+                      ? formatAssistantMessage(msg.content, isGuidedOnly)
+                      : msg.content}
                   </div>
                 </div>
 
