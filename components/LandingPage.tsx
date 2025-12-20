@@ -5,14 +5,14 @@ import { api } from '../services/api';
 interface LandingPageProps {
   isAuthenticated: boolean;
   onGoToApp: () => void;
-  onViewPlans: () => void;
+  onRequireAuth: () => void;
   onViewServices: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({
   isAuthenticated,
   onGoToApp,
-  onViewPlans,
+  onRequireAuth,
   onViewServices,
 }) => {
   const [name, setName] = useState('');
@@ -50,6 +50,67 @@ const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
+  const services = useMemo(() => {
+    return [
+      {
+        service_id: 'srv_phone_60',
+        name: 'Consulta Telefónica (60 min)',
+        description: 'Consulta astrológica personalizada por teléfono con Jon Landeta.',
+        duration_minutes: 60,
+        base_price: 120,
+        category: 'consultation',
+      },
+      {
+        service_id: 'srv_online_60',
+        name: 'Consulta Online (60 min)',
+        description: 'Sesión de análisis astrológico vía videollamada (Zoom/Google Meet).',
+        duration_minutes: 60,
+        base_price: 150,
+        category: 'consultation',
+      },
+      {
+        service_id: 'srv_in_person_90',
+        name: 'Consulta Presencial (90 min)',
+        description: 'Sesión presencial de análisis astrológico profundo (a convenir).',
+        duration_minutes: 90,
+        base_price: 250,
+        category: 'consultation',
+      },
+      {
+        service_id: 'srv_training_foundation',
+        name: 'Programa de Formación - Nivel Fundamentos',
+        description: 'Curso intensivo de fundamentos de astrología (metodología Jon Landeta).',
+        duration_minutes: 1200,
+        base_price: 890,
+        category: 'training',
+      },
+      {
+        service_id: 'srv_therapy_60',
+        name: 'Sesión de Terapia/Coaching (60 min)',
+        description: 'Sesión integrando astrología psicológica y coaching.',
+        duration_minutes: 60,
+        base_price: 180,
+        category: 'therapy',
+      },
+      {
+        service_id: 'srv_chart_report',
+        name: 'Carta Personalizada (Informe PDF)',
+        description: 'Informe escrito y personalizado a partir de tu carta natal.',
+        duration_minutes: 45,
+        base_price: 99,
+        category: 'consultation',
+      },
+    ];
+  }, []);
+
+  const handleReserve = () => {
+    if (!isAuthenticated) {
+      onRequireAuth();
+      return;
+    }
+    onViewServices();
+  };
+
   return (
     <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
@@ -73,13 +134,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onViewPlans}
-              className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-sm transition-colors"
-            >
-              Ver planes
-            </button>
-            <button
-              type="button"
               onClick={onGoToApp}
               className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors inline-flex items-center gap-2"
             >
@@ -96,23 +150,23 @@ const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
             <p className="mt-5 text-gray-300 text-lg leading-relaxed">
               FRAKTAL combina cálculo astrológico preciso con un enfoque sistémico: claridad, síntesis y pasos prácticos.
-              Empieza gratis y desbloquea informes completos con planes de suscripción.
+              La landing es pública. Para usar la app o reservar, necesitas validación de usuario.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={onViewPlans}
+                onClick={handleReserve}
                 className="px-5 py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold transition-all"
               >
-                Ver planes y precios
+                Servicios de Jon Landeta
               </button>
               <button
                 type="button"
-                onClick={onViewServices}
+                onClick={handleReserve}
                 className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold transition-colors"
               >
-                Servicios profesionales
+                Ver catálogo de servicios
               </button>
             </div>
 
@@ -130,6 +184,54 @@ const LandingPage: React.FC<LandingPageProps> = ({
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">PDF</div>
                 <div className="mt-1 text-sm text-gray-200">Informe descargable para planes de pago</div>
+              </div>
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Servicios</div>
+                  <div className="text-white font-semibold">Catálogo público (preview)</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleReserve}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+                >
+                  Reservar
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {services.map((svc) => (
+                  <div key={svc.service_id} className="rounded-xl border border-white/10 bg-slate-900/30 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm text-white font-semibold">{svc.name}</div>
+                        <div className="mt-1 text-xs text-gray-400">{svc.description}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-400">Desde</div>
+                        <div className="text-sm text-white font-bold">€{svc.base_price}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="text-[11px] text-gray-400">
+                        {svc.duration_minutes ? `${svc.duration_minutes} min` : 'Duración a convenir'}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleReserve}
+                        className="text-xs text-indigo-300 hover:text-indigo-200 transition-colors"
+                      >
+                        Reservar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 text-[11px] text-gray-400">
+                El catálogo completo y la reserva están disponibles tras iniciar sesión.
               </div>
             </div>
           </div>
@@ -151,7 +253,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
               />
               <img
                 src="/screenshots/fraktal-03.svg"
-                alt="Captura: planes y suscripción"
+                alt="Captura: servicios y reservas"
                 className="w-full rounded-xl border border-white/10 bg-black/20"
                 loading="lazy"
               />
@@ -254,7 +356,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <div className="mt-6">
               <button
                 type="button"
-                onClick={onViewServices}
+                onClick={handleReserve}
                 className="w-full px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold transition-colors"
               >
                 Ver catálogo de servicios

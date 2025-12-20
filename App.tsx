@@ -112,6 +112,21 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Guard de seguridad: si no hay autenticación, solo permitimos LANDING y AUTH
+  // (y SUBSCRIPTION_SUCCESS únicamente cuando viene con session_id desde Stripe)
+  useEffect(() => {
+    if (isAuthenticated) return;
+
+    const allowUnauthenticated = new Set<AppMode>([AppMode.AUTH, AppMode.LANDING]);
+    if (stripeSessionId) {
+      allowUnauthenticated.add(AppMode.SUBSCRIPTION_SUCCESS);
+    }
+
+    if (!allowUnauthenticated.has(mode)) {
+      setMode(AppMode.AUTH);
+    }
+  }, [isAuthenticated, mode, stripeSessionId]);
+
   // Modal State
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -1832,8 +1847,8 @@ ${analysisText}
           <LandingPage
             isAuthenticated={isAuthenticated}
             onGoToApp={() => setMode(isAuthenticated ? AppMode.INPUT : AppMode.AUTH)}
-            onViewPlans={() => setMode(AppMode.SUBSCRIPTION_PLANS)}
-            onViewServices={() => setMode(isAuthenticated ? AppMode.PROFESSIONAL_SERVICES : AppMode.AUTH)}
+            onRequireAuth={() => setMode(AppMode.AUTH)}
+            onViewServices={() => setMode(AppMode.PROFESSIONAL_SERVICES)}
           />
         )}
         {mode === AppMode.AUTH && renderAuth()}
