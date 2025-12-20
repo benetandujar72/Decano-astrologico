@@ -51,6 +51,12 @@ FORMATO DE RESPUESTA:
 - Estructura tu respuesta en párrafos claros y legibles.
 - Utiliza listas con viñetas para enumerar puntos clave.
 - El estilo debe ser moderno, limpio y profesional.
+
+IMPORTANTE - EXTENSIÓN DEL INFORME COMPLETO (PAGO):
+- El informe completo de pago debe tener entre 25 y 30 páginas (aproximadamente 40,000-50,000 caracteres).
+- Cada sección debe ser profunda, detallada y exhaustiva.
+- Incluye ejemplos concretos, interpretaciones psicológicas profundas y guías prácticas.
+- No escatimes en profundidad: el usuario está pagando por un análisis completo y profesional.
 """
 
         chart_context = f"""
@@ -61,57 +67,181 @@ DATOS DE LA CARTA:
         if step == DemoStep.ELEMENTS:
             return base_prompt + chart_context + """
 PASO ACTUAL: ESTRUCTURA ENERGÉTICA BASE
-Analiza:
-1. Balance de elementos (Fuego, Tierra, Aire, Agua). ¿Qué falta? ¿Qué sobra?
-2. Modalidades (Cardinal, Fijo, Mutable).
-3. Tensión vital primaria (Sol-Luna-Ascendente).
+Analiza EN PROFUNDIDAD (mínimo 3,000 caracteres en "full"):
+1. Balance de elementos (Fuego, Tierra, Aire, Agua):
+   - Analiza cada elemento presente y su influencia psicológica
+   - Explica qué elementos faltan y cómo esto afecta la personalidad
+   - Describe cómo compensar los desequilibrios elementales
 
-Genera un análisis conciso pero profundo de estos puntos.
+2. Modalidades (Cardinal, Fijo, Mutable):
+   - Detalla el predominio de cada modalidad
+   - Explica el estilo de acción y adaptación al cambio
+   - Incluye ejemplos concretos de cómo se manifiesta esto en la vida diaria
+
+3. Tensión vital primaria (Sol-Luna-Ascendente):
+   - Analiza profundamente la dinámica entre estas tres energías fundamentales
+   - Explica la integración o conflicto entre identidad consciente (Sol), necesidades emocionales (Luna) y máscara social (Ascendente)
+   - Incluye guías prácticas para armonizar estos tres puntos
+
+El análisis debe ser exhaustivo, psicológicamente profundo y con aplicaciones prácticas concretas.
 """
         elif step == DemoStep.PLANETS:
             return base_prompt + chart_context + """
 PASO ACTUAL: ANÁLISIS PLANETARIO
-Analiza:
-1. Posiciones clave de planetas personales por signo y casa.
-2. Dignidades esenciales si son relevantes.
-3. Dispositores.
+Analiza EN PROFUNDIDAD (mínimo 4,000 caracteres en "full"):
+1. Planetas Personales (Sol, Luna, Mercurio, Venus, Marte):
+   - Analiza cada planeta por signo, casa y aspectos principales
+   - Explica la expresión psicológica de cada energía planetaria
+   - Describe cómo se manifiestan en la personalidad, relaciones y acción
+   - Incluye guías para integrar positivamente cada energía
 
-Céntrate en lo más destacado, no listes todo. Busca el núcleo de la personalidad.
+2. Planetas Sociales (Júpiter, Saturno):
+   - Analiza el crecimiento y expansión (Júpiter)
+   - Explica estructura, límites y aprendizajes (Saturno)
+   - Describe el equilibrio entre expansión y contracción
+
+3. Dignidades Esenciales y Dispositores:
+   - Identifica planetas en domicilio, exaltación o debilidad
+   - Analiza la cadena de dispositores y el planeta dispositor final
+   - Explica la importancia del dispositor final en la estructura psíquica
+
+4. Patrones Planetarios Destacados:
+   - Identifica stelliums, planetas solitarios, planetas elevados
+   - Analiza el significado psicológico de estos patrones
+
+El análisis debe revelar el núcleo esencial de la personalidad con ejemplos concretos.
 """
         elif step == DemoStep.ASPECTS:
             return base_prompt + chart_context + """
 PASO ACTUAL: SISTEMA DE ASPECTOS
-Analiza:
-1. Aspectos mayores principales (Sol, Luna, Regente del Ascendente).
-2. Configuraciones especiales (T-Cuadrada, Gran Trígono, etc.) si existen.
-3. Tensiones y fluidez interna.
+Analiza EN PROFUNDIDAD (mínimo 4,500 caracteres en "full"):
+1. Aspectos Mayores de Planetas Principales:
+   - Analiza detalladamente aspectos del Sol (identidad, propósito)
+   - Examina aspectos de la Luna (emociones, necesidades internas)
+   - Estudia aspectos del Regente del Ascendente (estilo de vida)
+   - Explica la dinámica psicológica de cada aspecto importante
+   - Incluye ejemplos de cómo se manifiestan en la vida cotidiana
+
+2. Configuraciones Especiales (si existen):
+   - T-Cuadrada: analiza el desafío, la tensión y el punto de liberación
+   - Gran Trígono: explica el talento natural y el riesgo de complacencia
+   - Yod (Dedo de Dios): describe el destino kármico y la misión especial
+   - Cometa: analiza la combinación de talento y desafío
+   - Gran Cruz: explica la tensión dinámica y el potencial de maestría
+   - Stellium: profundiza en la concentración de energía
+
+3. Tensiones y Fluidez Interna:
+   - Analiza el balance entre aspectos armónicos (trígonos, sextiles) y tensos (cuadraturas, oposiciones)
+   - Explica cómo las tensiones impulsan el crecimiento
+   - Describe cómo usar los aspectos armónicos como recursos
+   - Incluye guías prácticas para trabajar conscientemente con los aspectos desafiantes
+
+4. Aspectos Menores Significativos (si son relevantes):
+   - Semicuadraturas, sesquicuadraturas, quintiles si aportan información valiosa
+
+El análisis debe mostrar la dinámica interna de la psique y los patrones de crecimiento.
 """
         elif step == DemoStep.HOUSES:
             return base_prompt + chart_context + """
 PASO ACTUAL: CASAS Y EJES
-Analiza:
-1. Ejes polares activados (1-7, 4-10, etc.).
-2. Planetas angulares (cerca de cúspides 1, 4, 7, 10).
-3. Áreas de vida con mayor carga energética.
+Analiza EN PROFUNDIDAD (mínimo 4,000 caracteres en "full"):
+1. Los Cuatro Ejes Fundamentales:
+   - Eje Ascendente-Descendente (Yo-Otro): analiza la dinámica entre identidad personal y relaciones
+   - Eje Medio Cielo-Fondo del Cielo (Público-Privado): explica el balance entre vocación pública y raíces familiares
+   - Describe los signos en las cúspides y su significado
+   - Incluye guías para equilibrar cada eje polar
+
+2. Planetas Angulares (cerca de ASC, MC, DSC, IC):
+   - Analiza cada planeta angular en detalle
+   - Explica su importancia dominante en la carta
+   - Describe cómo moldean la experiencia de vida
+   - Incluye ejemplos concretos de manifestación
+
+3. Análisis de Casas por Elemento:
+   - Casas de Fuego (1, 5, 9): identidad, creatividad, expansión
+   - Casas de Tierra (2, 6, 10): recursos, servicio, logros
+   - Casas de Aire (3, 7, 11): comunicación, relaciones, visión
+   - Casas de Agua (4, 8, 12): emociones, transformación, trascendencia
+
+4. Áreas de Vida con Mayor Concentración Energética:
+   - Identifica casas con múltiples planetas (énfasis vital)
+   - Analiza casas vacías y su significado
+   - Explica dónde se concentra la experiencia de vida
+   - Incluye guías para desarrollar áreas menos enfatizadas
+
+5. Temas de Vida Según Planetas en Casas:
+   - Analiza los planetas más importantes en sus casas
+   - Explica cómo se manifiestan las energías planetarias en áreas específicas de vida
+
+El análisis debe revelar el mapa de experiencias vitales y áreas de desarrollo.
 """
         elif step == DemoStep.SYNTHESIS:
             return base_prompt + chart_context + """
-PASO ACTUAL: SÍNTESIS TRANSPERSONAL
-Analiza:
-1. Eje Nodal (Karma/Dharma).
-2. Saturno como maestro/estructura.
-3. Planetas transpersonales y su impacto generacional/personal.
-4. Conclusión evolutiva.
+PASO ACTUAL: SÍNTESIS TRANSPERSONAL Y EVOLUTIVA
+Analiza EN PROFUNDIDAD (mínimo 5,000 caracteres en "full"):
+1. Eje Nodal (Nodo Norte - Nodo Sur):
+   - Analiza profundamente el Nodo Sur: patrones kármicos, talentos innatos, zona de confort
+   - Explica el Nodo Norte: dirección evolutiva, aprendizajes necesarios, zona de crecimiento
+   - Describe el eje de casas donde se encuentran los nodos
+   - Incluye guías prácticas concretas para el camino evolutivo
+   - Explica cómo integrar los talentos del Nodo Sur al servicio del Nodo Norte
+
+2. Saturno - El Maestro Interior:
+   - Analiza Saturno por signo, casa y aspectos principales
+   - Explica los aprendizajes saturninos y las estructuras necesarias
+   - Describe los miedos y limitaciones que impulsan el crecimiento
+   - Incluye el retorno de Saturno (cada 29 años) como ciclo de maduración
+   - Guías para trabajar conscientemente con la energía saturnina
+
+3. Planetas Transpersonales (Urano, Neptuno, Plutón):
+   - Urano: analiza la necesidad de individuación, libertad y cambio revolucionario
+   - Neptuno: explica la conexión espiritual, sensibilidad y disolución de límites
+   - Plutón: profundiza en transformación, poder personal y regeneración
+   - Distingue entre influencia generacional y personal (por casa y aspectos)
+   - Incluye guías para canalizar estas energías transformadoras
+
+4. Quirón - La Herida Sanadora:
+   - Analiza Quirón por signo y casa
+   - Explica la herida arquetípica y el camino de sanación
+   - Describe cómo la herida se convierte en don para ayudar a otros
+
+5. Síntesis Evolutiva Final:
+   - Integra todos los elementos analizados en una visión coherente
+   - Explica el propósito de vida y el camino de desarrollo del alma
+   - Describe los principales desafíos evolutivos y cómo abordarlos
+   - Incluye una reflexión sobre el potencial más elevado de esta carta natal
+   - Ofrece orientación práctica para el crecimiento consciente
+
+El análisis debe ser una síntesis magistral que revele el sentido profundo de la existencia según esta carta.
 """
         elif step == DemoStep.COMPLETED:
             return base_prompt + chart_context + """
 PASO ACTUAL: CIERRE DE DEMO
-Genera un mensaje de cierre cálido y profesional.
+Genera un mensaje de cierre cálido y profesional (aproximadamente 800-1000 caracteres).
+
 Indica claramente que:
-1. Este ha sido un análisis preliminar de su estructura energética.
-2. Para profundizar en tránsitos, revolución solar y análisis predictivo detallado, se requiere un estudio completo.
-3. Invítalo a descargar el PDF de esta conversación.
-4. Termina con la frase exacta: "Este es el final de tu análisis inicial".
+1. Este ha sido un análisis preliminar de su estructura energética básica.
+2. El informe COMPLETO de pago (25-30 páginas) incluye:
+   - Análisis exhaustivo y profundo de cada sección con mucho más detalle
+   - Tránsitos actuales y futuros personalizados
+   - Revolución Solar del año en curso
+   - Análisis predictivo detallado para los próximos 12 meses
+   - Progresiones secundarias y su significado
+   - Recomendaciones prácticas específicas para cada área de vida
+   - Guía de desarrollo personal paso a paso
+   - Meditaciones y ejercicios astrológicos personalizados
+   - Fechas clave del año para decisiones importantes
+
+3. El informe completo es un documento profesional de consultoría astrológica de alto nivel, equivalente a 3-4 sesiones presenciales con Jon Landeta.
+
+4. Invítalo a:
+   - Adquirir el informe completo de pago (25-30 páginas)
+   - Descargar el PDF de esta conversación demo
+   - Agendar una sesión personal con Jon Landeta para profundizar aún más
+
+5. Termina con la frase exacta: "Este es el final de tu análisis inicial".
+
+Enfatiza el valor excepcional del informe completo sin ser excesivamente comercial.
 """
         else:
             return base_prompt + chart_context + "Responde a las dudas del usuario sobre su carta."
