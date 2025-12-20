@@ -55,6 +55,39 @@ async def get_charts(current_user: dict = Depends(get_current_user)) -> List[dic
     
     return charts
 
+
+@router.get("/my-charts")
+async def get_my_charts(current_user: dict = Depends(get_current_user)) -> dict:
+    """Compat: devuelve las cartas del usuario en el formato usado por el perfil.
+
+    El frontend histórico llama a `/charts/my-charts` y espera `{ charts: [...] }`.
+    """
+    user_id = current_user.get("_id")
+    if isinstance(user_id, ObjectId):
+        user_id = str(user_id)
+    else:
+        user_id = str(user_id)
+
+    cursor = charts_collection.find({"user_id": user_id}).sort("timestamp", -1)
+    result = []
+    async for chart in cursor:
+        ts = chart.get("timestamp")
+        created_at = None
+        if isinstance(ts, (int, float)):
+            created_at = datetime.utcfromtimestamp(ts / 1000).isoformat()
+
+        result.append(
+            {
+                "chart_id": str(chart.get("_id")),
+                "name": chart.get("name", ""),
+                "birth_date": chart.get("date", ""),
+                "location": chart.get("place", ""),
+                "created_at": created_at or "",
+            }
+        )
+
+    return {"charts": result}
+
 @router.post("/")
 async def save_chart(
     chart_data: ChartCreate,

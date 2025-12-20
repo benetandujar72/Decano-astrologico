@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from datetime import datetime, timedelta
 from typing import Optional
+from bson import ObjectId
 
 from app.models.demo_chat import (
     DemoSession, 
@@ -38,6 +39,52 @@ def _ensure_session_access(session: DemoSession, current_user: Optional[dict]):
     current_user_id = str(current_user.get("_id"))
     if current_user_id != str(session_user_id) and current_user.get("role") != "admin":
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+
+async def _find_session_data(session_id: str):
+    """Busca una sesión por session_id, o por _id para compatibilidad.
+
+    Motivo: existen sesiones legacy sin `session_id` guardado; el perfil
+    debe poder operar con IDs estables.
+    """
+    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    if session_data:
+        return session_data
+
+    # Compat: permitir usar el ObjectId como identificador
+    if ObjectId.is_valid(session_id):
+        return await demo_sessions_collection.find_one({"_id": ObjectId(session_id)})
+
+    # Compat: permitir `demo_<objectid>`
+    if session_id.startswith("demo_"):
+        maybe_oid = session_id[5:]
+        if ObjectId.is_valid(maybe_oid):
+            return await demo_sessions_collection.find_one({"_id": ObjectId(maybe_oid)})
+
+    return None
+
+
+async def _normalize_session_id_in_doc(session_data: dict) -> dict:
+    """Asegura que el documento tenga `session_id` estable.
+
+    Si falta, lo rellena con el string del `_id` (compatibilidad).
+    """
+    if session_data is None:
+        return session_data
+
+    if not session_data.get("session_id"):
+        oid = session_data.get("_id")
+        if oid is not None:
+            session_data["session_id"] = str(oid)
+            try:
+                await demo_sessions_collection.update_one(
+                    {"_id": oid},
+                    {"$set": {"session_id": session_data["session_id"]}},
+                )
+            except Exception:
+                # No bloquear por error de backfill
+                pass
+    return session_data
 
 # MongoDB Configuration
 MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
@@ -125,10 +172,11 @@ async def chat_demo(
     """Envía un mensaje a la sesión de demo"""
     
     # Recuperar sesión
-    session_data = await demo_sessions_collection.find_one({"session_id": request.session_id})
+    session_data = await _find_session_data(request.session_id)
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    
+
+    session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
     
@@ -179,10 +227,11 @@ async def get_session_history(
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
     """Obtiene el historial de una sesión"""
-    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    session_data = await _find_session_data(session_id)
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
+    session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
     return session
@@ -197,10 +246,11 @@ async def generate_demo_pdf(
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
     """Genera un PDF a partir de una sesión de demo"""
-    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    session_data = await _find_session_data(session_id)
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    
+
+    session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
     
@@ -274,6 +324,7 @@ async def get_my_demo_sessions(current_user: dict = Depends(get_current_user)):
     
     sessions = []
     for s_data in sessions_data:
+        s_data = await _normalize_session_id_in_doc(s_data)
         session = DemoSession(**s_data)
         # Si hay mensajes o reporte, asumimos que se puede generar PDF
         if session.messages or session.generated_report:
@@ -289,10 +340,11 @@ async def get_demo_session(
     current_user: dict = Depends(get_current_user),
 ):
     """Obtiene una sesión (incluyendo chat) si pertenece al usuario actual."""
-    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    session_data = await _find_session_data(session_id)
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
+    session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
     return session
@@ -304,14 +356,20 @@ async def delete_demo_session(
     current_user: dict = Depends(get_current_user),
 ):
     """Elimina una sesión de demo del usuario. Al borrar la sesión, también desaparece su PDF."""
-    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    session_data = await _find_session_data(session_id)
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
+    session_data = await _normalize_session_id_in_doc(session_data)
     session = DemoSession(**session_data)
     _ensure_session_access(session, current_user)
 
-    res = await demo_sessions_collection.delete_one({"session_id": session_id})
+    # Borrar por session_id si existe, y fallback a _id
+    delete_filter = {"session_id": session.session_id}
+    if ObjectId.is_valid(session_id):
+        delete_filter = {"$or": [delete_filter, {"_id": ObjectId(session_id)}]}
+
+    res = await demo_sessions_collection.delete_one(delete_filter)
     return {"deleted": res.deleted_count == 1}
 
 
