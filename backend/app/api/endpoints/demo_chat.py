@@ -1,10 +1,10 @@
 """
 Endpoints para la demo interactiva con IA
 """
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, HTTPException, Body, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from app.models.demo_chat import (
@@ -16,10 +16,28 @@ from app.models.demo_chat import (
     DemoStep
 )
 from app.services.demo_ai_service import demo_ai_service
-from app.api.endpoints.auth import get_current_user
+from app.api.endpoints.auth import get_current_user, get_optional_user, require_admin
 from app.services.ephemeris import calcular_carta_completa
 
 router = APIRouter()
+
+
+def _is_anonymous_user_id(user_id: Optional[str]) -> bool:
+    return not user_id or user_id == "anonymous"
+
+
+def _ensure_session_access(session: DemoSession, current_user: Optional[dict]):
+    """Permite acceso anónimo solo a sesiones anónimas; sesiones con owner requieren auth + ownership."""
+    session_user_id = session.user_id
+    if _is_anonymous_user_id(session_user_id):
+        return
+
+    if not current_user:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    current_user_id = str(current_user.get("_id"))
+    if current_user_id != str(session_user_id) and current_user.get("role") != "admin":
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
 # MongoDB Configuration
 MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
@@ -35,10 +53,13 @@ db = client.fraktal
 demo_sessions_collection = db.demo_sessions
 
 @router.post("/start", response_model=DemoSession)
-async def start_demo_session(request: StartDemoRequest):
+async def start_demo_session(
+    request: StartDemoRequest,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """Inicia una nueva sesión de demo"""
-    
-    chart_data = request.chart_data
+
+    chart_data = request.chart_data or {}
     
     # Calcular carta completa si faltan datos astrológicos
     if "planetas" not in chart_data:
@@ -69,9 +90,16 @@ async def start_demo_session(request: StartDemoRequest):
             # Continuar con datos básicos si falla el cálculo
             pass
 
+    # Determinar owner real (no confiar en user_id del cliente si hay auth)
+    owner_user_id: Optional[str]
+    if current_user:
+        owner_user_id = str(current_user.get("_id"))
+    else:
+        owner_user_id = request.user_id or "anonymous"
+
     # Crear nueva sesión
     session = DemoSession(
-        user_id=request.user_id or "anonymous", 
+        user_id=owner_user_id,
         chart_data=chart_data,
         current_step=DemoStep.INITIAL
     )
@@ -90,7 +118,10 @@ async def start_demo_session(request: StartDemoRequest):
     return session
 
 @router.post("/chat", response_model=DemoSession)
-async def chat_demo(request: ChatDemoRequest):
+async def chat_demo(
+    request: ChatDemoRequest,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """Envía un mensaje a la sesión de demo"""
     
     # Recuperar sesión
@@ -99,6 +130,7 @@ async def chat_demo(request: ChatDemoRequest):
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     
     session = DemoSession(**session_data)
+    _ensure_session_access(session, current_user)
     
     # Agregar mensaje del usuario
     user_msg = DemoMessage(
@@ -142,26 +174,35 @@ async def chat_demo(request: ChatDemoRequest):
     return session
 
 @router.get("/history/{session_id}", response_model=DemoSession)
-async def get_session_history(session_id: str):
+async def get_session_history(
+    session_id: str,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """Obtiene el historial de una sesión"""
     session_data = await demo_sessions_collection.find_one({"session_id": session_id})
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    
-    return DemoSession(**session_data)
+
+    session = DemoSession(**session_data)
+    _ensure_session_access(session, current_user)
+    return session
 
 from fastapi.responses import StreamingResponse
 from app.services.report_generators import ReportGenerator
 from io import BytesIO
 
 @router.get("/pdf/{session_id}")
-async def generate_demo_pdf(session_id: str):
+async def generate_demo_pdf(
+    session_id: str,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """Genera un PDF a partir de una sesión de demo"""
     session_data = await demo_sessions_collection.find_one({"session_id": session_id})
     if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     
     session = DemoSession(**session_data)
+    _ensure_session_access(session, current_user)
     
     # Compilar el reporte desde los mensajes o el campo generated_report
     report_text = ""
@@ -240,3 +281,58 @@ async def get_my_demo_sessions(current_user: dict = Depends(get_current_user)):
         sessions.append(session)
         
     return sessions
+
+
+@router.get("/session/{session_id}", response_model=DemoSession)
+async def get_demo_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Obtiene una sesión (incluyendo chat) si pertenece al usuario actual."""
+    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    session = DemoSession(**session_data)
+    _ensure_session_access(session, current_user)
+    return session
+
+
+@router.delete("/session/{session_id}")
+async def delete_demo_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Elimina una sesión de demo del usuario. Al borrar la sesión, también desaparece su PDF."""
+    session_data = await demo_sessions_collection.find_one({"session_id": session_id})
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    session = DemoSession(**session_data)
+    _ensure_session_access(session, current_user)
+
+    res = await demo_sessions_collection.delete_one({"session_id": session_id})
+    return {"deleted": res.deleted_count == 1}
+
+
+@router.delete("/purge")
+async def purge_demo_sessions(
+    older_than_days: int = Query(..., ge=1, le=3650),
+    only_anonymous: bool = Query(True),
+    admin: dict = Depends(require_admin),
+):
+    """Elimina sesiones antiguas (admin-only). Por defecto, solo borra sesiones anónimas."""
+    cutoff_dt = datetime.utcnow() - timedelta(days=older_than_days)
+    cutoff = cutoff_dt.isoformat()
+
+    base_filter = {"created_at": {"$lt": cutoff}}
+    if only_anonymous:
+        base_filter["$or"] = [
+            {"user_id": {"$exists": False}},
+            {"user_id": None},
+            {"user_id": ""},
+            {"user_id": "anonymous"},
+        ]
+
+    res = await demo_sessions_collection.delete_many(base_filter)
+    return {"deleted_count": res.deleted_count, "older_than_days": older_than_days, "only_anonymous": only_anonymous}

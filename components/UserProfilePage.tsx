@@ -8,6 +8,7 @@ import {
   Calendar, ShoppingBag, Mail, BookOpen, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
+import GenericModal from './GenericModal';
 
 interface UserProfilePageProps {
   onBack: () => void;
@@ -64,6 +65,12 @@ interface DemoSession {
   pdf_generated?: boolean;
 }
 
+interface DemoMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+}
+
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'bookings' | 'messages' | 'settings' | 'demos'>('overview');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -72,6 +79,11 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [charts, setCharts] = useState<Chart[]>([]);
   const [demoSessions, setDemoSessions] = useState<DemoSession[]>([]);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [chatModalTitle, setChatModalTitle] = useState('Histórico de chat');
+  const [chatMessages, setChatMessages] = useState<DemoMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [targetFeature, setTargetFeature] = useState('');
@@ -178,6 +190,52 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
       return;
     }
     setActiveTab(tabId as any);
+  };
+
+  const handleViewDemoChat = async (session: DemoSession) => {
+    setIsChatModalOpen(true);
+    setChatError(null);
+    setChatLoading(true);
+    setChatMessages([]);
+    setChatModalTitle(`Histórico de chat (${session.session_id.substring(0, 8)}...)`);
+
+    try {
+      const data = await api.getDemoSession(session.session_id);
+      setChatMessages(data?.messages || []);
+    } catch (e: any) {
+      setChatError(e?.message || 'No se pudo cargar el chat');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleDeleteDemoSession = async (session: DemoSession) => {
+    const ok = window.confirm('¿Eliminar esta demo? Esto también elimina su PDF asociado.');
+    if (!ok) return;
+
+    try {
+      await api.deleteDemoSession(session.session_id);
+      setDemoSessions(prev => prev.filter(s => s.session_id !== session.session_id));
+    } catch (e) {
+      console.error('Error deleting demo session:', e);
+      alert('No se pudo eliminar la demo.');
+    }
+  };
+
+  const handleDownloadDemoPdf = async (session: DemoSession) => {
+    try {
+      const { blobUrl, filename } = await api.downloadDemoPdf(session.session_id);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (e) {
+      console.error('Error downloading demo PDF:', e);
+      alert('No se pudo descargar el PDF.');
+    }
   };
 
   if (loading) {
@@ -507,7 +565,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                       <div className="space-y-2">
                         {session.pdf_generated ? (
                           <button
-                            onClick={() => window.open(api.getDemoPdfUrl(session.session_id), '_blank')}
+                            onClick={() => handleDownloadDemoPdf(session)}
                             className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all"
                           >
                             <Download className="w-4 h-4" />
@@ -519,6 +577,24 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                             PDF no disponible
                           </div>
                         )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleViewDemoChat(session)}
+                          className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-all"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Ver chat
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDemoSession(session)}
+                          className="w-full flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/40 text-red-300 text-sm py-2 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Eliminar
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -639,6 +715,41 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* Demo Chat Modal */}
+      <GenericModal
+        isOpen={isChatModalOpen}
+        onClose={() => setIsChatModalOpen(false)}
+        title={chatModalTitle}
+      >
+        {chatLoading ? (
+          <div className="text-gray-300">Cargando...</div>
+        ) : chatError ? (
+          <div className="text-red-300">{chatError}</div>
+        ) : chatMessages.length === 0 ? (
+          <div className="text-gray-400">No hay mensajes en esta sesión.</div>
+        ) : (
+          <div className="space-y-3">
+            {chatMessages.map((m, idx) => (
+              <div
+                key={idx}
+                className={
+                  m.role === 'user'
+                    ? 'bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3'
+                    : m.role === 'assistant'
+                      ? 'bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3'
+                      : 'bg-white/5 border border-white/10 rounded-lg p-3'
+                }
+              >
+                <div className="text-xs text-gray-400 mb-1">
+                  {m.role === 'user' ? 'Tú' : m.role === 'assistant' ? 'Asistente' : 'Sistema'}
+                </div>
+                <div className="text-gray-200 whitespace-pre-wrap">{m.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </GenericModal>
     </div>
   );
 };

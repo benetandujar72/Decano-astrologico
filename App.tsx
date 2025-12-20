@@ -1417,7 +1417,7 @@ ${analysisText}
                   ref={placeInputRef}
                   required 
                   type="text" 
-                  placeholder="Ciudad, País"
+                  placeholder="Ej: Madrid, España o 40.41, -3.70"
                   value={userInput.place} 
                   onChange={handlePlaceChange}
                   onFocus={() => {
@@ -1429,7 +1429,6 @@ ${analysisText}
                     // Delay para permitir click en sugerencias
                     setTimeout(() => setShowSuggestions(false), 200);
                   }}
-                  placeholder="Ej: Madrid, España o 40.41, -3.70"
                   className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 outline-none" 
                 />
                 {isGeocoding ? (

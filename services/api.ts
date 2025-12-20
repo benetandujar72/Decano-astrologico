@@ -102,7 +102,7 @@ export const api = {
   startDemoSession: async (data: any): Promise<any> => {
     const res = await fetch(`${API_URL}/demo-chat/start`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Error iniciando demo');
@@ -112,7 +112,7 @@ export const api = {
   sendDemoMessage: async (sessionId: string, message: string, nextStep: boolean = false): Promise<any> => {
     const res = await fetch(`${API_URL}/demo-chat/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify({ session_id: sessionId, message, next_step: nextStep })
     });
     if (!res.ok) throw new Error('Error enviando mensaje');
@@ -121,7 +121,7 @@ export const api = {
 
   getDemoHistory: async (sessionId: string): Promise<any> => {
     const res = await fetch(`${API_URL}/demo-chat/history/${sessionId}`, {
-      headers: { 'Content-Type': 'application/json' }
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Error obteniendo historial');
     return res.json();
@@ -129,6 +129,38 @@ export const api = {
 
   getDemoPdfUrl: (sessionId: string): string => {
     return `${API_URL}/demo-chat/pdf/${sessionId}`;
+  },
+
+  downloadDemoPdf: async (sessionId: string): Promise<{ blobUrl: string; filename: string }> => {
+    const token = localStorage.getItem('fraktal_token');
+    const res = await fetch(`${API_URL}/demo-chat/pdf/${sessionId}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+    if (!res.ok) throw new Error('Error descargando PDF');
+
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename=([^;]+)/i);
+    const filename = (match?.[1] || `demo_report_${sessionId}.pdf`).replace(/"/g, '');
+
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    return { blobUrl, filename };
+  },
+
+  getDemoSession: async (sessionId: string): Promise<any> => {
+    const res = await fetch(`${API_URL}/demo-chat/session/${sessionId}`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Error obteniendo sesión');
+    return res.json();
+  },
+
+  deleteDemoSession: async (sessionId: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/demo-chat/session/${sessionId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Error eliminando sesión');
   },
 
   getMyDemoSessions: async (): Promise<any[]> => {
