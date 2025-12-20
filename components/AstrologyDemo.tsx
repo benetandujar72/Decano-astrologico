@@ -4,29 +4,45 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Calendar, MapPin, Clock, AlertCircle, Download, Mail, Send, User, Bot, ArrowRight } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { api } from '../services/api';
 
 const formatAssistantMessage = (raw: string, isGuidedOnly: boolean): string => {
   const text = String(raw || '').trim();
   if (!text) return '';
 
-  const stripCodeFences = (t: string) => {
+  const stripOuterCodeFence = (t: string) => {
     let out = t.trim();
-    if (out.startsWith('```')) {
-      out = out.replace(/^```[a-zA-Z0-9_-]*\s*/g, '');
-      if (out.endsWith('```')) out = out.slice(0, -3);
-    }
+    if (!out.startsWith('```')) return out;
+    out = out.replace(/^```[a-zA-Z0-9_-]*\s*/g, '');
+    if (out.endsWith('```')) out = out.slice(0, -3);
     return out.trim();
   };
 
-  const tryParsePreview = (t: string): string | null => {
-    const cleaned = stripCodeFences(t);
-    const candidates: string[] = [cleaned];
+  const tryParsePreviewWrapper = (t: string): string | null => {
+    const trimmed = t.trim();
 
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
+    const candidates: string[] = [];
+
+    // Direct JSON
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      candidates.push(trimmed);
+    }
+
+    // JSON wrapped in code fences (often ```json ... ```)
+    if (trimmed.startsWith('```')) {
+      const unfenced = stripOuterCodeFence(trimmed);
+      if (unfenced.startsWith('{') && unfenced.endsWith('}')) {
+        candidates.push(unfenced);
+      }
+    }
+
+    // JSON embedded inside other text
+    const start = trimmed.indexOf('{');
+    const end = trimmed.lastIndexOf('}');
     if (start !== -1 && end !== -1 && end > start) {
-      candidates.push(cleaned.slice(start, end + 1));
+      candidates.push(trimmed.slice(start, end + 1));
     }
 
     for (const cand of candidates) {
@@ -42,17 +58,11 @@ const formatAssistantMessage = (raw: string, isGuidedOnly: boolean): string => {
         // ignore
       }
     }
+
     return null;
   };
 
-  const parsed = tryParsePreview(text);
-  const withoutFences = stripCodeFences(parsed ?? text);
-
-  // Make it look professional in plain-text rendering:
-  // - remove markdown **bold** markers
-  // - collapse excessive leading/trailing whitespace
-  const noBold = withoutFences.replace(/\*\*(.*?)\*\*/g, '$1');
-  return noBold.trim();
+  return (tryParsePreviewWrapper(text) ?? text).trim();
 };
 
 interface DemoData {
@@ -558,11 +568,57 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                       : 'bg-white/10 text-gray-200 rounded-tl-none'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap leading-relaxed text-sm">
-                    {msg.role === 'assistant'
-                      ? formatAssistantMessage(msg.content, isGuidedOnly)
-                      : msg.content}
-                  </div>
+                  {msg.role === 'assistant' ? (
+                    <div className="leading-relaxed text-sm">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: (props: any) => <p className="mb-2 last:mb-0" {...props} />,
+                          ul: (props: any) => <ul className="list-disc pl-5 my-2 space-y-1" {...props} />,
+                          ol: (props: any) => <ol className="list-decimal pl-5 my-2 space-y-1" {...props} />,
+                          li: (props: any) => {
+                            const className = `my-1 ${props?.className ?? ''}`.trim();
+                            return React.createElement('li', { ...props, className });
+                          },
+                          strong: (props: any) => <strong className="font-semibold text-white" {...props} />,
+                          em: (props: any) => <em className="italic" {...props} />,
+                          a: (props: any) => {
+                            const href = props?.href as string | undefined;
+                            return (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-purple-300 underline underline-offset-2 hover:text-purple-200"
+                                {...props}
+                              />
+                            );
+                          },
+                          pre: (props: any) => (
+                            <pre
+                              className="bg-black/30 border border-white/10 rounded-lg p-3 my-2 overflow-x-auto"
+                              {...props}
+                            />
+                          ),
+                          code: (props: any) => {
+                            const { inline, ...rest } = props || {};
+                            return inline ? (
+                              <code
+                                className="px-1 py-0.5 rounded bg-black/30 border border-white/10 text-purple-100"
+                                {...rest}
+                              />
+                            ) : (
+                              <code className="text-purple-100" {...rest} />
+                            );
+                          },
+                        }}
+                      >
+                        {formatAssistantMessage(msg.content, isGuidedOnly)}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap leading-relaxed text-sm">{msg.content}</div>
+                  )}
                 </div>
 
                 {msg.role === 'user' && (
