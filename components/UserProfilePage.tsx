@@ -5,8 +5,9 @@ import React, { useState, useEffect } from 'react';
 import {
   User, CreditCard, FileText, History, Settings,
   Crown, TrendingUp, Download, Eye, Trash2, MessageCircle,
-  Calendar, ShoppingBag, Mail, BookOpen, CheckCircle2
+  Calendar, ShoppingBag, Mail, BookOpen, CheckCircle2, Sparkles
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface UserProfilePageProps {
   onBack: () => void;
@@ -53,13 +54,24 @@ interface Chart {
   created_at: string;
 }
 
+interface DemoSession {
+  session_id: string;
+  created_at: string;
+  chart_data: {
+    name: string;
+    birth_date: string;
+  };
+  pdf_generated?: boolean;
+}
+
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'bookings' | 'messages' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'bookings' | 'messages' | 'settings' | 'demos'>('overview');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [charts, setCharts] = useState<Chart[]>([]);
+  const [demoSessions, setDemoSessions] = useState<DemoSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [targetFeature, setTargetFeature] = useState('');
@@ -118,6 +130,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
         setCharts(chartsData.charts || []);
       }
 
+      // Obtener demos
+      const demosResponse = await fetch(`${API_URL}/demo-chat/my-sessions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (demosResponse.ok) {
+        const demosData = await demosResponse.json();
+        setDemoSessions(demosData || []);
+      }
+
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -130,6 +151,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
     { id: 'subscription', name: 'Suscripción', icon: Crown },
     { id: 'bookings', name: 'Mis Servicios', icon: Calendar },
     { id: 'charts', name: 'Mis Cartas', icon: FileText },
+    { id: 'demos', name: 'Demos & PDFs', icon: History },
     { id: 'billing', name: 'Facturación', icon: CreditCard },
     { id: 'messages', name: 'Mensajes', icon: MessageCircle },
     { id: 'settings', name: 'Configuración', icon: Settings }
@@ -449,13 +471,69 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
             </div>
           )}
 
+          {activeTab === 'demos' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Mis Demos y PDFs</h2>
+
+              {demoSessions.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <History className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p>No has realizado ninguna demo aún</p>
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="mt-4 text-purple-400 hover:text-purple-300 underline"
+                  >
+                    Ir al inicio para probar la demo
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {demoSessions.map((session) => (
+                    <div key={session.session_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all border border-white/5 hover:border-purple-500/30">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-purple-500/20 rounded-lg">
+                          <Sparkles className="w-6 h-6 text-purple-400" />
+                        </div>
+                        <span className="text-xs text-gray-400 bg-black/30 px-2 py-1 rounded-full">
+                          {new Date(session.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      <h3 className="text-white font-bold mb-2">Sesión de Demo</h3>
+                      <p className="text-sm text-gray-400 mb-4">
+                        ID: {session.session_id.substring(0, 8)}...
+                      </p>
+
+                      <div className="space-y-2">
+                        {session.pdf_generated ? (
+                          <button
+                            onClick={() => window.open(api.getDemoPdfUrl(session.session_id), '_blank')}
+                            className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all"
+                          >
+                            <Download className="w-4 h-4" />
+                            Descargar PDF
+                          </button>
+                        ) : (
+                          <div className="w-full flex items-center justify-center gap-2 bg-gray-700/50 text-gray-400 text-sm py-2 rounded-lg cursor-not-allowed">
+                            <FileText className="w-4 h-4" />
+                            PDF no disponible
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'messages' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-4">Mensajes y Comunicaciones</h2>
 
               <div className="bg-linear-to-r from-green-500/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-6 mb-6">
                 <div className="flex items-start gap-4">
-                  <Mail className="w-8 h-8 text-green-400 flex-shrink-0" />
+                  <Mail className="w-8 h-8 text-green-400 shrink-0" />
                   <div>
                     <h3 className="text-white font-bold text-lg mb-2">Contacta con Jon Landeta</h3>
                     <p className="text-gray-300 mb-4">

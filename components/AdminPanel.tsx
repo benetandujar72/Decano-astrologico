@@ -89,7 +89,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onUpdatePrompt }) => {
         <div className="glass-panel p-1 rounded-xl border border-white/10 shadow-2xl relative">
             <div className="bg-[#0f172a] rounded-lg p-4">
                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">System Instruction (Master Prompt)</label>
+                    <label htmlFor="system-prompt" className="text-xs font-bold text-gray-500 uppercase tracking-widest">System Instruction (Master Prompt)</label>
                     <button onClick={loadPrompt} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
                         <RefreshCw size={12}/> Recargar DB
                     </button>
@@ -100,6 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onUpdatePrompt }) => {
                     </div>
                  ) : (
                     <textarea 
+                        id="system-prompt"
                         value={promptContent}
                         onChange={(e) => setPromptContent(e.target.value)}
                         className="w-full h-[60vh] bg-[#020617] text-gray-300 font-mono text-sm p-4 rounded border border-white/10 focus:border-red-500/50 focus:ring-1 focus:ring-red-900 outline-none resize-none leading-relaxed custom-scrollbar"

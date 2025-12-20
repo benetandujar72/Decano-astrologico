@@ -232,7 +232,7 @@ Puedo ayudarte con información sobre:
 
       {/* Chatbot Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-full max-w-md h-[600px] bg-gray-900 border border-white/20 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
+        <div className="fixed bottom-6 right-6 w-full max-w-md h-150 bg-gray-900 border border-white/20 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-linear-to-r from-purple-600 to-pink-600 p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -264,7 +264,7 @@ Puedo ayudarte con información sobre:
                 <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   message.sender === 'user'
                     ? 'bg-purple-600'
-                    : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                    : 'bg-linear-to-br from-purple-500 to-pink-500'
                 }`}>
                   {message.sender === 'user' ? (
                     <User className="w-5 h-5 text-white" />
@@ -289,14 +289,14 @@ Puedo ayudarte con información sobre:
 
             {isTyping && (
               <div className="flex gap-3">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div className="bg-white/10 px-4 py-2 rounded-2xl">
                   <div className="flex gap-1">
                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
                   </div>
                 </div>
               </div>

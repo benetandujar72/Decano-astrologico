@@ -289,7 +289,7 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
       </div>
 
       {/* Services Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div id="services-section" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {catalogData?.services.map((service) => {
           const isContactService = service.service_type === 'contact_jon';
           const isTrainingService = service.service_type === 'training_program';
@@ -456,7 +456,15 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
             >
               <span className="text-2xl leading-none">×</span>
             </button>
-            <AstrologyDemo />
+            <AstrologyDemo 
+              onHire={() => {
+                setShowDemoModal(false);
+                const servicesSection = document.getElementById('services-section');
+                if (servicesSection) {
+                  servicesSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+            />
           </div>
         </div>
       )}

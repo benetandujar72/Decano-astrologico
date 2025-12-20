@@ -21,7 +21,11 @@ interface ChatMessage {
   step?: string;
 }
 
-const AstrologyDemo: React.FC = () => {
+interface AstrologyDemoProps {
+  onHire?: () => void;
+}
+
+const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
   const [step, setStep] = useState<'form' | 'chat'>('form');
   const [demoData, setDemoData] = useState<DemoData>({
     name: '',
@@ -144,9 +148,22 @@ const AstrologyDemo: React.FC = () => {
         is_demo: true
       };
 
+      // Obtener ID de usuario si está logueado
+      let userId = null;
+      const savedUser = localStorage.getItem('fraktal_user');
+      if (savedUser) {
+        try {
+          const user = JSON.parse(savedUser);
+          userId = user.id || user._id;
+        } catch (e) {
+          console.error("Error parsing user", e);
+        }
+      }
+
       // Iniciar sesión de chat
       const session = await api.startDemoSession({
         user_name: demoData.name,
+        user_id: userId,
         ...chartData,
         chart_data: chartData // Pasamos los datos para que el backend los use
       });
@@ -360,7 +377,7 @@ const AstrologyDemo: React.FC = () => {
 
       {/* Chat Step */}
       {step === 'chat' && (
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden flex flex-col h-[600px]">
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden flex flex-col h-150">
           {/* Chat Header */}
           <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -369,7 +386,7 @@ const AstrologyDemo: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-white font-bold">Asistente Astrológico</h3>
-                <p className="text-xs text-purple-300">Método Carutti • IA Generativa</p>
+                <p className="text-xs text-purple-300">V6</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -429,9 +446,9 @@ const AstrologyDemo: React.FC = () => {
                 </div>
                 <div className="bg-white/10 rounded-2xl p-4 rounded-tl-none">
                   <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:300ms]" />
                   </div>
                 </div>
               </div>
@@ -441,45 +458,63 @@ const AstrologyDemo: React.FC = () => {
 
           {/* Input Area */}
           <div className="p-4 border-t border-white/10 bg-black/20">
-            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-               <button
-                onClick={handleNextStep}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-full text-purple-200 text-sm transition-all whitespace-nowrap"
-              >
-                Siguiente Paso <ArrowRight className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setInputMessage("Explícame más sobre esto")}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
-              >
-                Explícame más
-              </button>
-              <button
-                onClick={() => setInputMessage("¿Qué significa esto para mi vida?")}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
-              >
-                ¿Qué significa?
-              </button>
-            </div>
-            
-            <form onSubmit={handleSendMessage} className="flex gap-2">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Escribe tu pregunta..."
-                className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={!inputMessage.trim() || isLoading}
-                className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </form>
+            {messages.length > 0 && messages[messages.length - 1].content.includes("Este es el final de tu análisis inicial") ? (
+              <div className="flex flex-col items-center gap-4 animate-fade-in">
+                <p className="text-purple-200 text-center text-sm">
+                  ¿Quieres profundizar más en tu carta astral y descubrir todo tu potencial?
+                </p>
+                <button
+                  onClick={onHire}
+                  className="w-full bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Contratar Servicios Profesionales de Jon Landeta
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+                  <button
+                    onClick={handleNextStep}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-full text-purple-200 text-sm transition-all whitespace-nowrap"
+                  >
+                    Siguiente Paso <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setInputMessage("Explícame más sobre esto")}
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+                  >
+                    Explícame más
+                  </button>
+                  <button
+                    onClick={() => setInputMessage("¿Qué significa esto para mi vida?")}
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+                  >
+                    ¿Qué significa?
+                  </button>
+                </div>
+                
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Escribe tu pregunta..."
+                    className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputMessage.trim() || isLoading}
+                    className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+                    aria-label="Enviar mensaje"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

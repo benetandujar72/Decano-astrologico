@@ -1,7 +1,7 @@
 """
 Endpoints para la demo interactiva con IA
 """
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from datetime import datetime
@@ -16,6 +16,7 @@ from app.models.demo_chat import (
     DemoStep
 )
 from app.services.demo_ai_service import demo_ai_service
+from app.api.endpoints.auth import get_current_user
 
 router = APIRouter()
 
@@ -38,7 +39,7 @@ async def start_demo_session(request: StartDemoRequest):
     
     # Crear nueva sesión
     session = DemoSession(
-        user_id="anonymous", # O obtener del token si hay auth opcional
+        user_id=request.user_id or "anonymous", 
         chart_data=request.chart_data,
         current_step=DemoStep.INITIAL
     )
@@ -140,17 +141,33 @@ async def generate_demo_pdf(session_id: str):
         report_text = "\n\n".join([m.content for m in session.messages if m.role == MessageRole.ASSISTANT])
 
     # Generar PDF
-    generator = ReportGenerator(
-        carta_data=session.chart_data,
-        analysis_text=report_text,
-        nombre=session.chart_data.get("name", "Visitante")
-    )
-    
-    pdf_buffer = generator.create_pdf() # Asumiendo que este método existe y retorna BytesIO
-    pdf_buffer.seek(0)
-    
-    return StreamingResponse(
-        pdf_buffer, 
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=demo_report_{session_id}.pdf"}
-    )
+    try:
+        generator = ReportGenerator(
+            carta_data=session.chart_data,
+            analysis_text=report_text,
+            nombre=session.chart_data.get("name", "Visitante")
+        )
+        
+        # Usar generate_pdf en lugar de create_pdf si ese es el nombre correcto en la clase
+        # En report_generators.py definimos generate_pdf
+        pdf_buffer = generator.generate_pdf() 
+        pdf_buffer.seek(0)
+        
+        return StreamingResponse(
+            pdf_buffer, 
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=demo_report_{session_id}.pdf"}
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+@router.get("/my-sessions")
+async def get_my_demo_sessions(current_user: dict = Depends(get_current_user)):
+    """Obtiene las sesiones de demo del usuario actual"""
+    user_id = str(current_user.get("_id"))
+    # Buscar sesiones donde user_id coincida
+    cursor = demo_sessions_collection.find({"user_id": user_id}).sort("created_at", -1)
+    sessions = await cursor.to_list(length=100)
+    return sessions

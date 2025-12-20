@@ -98,6 +98,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors"
+          aria-label="Cerrar"
         >
           <X size={24} />
         </button>
@@ -106,7 +107,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
+          <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
             Elige tu Plan
           </h1>
           <p className="text-xl text-gray-300">
@@ -179,8 +180,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                 {/* Card */}
                 <div className={`
                   relative h-full
-                  bg-gradient-to-br ${getPlanColor(plan.tier)}
-                  p-[2px] rounded-2xl
+                  bg-linear-to-br ${getPlanColor(plan.tier)}
+                  p-0.5 rounded-2xl
                   transform transition-all duration-300
                   hover:scale-105 hover:shadow-2xl
                   ${isPopular ? 'shadow-2xl shadow-indigo-500/50' : ''}
@@ -189,7 +190,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                     {/* Icon */}
                     <div className={`
                       w-16 h-16 rounded-xl flex items-center justify-center mb-4
-                      bg-gradient-to-br ${getPlanColor(plan.tier)}
+                      bg-linear-to-br ${getPlanColor(plan.tier)}
                       text-white
                     `}>
                       {getPlanIcon(plan.tier)}
@@ -226,10 +227,10 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                     </div>
 
                     {/* Features */}
-                    <ul className="space-y-3 mb-8 flex-grow">
+                    <ul className="space-y-3 mb-8 grow">
                       {plan.features.map((feature, idx) => (
                         <li key={idx} className="flex items-start">
-                          <Check className="w-5 h-5 text-green-400 mr-2 flex-shrink-0 mt-0.5" />
+                          <Check className="w-5 h-5 text-green-400 mr-2 shrink-0 mt-0.5" />
                           <span className="text-gray-300 text-sm">{feature}</span>
                         </li>
                       ))}
@@ -274,7 +275,10 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
       {/* Checkout Wizard Modal */}
       {showCheckoutWizard && selectedPlan && (
         <CheckoutWizard
-          plan={selectedPlan}
+          plan={{
+            ...selectedPlan,
+            id: selectedPlan.tier
+          }}
           onClose={() => {
             setShowCheckoutWizard(false);
             setSelectedPlan(null);

@@ -106,6 +106,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
             onClick={handleClose}
             className="text-slate-400 hover:text-white transition-colors"
             disabled={loading}
+            aria-label="Cerrar"
           >
             <X size={24} />
           </button>
@@ -141,8 +142,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
           </div>
           <div className="h-2 bg-slate-700 rounded-full mt-2">
             <div
-              className="h-full bg-linear-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
-              style={{ width: step === 1 ? '50%' : '100%' }}
+              className={`h-full bg-linear-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300 ${step === 1 ? 'w-1/2' : 'w-full'}`}
             />
           </div>
         </div>
@@ -162,7 +162,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
                 <ul className="space-y-2 mb-6">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start gap-2 text-slate-300">
-                      <Check className="text-green-400 flex-shrink-0 mt-0.5" size={16} />
+                      <Check className="text-green-400 shrink-0 mt-0.5" size={16} />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -261,7 +261,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3">
-                  <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+                  <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={20} />
                   <div>
                     <h4 className="text-red-400 font-semibold mb-1">Error</h4>
                     <p className="text-red-300 text-sm">{error}</p>

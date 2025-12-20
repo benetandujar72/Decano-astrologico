@@ -131,6 +131,14 @@ export const api = {
     return `${API_URL}/demo-chat/pdf/${sessionId}`;
   },
 
+  getMyDemoSessions: async (): Promise<any[]> => {
+    const res = await fetch(`${API_URL}/demo-chat/my-sessions`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Error obteniendo sesiones');
+    return res.json();
+  },
+
   // SPECIALIZED PROMPTS
   getSpecializedPrompt: async (promptType: string): Promise<{ content: string }> => {
     const res = await fetch(`${API_URL}/config/prompts/specialized/${promptType}`, {

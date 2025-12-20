@@ -52,6 +52,7 @@ class DemoSession(BaseModel):
 
 class StartDemoRequest(BaseModel):
     """Request para iniciar demo"""
+    user_id: Optional[str] = None
     user_name: Optional[str] = None
     birth_date: Optional[str] = None
     birth_time: Optional[str] = None
