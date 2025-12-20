@@ -46,6 +46,9 @@ class DemoSession(BaseModel):
     # Informe generado progresivamente
     generated_report: Dict[str, str] = {}  # step -> content
     
+    # Flag virtual para el frontend
+    pdf_generated: bool = False
+
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     is_active: bool = True

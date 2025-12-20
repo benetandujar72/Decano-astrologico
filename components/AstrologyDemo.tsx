@@ -379,31 +379,53 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
       {step === 'chat' && (
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden flex flex-col h-150">
           {/* Chat Header */}
-          <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-purple-600/30 flex items-center justify-center">
-                <Bot className="w-6 h-6 text-purple-300" />
+          <div className="flex flex-col border-b border-white/10 bg-black/20">
+            <div className="p-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-600/30 flex items-center justify-center">
+                  <Bot className="w-6 h-6 text-purple-300" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold">Asistente Astrológico</h3>
+                  <p className="text-xs text-purple-300">V6</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-white font-bold">Asistente Astrológico</h3>
-                <p className="text-xs text-purple-300">V6</p>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={downloadPdf}
+                  className="text-purple-300 hover:text-white text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                  title="Descargar chat como PDF"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Guardar PDF</span>
+                </button>
+                <button 
+                  onClick={resetDemo}
+                  className="text-gray-400 hover:text-white text-sm"
+                >
+                  Reiniciar
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={downloadPdf}
-                className="text-purple-300 hover:text-white text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
-                title="Descargar chat como PDF"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Guardar PDF</span>
-              </button>
-              <button 
-                onClick={resetDemo}
-                className="text-gray-400 hover:text-white text-sm"
-              >
-                Reiniciar
-              </button>
+            
+            {/* Progress Tracker */}
+            <div className="px-4 pb-3 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-purple-300/50">
+                <div className="w-5 h-5 rounded-full border border-purple-500/30 flex items-center justify-center bg-purple-500/10">✓</div>
+                <span>Datos</span>
+              </div>
+              <div className="h-px w-8 bg-purple-500/20"></div>
+              
+              <div className="flex items-center gap-2 text-purple-300">
+                <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-[0_0_10px_rgba(168,85,247,0.4)] animate-pulse">2</div>
+                <span className="font-medium">Análisis en curso</span>
+              </div>
+              <div className="h-px w-8 bg-white/10"></div>
+              
+              <div className="flex items-center gap-2 text-gray-500">
+                <div className="w-5 h-5 rounded-full border border-white/10 flex items-center justify-center">3</div>
+                <span>Plan Completo</span>
+              </div>
             </div>
           </div>
 
@@ -458,7 +480,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
 
           {/* Input Area */}
           <div className="p-4 border-t border-white/10 bg-black/20">
-            {messages.length > 0 && messages[messages.length - 1].content.includes("Este es el final de tu análisis inicial") ? (
+            {messages.length > 0 && (messages[messages.length - 1].step === 'completed' || messages[messages.length - 1].content.includes("Este es el final de tu análisis inicial")) ? (
               <div className="flex flex-col items-center gap-4 animate-fade-in">
                 <p className="text-purple-200 text-center text-sm">
                   ¿Quieres profundizar más en tu carta astral y descubrir todo tu potencial?

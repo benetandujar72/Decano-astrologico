@@ -255,6 +255,7 @@ export const CheckoutWizard: React.FC<CheckoutWizardProps> = ({ plan, onClose, o
                   <>
                     <CreditCard size={20} />
                     <span>Proceder al Pago</span>
+                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-normal">2/2</span>
                   </>
                 )}
               </button>

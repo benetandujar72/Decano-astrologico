@@ -82,6 +82,16 @@ Analiza:
 3. Planetas transpersonales y su impacto generacional/personal.
 4. Conclusión evolutiva.
 """
+        elif step == DemoStep.COMPLETED:
+            return base_prompt + chart_context + """
+PASO ACTUAL: CIERRE DE DEMO
+Genera un mensaje de cierre cálido y profesional.
+Indica claramente que:
+1. Este ha sido un análisis preliminar de su estructura energética.
+2. Para profundizar en tránsitos, revolución solar y análisis predictivo detallado, se requiere un estudio completo.
+3. Invítalo a descargar el PDF de esta conversación.
+4. Termina con la frase exacta: "Este es el final de tu análisis inicial".
+"""
         else:
             return base_prompt + chart_context + "Responde a las dudas del usuario sobre su carta."
 

@@ -169,5 +169,14 @@ async def get_my_demo_sessions(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user.get("_id"))
     # Buscar sesiones donde user_id coincida
     cursor = demo_sessions_collection.find({"user_id": user_id}).sort("created_at", -1)
-    sessions = await cursor.to_list(length=100)
+    sessions_data = await cursor.to_list(length=100)
+    
+    sessions = []
+    for s_data in sessions_data:
+        session = DemoSession(**s_data)
+        # Si hay mensajes o reporte, asumimos que se puede generar PDF
+        if session.messages or session.generated_report:
+            session.pdf_generated = True
+        sessions.append(session)
+        
     return sessions
