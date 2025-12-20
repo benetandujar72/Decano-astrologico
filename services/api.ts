@@ -197,5 +197,16 @@ export const api = {
       tier: subscription.tier || 'free', 
       status: subscription.status || 'inactive' 
     };
+  },
+
+  // CONTACT
+  sendContactMessage: async (payload: { name: string; email: string; message: string; company?: string }): Promise<{ ok: boolean }> => {
+    const res = await fetch(`${API_URL}/contact/send`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Error enviando mensaje');
+    return res.json();
   }
 };

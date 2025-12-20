@@ -50,6 +50,7 @@ import SubscriptionSuccess from './components/SubscriptionSuccess'; // 🆕 Conf
 import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técnicas
 import ProfessionalServices from './components/ProfessionalServices';
 import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualización de datos de carta
+import LandingPage from './components/LandingPage';
 import { calculateChartData } from './astrologyEngine'; 
 import { api } from './services/api';
 import './styles/mystic-theme.css'; // 🆕 Estilos místicos
@@ -102,6 +103,12 @@ const App: React.FC = () => {
       setMode(AppMode.SUBSCRIPTION_SUCCESS);
       // Limpiar URL
       window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    const landingParam = params.get('landing') || params.get('mode');
+    if (landingParam === '1' || landingParam === 'landing') {
+      setMode(AppMode.LANDING);
     }
   }, []);
 
@@ -1342,6 +1349,16 @@ ${analysisText}
             {isRegistering ? t.authSwitchToLog : t.authSwitchToReg}
           </button>
         </div>
+
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setMode(AppMode.LANDING)}
+            className="text-xs text-indigo-300 hover:text-indigo-200 underline decoration-indigo-500/40 underline-offset-4"
+          >
+            Ver la web (servicios, planes y contacto)
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1810,7 +1827,15 @@ ${analysisText}
   return (
     <MysticBackground>
       {/* Contenido con scroll tipo móvil */}
-      <div className={`min-h-screen ${isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS ? 'pb-20' : ''}`}>
+      <div className={`min-h-screen ${isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && mode !== AppMode.LANDING ? 'pb-20' : ''}`}>
+        {mode === AppMode.LANDING && (
+          <LandingPage
+            isAuthenticated={isAuthenticated}
+            onGoToApp={() => setMode(isAuthenticated ? AppMode.INPUT : AppMode.AUTH)}
+            onViewPlans={() => setMode(AppMode.SUBSCRIPTION_PLANS)}
+            onViewServices={() => setMode(isAuthenticated ? AppMode.PROFESSIONAL_SERVICES : AppMode.AUTH)}
+          />
+        )}
         {mode === AppMode.AUTH && renderAuth()}
         {mode === AppMode.INPUT && renderInput()}
         {mode === AppMode.MODE_SELECTION && renderModeSelection()}
@@ -1939,7 +1964,7 @@ ${analysisText}
       </div>
       
       {/* Barra de navegación inferior tipo móvil - FUERA del contenido scrolleable */}
-      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && (
+      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && mode !== AppMode.LANDING && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 safe-area-inset-bottom">
           <div className="max-w-2xl mx-auto flex justify-around items-center">
             <button 

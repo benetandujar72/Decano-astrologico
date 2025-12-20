@@ -57,6 +57,7 @@ export interface SystemPrompt {
 }
 
 export enum AppMode {
+  LANDING = 'LANDING',
   AUTH = 'AUTH',
   INPUT = 'INPUT',
   MODE_SELECTION = 'MODE_SELECTION',

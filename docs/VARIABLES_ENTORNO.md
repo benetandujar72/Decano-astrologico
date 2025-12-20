@@ -13,7 +13,7 @@ Este documento lista todas las variables de entorno necesarias para el despliegu
 - **Recomendación**: Genera una clave aleatoria segura de al menos 32 caracteres
 - **Generación**: Puedes usar `openssl rand -hex 32` o cualquier generador de claves seguras
 
-#### `MONGODB_URL`
+#### `MONGODB_URL` / `MONGODB_URI`
 - **Descripción**: URL de conexión a la base de datos MongoDB
 - **Tipo**: String (URI de MongoDB)
 - **Ejemplo**: `mongodb+srv://usuario:password@cluster.mongodb.net/fraktal?retryWrites=true&w=majority`
@@ -21,6 +21,28 @@ Este documento lista todas las variables de entorno necesarias para el despliegu
   - MongoDB Atlas: `mongodb+srv://user:pass@cluster.mongodb.net/dbname`
   - MongoDB local: `mongodb://localhost:27017/fraktal`
   - MongoDB con autenticación: `mongodb://user:pass@host:port/dbname`
+
+### Contacto (Email SMTP)
+
+Estas variables habilitan el formulario de contacto de la web/landing (backend envía un email).
+
+#### `SMTP_USERNAME`
+- **Descripción**: Usuario SMTP (Gmail)
+- **Ejemplo**: `tu.cuenta@gmail.com`
+
+#### `SMTP_PASSWORD`
+- **Descripción**: Contraseña SMTP
+- **Recomendación (Gmail)**: usar una **App Password** (requiere 2FA), no tu contraseña normal.
+
+#### `CONTACT_TO_EMAIL`
+- **Descripción**: Email destino (recibe los mensajes del formulario)
+- **Ejemplo**: `benet.andujar@insbitacola.cat`
+
+#### `CONTACT_FROM_EMAIL` (opcional)
+- **Descripción**: Remitente del email (si no se define, se usa `SMTP_USERNAME`)
+
+#### `SMTP_HOST` / `SMTP_PORT` (opcional)
+- **Valores por defecto**: `smtp.gmail.com` y `587`
 
 ## Frontend (React/Vite)
 
@@ -70,6 +92,9 @@ SECRET_KEY=tu-clave-secreta-generada
 MONGODB_URL=tu-url-de-mongodb
 GOOGLE_GEOCODING_API_KEY=tu-api-key-de-google-geocoding
 GEMINI_API_KEY=tu-api-key-de-gemini
+SMTP_USERNAME=tu.cuenta@gmail.com
+SMTP_PASSWORD=tu_app_password
+CONTACT_TO_EMAIL=benet.andujar@insbitacola.cat
 ```
 
 ### Para el Servicio Frontend (Static Site)
