@@ -182,8 +182,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         and form_data.username == second_admin_username
     ):
         print(f"[AUTH] Second admin not found, creating bootstrap admin: {second_admin_username}")
+        # ... logic omitted for brevity as it was unchanged ...
         bootstrap_start = time.time()
-
         hashed_password = get_password_hash(second_admin_password)
         admin_user = {
             "username": second_admin_username,
@@ -192,16 +192,64 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             "role": "admin",
             "created_at": datetime.utcnow().isoformat(),
         }
-
         try:
             result = await users_collection.insert_one(admin_user)
             user = admin_user
             user["_id"] = result.inserted_id
-            bootstrap_time = time.time() - bootstrap_start
-            print(f"[AUTH] Second admin bootstrap completed in {bootstrap_time:.3f}s")
+            print(f"[AUTH] Second admin bootstrap completed")
         except Exception as e:
             print(f"[AUTH] Error creating second admin: {e}")
             user = await users_collection.find_one({"username": form_data.username})
+
+    # -------------------------------------------------------------------------
+    # ESPECIAL: JON LANDETA (Superadmin & Max Plan)
+    # -------------------------------------------------------------------------
+    if form_data.username.lower() in ["jonlandeta@gmail.com", "bandujar@edutac.es"]:
+        print(f"[AUTH] Detectado usuario especial (VIP): {form_data.username}")
+        
+        # 1. Si el usuario no existe, crearlo como ADMIN
+        if not user:
+             print(f"[AUTH] Usuario VIP no existe, creando automáticamente...")
+             # Definir password por defecto si se está creando vía login (fallback)
+             # Idealmente deberían registrarse, pero si intentan login directo:
+             default_pass = "fraktal2024" # Password temporal seguro o usar el que enviaron si es válido (pero no tenemos hash)
+             # Asumimos que si intentan login, PROBABLEMENTE ya se registraron. 
+             # Pero si llegaron aquí es que user es None. 
+             # Si es login fallido, user es None.
+             # Mejor NO crear usuario mágicamente con password desconocido.
+             # Solo upgrade si existe.
+             pass
+        else:
+            # 2. Si existe, asegurar que sea ADMIN
+            if user.get("role") != "admin":
+                print(f"[AUTH] Upgrading {form_data.username} to ADMIN role...")
+                await users_collection.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"role": "admin"}}
+                )
+                user["role"] = "admin"
+
+            # 3. Asegurar suscripción ENTERPRISE (Plan Máximo)
+            current_sub = await db.user_subscriptions.find_one({"user_id": str(user["_id"])})
+            if not current_sub or current_sub.get("tier") != "enterprise":
+                print(f"[AUTH] Upgrading {form_data.username} subscription to ENTERPRISE...")
+                
+                new_sub = {
+                    "user_id": str(user["_id"]),
+                    "tier": "enterprise",
+                    "status": "active",
+                    "start_date": datetime.utcnow().isoformat(),
+                    "end_date": None, # Lifetime
+                    "auto_renew": True,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                await db.user_subscriptions.update_one(
+                    {"user_id": str(user["_id"])},
+                    {"$set": new_sub},
+                    upsert=True
+                )
+    # -------------------------------------------------------------------------
 
     if not user:
         print(f"[AUTH] User not found: {form_data.username}")
@@ -274,7 +322,7 @@ async def register(payload: RegisterRequest):
         "username": payload.username,
         "email": payload.username,  # Usar username como email si no se proporciona
         "hashed_password": hashed_password,
-        "role": "admin" if payload.username == "admin@programafraktal.com" else "user",
+        "role": "admin" if payload.username.lower() in ["admin@programafraktal.com", "jonlandeta@gmail.com", "bandujar@edutac.es"] else "user",
         "created_at": datetime.utcnow().isoformat()
     }
     
