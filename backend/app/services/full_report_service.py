@@ -105,23 +105,117 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         
         return True, ""
 
-    async def generate_full_report(self, chart_data: Dict, user_name: str) -> str:
+    async def generate_single_module(
+        self, 
+        chart_data: Dict, 
+        user_name: str, 
+        module_id: str,
+        previous_modules: List[str] = None
+    ) -> tuple[str, bool]:
         """
-        Orquesta la generación del informe completo siguiendo estrictamente
-        el prompt CORE CARUTTI v5.3 con confirmación paso a paso.
-        """
-        print(f"🚀 [INICIO] Generación de informe completo para: {user_name}")
-        print(f"📋 Siguiendo estrictamente CORE CARUTTI v5.3 (REORDENADO & HOMOGÉNEO)")
+        Genera un único módulo del informe.
         
-        # 1. Asegurar documentación cargada
+        Returns:
+            (content, is_complete) - contenido del módulo y si es el último módulo
+        """
+        if previous_modules is None:
+            previous_modules = []
+        
+        # Asegurar documentación cargada
         if not self.doc_service.is_loaded:
-            print("📚 [PASO 0/10] Cargando documentación por primera vez...")
             self.doc_service.load_documentation()
-            print("✅ [PASO 0/10] Documentación cargada")
+        
+        # Obtener la sección correspondiente
+        sections = self._get_sections_definition()
+        section = next((s for s in sections if s['id'] == module_id), None)
+        
+        if not section:
+            raise ValueError(f"Módulo {module_id} no encontrado")
+        
+        module_index = next((i for i, s in enumerate(sections) if s['id'] == module_id), -1)
+        is_last = (module_index == len(sections) - 1)
+        
+        print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando: {section['title']}")
+        
+        # Obtener contexto de documentación
+        max_context_chars = 10000 if section['requires_template'] else 8000
+        context = self.doc_service.get_context_for_module(section['id'], max_chars=max_context_chars)
+        
+        # Construir prompt
+        base_prompt = f"""
+PROTOCOLO DE INGESTA DE DOCUMENTACIÓN (DEEP SCAN & SÍNTESIS):
+- Lee TODA la documentación provista antes de escribir
+- Prioriza párrafos conceptuales densos sobre tablas resumen
+- Integra múltiples fuentes en una sola narrativa
+- NO digas "El libro dice...", simplemente explica la mecánica
 
-        # 2. Definir secciones del informe (ALINEADO ESTRICTAMENTE CON CORE CARUTTI v5.3)
-        # EXTENSIONES MÍNIMAS AUMENTADAS SIGNIFICATIVAMENTE PARA ALCANZAR 30 PÁGINAS
-        sections = [
+CONTEXTO DE DOCUMENTACIÓN (Base de Conocimiento Carutti):
+{context}
+
+DATOS DE LA CARTA:
+{str(chart_data)}
+
+DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD (CRÍTICO PARA 30 PÁGINAS):
+- PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA
+- Todos los informes deben tener el mismo "peso" y densidad (30 páginas mínimo)
+- PROFUNDIDAD ENSAYÍSTICA: Desarrolla mecánica, psicología, vivencia, proyección y evolución con MÁXIMO DETALLE
+- Si puedes escribir 4 párrafos, escribe 8. Si puedes escribir 8, escribe 12
+- DESARROLLA CADA PUNTO con múltiples párrafos densos (mínimo 3-4 párrafos por concepto principal)
+- Incluye ejemplos concretos, manifestaciones prácticas, vivencias específicas
+- CASAS VACÍAS: Si una casa no tiene planetas, analiza OBLIGATORIAMENTE el Signo en la cúspide y la posición de su Regente con la misma profundidad (mínimo 150 palabras por polo)
+- EXTENSIÓN MÍNIMA PARA ESTA SECCIÓN: {section['expected_min_chars']} caracteres. Si generas menos, estás resumiendo. EXPÁNDE.
+
+INSTRUCCIÓN DE COMANDO:
+{section['prompt']}
+"""
+        
+        # Si requiere plantilla (MÓDULO 2-VII), agregar instrucciones específicas
+        if section['requires_template']:
+            base_prompt += self._generate_ejes_template_prompt()
+        
+        # Agregar instrucciones finales
+        base_prompt += f"""
+REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
+- MANTÉN el tono "Ghost Writer Académico" y el rigor del System Prompt
+- NO uses introducciones ni meta-comunicación
+- Empieza DIRECTAMENTE con el título del módulo
+- EXTENSIÓN MÍNIMA OBLIGATORIA: {section['expected_min_chars']} caracteres. Si generas menos, ESTÁS RESUMIENDO.
+- DESARROLLA CADA CONCEPTO con múltiples párrafos (mínimo 3-4 párrafos por concepto principal)
+- Incluye ejemplos concretos, manifestaciones prácticas, vivencias específicas
+- Profundiza en mecánica, psicología, vivencia, proyección y evolución para CADA elemento
+- Al final, incluye OBLIGATORIAMENTE: "Pregunta para reflexionar: [pregunta profunda, abierta y psicológica]"
+- Usa lenguaje de posibilidad: "tiende a", "puede", "frecuentemente" (evita "es", "siempre", "nunca")
+- RECUERDA: El objetivo es generar un informe de 30 páginas. Esta sección debe ser exhaustiva y detallada.
+"""
+        
+        # Generar con reintentos
+        max_retries = 2
+        response = ""
+        is_valid = False
+        
+        for attempt in range(max_retries + 1):
+            print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando contenido (intento {attempt + 1}/{max_retries + 1})...")
+            response = await self.ai_service.get_chat_response(base_prompt, [])
+            
+            is_valid, error_msg = self._validate_section_content(
+                section['id'], 
+                response, 
+                section['expected_min_chars']
+            )
+            
+            if is_valid:
+                print(f"[MÓDULO {module_index + 1}/{len(sections)}] ✅ Confirmado: {len(response)} caracteres")
+                break
+            else:
+                if attempt < max_retries:
+                    print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto ({len(response)} chars). Reintentando...")
+                    base_prompt += f"\n\n⚠️ ADVERTENCIA CRÍTICA: El contenido anterior fue demasiado corto. DEBES generar AL MENOS {section['expected_min_chars']} caracteres. EXPÁNDE cada concepto con múltiples párrafos. NO RESUMAS."
+        
+        return response, is_last
+
+    def _get_sections_definition(self) -> List[Dict]:
+        """Retorna la definición de todas las secciones"""
+        return [
             {
                 "id": "modulo_1",
                 "title": "MÓDULO 1: ESTRUCTURA ENERGÉTICA BASE (DIAGNÓSTICO)",
@@ -203,6 +297,23 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
                 "requires_template": False
             }
         ]
+
+    async def generate_full_report(self, chart_data: Dict, user_name: str) -> str:
+        """
+        Orquesta la generación del informe completo siguiendo estrictamente
+        el prompt CORE CARUTTI v5.3 con confirmación paso a paso.
+        """
+        print(f"🚀 [INICIO] Generación de informe completo para: {user_name}")
+        print(f"📋 Siguiendo estrictamente CORE CARUTTI v5.3 (REORDENADO & HOMOGÉNEO)")
+        
+        # 1. Asegurar documentación cargada
+        if not self.doc_service.is_loaded:
+            print("📚 [PASO 0/10] Cargando documentación por primera vez...")
+            self.doc_service.load_documentation()
+            print("✅ [PASO 0/10] Documentación cargada")
+
+        # 2. Obtener secciones usando el método centralizado
+        sections = self._get_sections_definition()
 
         full_report_content = []
         total_sections = len(sections)

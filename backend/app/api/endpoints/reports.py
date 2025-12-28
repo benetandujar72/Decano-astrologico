@@ -9,7 +9,27 @@ from app.api.endpoints.auth import get_current_user
 from app.services.report_generators import generate_report
 from app.services.subscription_permissions import require_feature
 from app.services.full_report_service import full_report_service
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
+from datetime import datetime
+import os
+from dotenv import load_dotenv
 import sys
+
+load_dotenv()
+
+# MongoDB para sesiones de generación
+MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
+mongodb_options = {
+    "serverSelectionTimeoutMS": 5000,
+    "connectTimeoutMS": 10000,
+}
+if "mongodb+srv://" in MONGODB_URL or "mongodb.net" in MONGODB_URL:
+    mongodb_options.update({"tls": True, "tlsAllowInvalidCertificates": True})
+
+client = AsyncIOMotorClient(MONGODB_URL, **mongodb_options)
+db = client.fraktal
+report_sessions_collection = db.report_generation_sessions
 
 router = APIRouter()
 
@@ -40,6 +60,18 @@ class ReportRequest(BaseModel):
                 "analysis_text": "Análisis detallado..."
             }
         }
+
+
+class StartReportGenerationRequest(BaseModel):
+    """Inicia una sesión de generación de informe paso a paso"""
+    carta_data: dict = Field(..., description="Datos completos de la carta astral")
+    nombre: str = Field(default="", description="Nombre del consultante")
+
+
+class GenerateModuleRequest(BaseModel):
+    """Genera un módulo específico del informe"""
+    session_id: str = Field(..., description="ID de la sesión de generación")
+    module_id: str = Field(..., description="ID del módulo a generar")
 
 
 @router.post("/generate")

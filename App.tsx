@@ -43,6 +43,7 @@ import GenericModal from './components/GenericModal';
 import AdminPanel from './components/AdminPanel';
 import AdminDashboard from './components/AdminDashboard'; // 🆕 Dashboard admin mejorado
 import ExportSelector from './components/ExportSelector';
+import ReportGenerationWizard from './components/ReportGenerationWizard';
 import MysticBackground from './components/MysticBackground'; // 🆕 Fondo místico
 import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
 import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
@@ -129,6 +130,8 @@ const App: React.FC = () => {
 
   // Modal State
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [showReportWizard, setShowReportWizard] = useState(false);
+  const [generatedFullReport, setGeneratedFullReport] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const [userInput, setUserInput] = useState<UserInput>({
@@ -980,7 +983,9 @@ ${block.synthesis}
         `)
         .join('\n\n---\n\n');
 
-      const fullAnalysis = `
+      // Si hay un informe completo generado por el wizard, usarlo
+      // Si no, usar el análisis generado normalmente
+      const fullAnalysis = generatedFullReport || `
 ${analysisText}
 
 ---
@@ -1053,7 +1058,15 @@ ${analysisText}
   };
 
   const downloadHTML = () => {
-    // Abrir modal con selector de formatos
+    // Abrir wizard de generación paso a paso primero
+    setShowReportWizard(true);
+    setGeneratedFullReport(null);
+  };
+
+  const handleWizardComplete = (fullReport: string) => {
+    setGeneratedFullReport(fullReport);
+    setShowReportWizard(false);
+    // Ahora abrir selector de formatos con el informe generado
     setActiveModal('export');
   };
 
@@ -1820,6 +1833,19 @@ ${analysisText}
         <GenericModal isOpen={activeModal === 'export'} onClose={() => setActiveModal(null)} title="Exportar Informe">
           <ExportSelector onExport={downloadReport} isLoading={isExporting} />
         </GenericModal>
+
+        {/* Wizard de Generación Paso a Paso */}
+        {showReportWizard && analysisResult && (
+          <ReportGenerationWizard
+            cartaData={cartaCompleta}
+            nombre={analysisResult.metadata.name}
+            onComplete={handleWizardComplete}
+            onClose={() => {
+              setShowReportWizard(false);
+              setGeneratedFullReport(null);
+            }}
+          />
+        )}
 
       </div>
     );

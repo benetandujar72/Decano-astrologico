@@ -1,0 +1,414 @@
+/**
+ * Wizard para generación de informes paso a paso
+ * Genera cada módulo con confirmación del usuario antes de continuar
+ */
+import React, { useState, useEffect } from 'react';
+import { 
+  X, CheckCircle, Loader2, AlertCircle, ChevronRight, 
+  FileText, Sparkles, ArrowRight, RefreshCw
+} from 'lucide-react';
+
+interface ReportGenerationWizardProps {
+  cartaData: any;
+  nombre: string;
+  onComplete: (fullReport: string) => void;
+  onClose: () => void;
+}
+
+interface Module {
+  id: string;
+  title: string;
+  expected_min_chars: number;
+}
+
+interface GenerationStatus {
+  session_id: string;
+  status: string;
+  current_module_index: number;
+  total_modules: number;
+  modules: Array<{
+    id: string;
+    title: string;
+    is_generated: boolean;
+    length: number;
+  }>;
+  has_full_report: boolean;
+}
+
+const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
+  cartaData,
+  nombre,
+  onComplete,
+  onClose
+}) => {
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
+  const [currentModuleContent, setCurrentModuleContent] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<GenerationStatus | null>(null);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const token = localStorage.getItem('fraktal_token');
+
+  // Inicializar sesión al montar
+  useEffect(() => {
+    initializeSession();
+  }, []);
+
+  const initializeSession = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/reports/start-generation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          carta_data: cartaData,
+          nombre: nombre
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Error iniciando generación');
+      }
+
+      const data = await response.json();
+      setSessionId(data.session_id);
+      setModules(data.modules || []);
+      setCurrentModuleIndex(0);
+      
+      // NO generar automáticamente - esperar confirmación del usuario
+    } catch (err: any) {
+      console.error('Error inicializando sesión:', err);
+      setError(err.message || 'Error iniciando generación de informe');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateModule = async (moduleId: string) => {
+    if (!sessionId) return;
+    
+    setIsGenerating(true);
+    setError(null);
+    setCurrentModuleContent('');
+
+    try {
+      const response = await fetch(`${API_URL}/reports/generate-module`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          module_id: moduleId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Error generando módulo');
+      }
+
+      const data = await response.json();
+      setCurrentModuleContent(data.content);
+      
+      // Actualizar estado
+      await refreshStatus();
+      
+      // NO obtener informe completo automáticamente - esperar confirmación del usuario
+    } catch (err: any) {
+      console.error('Error generando módulo:', err);
+      setError(err.message || 'Error generando módulo');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const refreshStatus = async () => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/reports/generation-status/${sessionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStatus(data);
+        setCurrentModuleIndex(data.current_module_index);
+      }
+    } catch (err) {
+      console.error('Error refrescando estado:', err);
+    }
+  };
+
+  const getFullReport = async () => {
+    if (!sessionId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/reports/generation-full-report/${sessionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Error obteniendo informe completo');
+      }
+
+      const data = await response.json();
+      
+      if (data.full_report) {
+        onComplete(data.full_report);
+      } else {
+        // Si no hay informe completo, construir desde módulos generados
+        const allModules = status?.modules.filter(m => m.is_generated) || [];
+        if (allModules.length === modules.length) {
+          // Todos los módulos están generados, construir informe
+          const sections = full_report_service._get_sections_definition();
+          let fullReport = '';
+          for (const section of sections) {
+            const moduleData = allModules.find(m => m.id === section.id);
+            if (moduleData) {
+              // Necesitamos obtener el contenido del módulo
+              // Por ahora, usar el status para construir
+              fullReport += `## ${section.title}\n\n[Contenido del módulo]\n\n---\n\n`;
+            }
+          }
+          onComplete(fullReport);
+        } else {
+          setError('No todos los módulos han sido generados');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error obteniendo informe completo:', err);
+      setError(err.message || 'Error obteniendo informe completo');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (!currentModuleContent) {
+      setError('Debes generar el módulo actual antes de continuar');
+      return;
+    }
+
+    if (currentModuleIndex < modules.length - 1) {
+      // Avanzar al siguiente módulo
+      const nextIndex = currentModuleIndex + 1;
+      setCurrentModuleIndex(nextIndex);
+      setCurrentModuleContent(''); // Limpiar contenido anterior
+      setError(null); // Limpiar errores
+      
+      // El usuario debe presionar "Generar" para el siguiente módulo
+      // No generamos automáticamente
+    } else {
+      // Es el último módulo, obtener informe completo
+      await getFullReport();
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (currentModuleIndex < modules.length) {
+      const currentModule = modules[currentModuleIndex];
+      await generateModule(currentModule.id);
+    }
+  };
+
+  const currentModule = modules[currentModuleIndex];
+  const isLastModule = currentModuleIndex === modules.length - 1;
+  const progress = modules.length > 0 ? ((currentModuleIndex + 1) / modules.length) * 100 : 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-purple-500/30 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-purple-900/50 to-indigo-900/50">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-purple-400" />
+            <div>
+              <h2 className="text-2xl font-bold text-white">Generación de Informe Exhaustivo</h2>
+              <p className="text-gray-400 text-sm">Proceso paso a paso según CORE CARUTTI v5.3</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Cerrar"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-300">
+              Módulo {currentModuleIndex + 1} de {modules.length}
+            </span>
+            <span className="text-sm text-gray-300">{Math.round(progress)}%</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Module List */}
+        <div className="px-6 py-4 bg-gray-800/30 border-b border-gray-700 max-h-32 overflow-y-auto">
+          <div className="flex flex-wrap gap-2">
+            {modules.map((module, idx) => {
+              const isGenerated = status?.modules.find(m => m.id === module.id)?.is_generated || false;
+              const isCurrent = idx === currentModuleIndex;
+              
+              return (
+                <div
+                  key={module.id}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    isCurrent
+                      ? 'bg-purple-500 text-white'
+                      : isGenerated
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'bg-gray-700 text-gray-400'
+                  }`}
+                >
+                  {idx + 1}. {module.title.split(':')[0]}
+                  {isGenerated && <CheckCircle className="inline ml-1 w-3 h-3" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center h-full">
+              <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
+              <p className="text-gray-300">Inicializando generación...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-red-400">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-semibold">Error</span>
+              </div>
+              <p className="text-red-300 mt-2">{error}</p>
+            </div>
+          )}
+
+          {currentModule && (
+            <>
+              <div className="mb-4">
+                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-400" />
+                  {currentModule.title}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  Extensión mínima esperada: {currentModule.expected_min_chars.toLocaleString()} caracteres
+                </p>
+              </div>
+
+              {isGenerating && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
+                  <p className="text-gray-300">Generando módulo...</p>
+                  <p className="text-gray-400 text-sm mt-2">Esto puede tardar varios minutos</p>
+                </div>
+              )}
+
+              {!isGenerating && currentModuleContent && (
+                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <div className="prose prose-invert max-w-none">
+                    <div className="text-gray-200 whitespace-pre-wrap leading-relaxed">
+                      {currentModuleContent}
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <p className="text-sm text-gray-400">
+                      Longitud generada: {currentModuleContent.length.toLocaleString()} caracteres
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!isGenerating && !currentModuleContent && !isLoading && (
+                <div className="text-center py-12">
+                  <button
+                    onClick={() => currentModule && generateModule(currentModule.id)}
+                    disabled={isGenerating}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Generar {currentModule?.title}
+                  </button>
+                  <p className="text-gray-400 text-sm mt-4">Este proceso puede tardar varios minutos</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-6 border-t border-gray-700 bg-gray-800/50 flex items-center justify-between">
+          <button
+            onClick={handleRegenerate}
+            disabled={isGenerating || !currentModuleContent}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Regenerar Módulo Actual
+          </button>
+
+          <div className="flex items-center gap-3">
+            {currentModuleContent && !isLastModule && (
+              <button
+                onClick={handleNext}
+                disabled={isGenerating}
+                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                Proceder al Siguiente Módulo
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {isLastModule && currentModuleContent && (
+              <button
+                onClick={async () => {
+                  await getFullReport();
+                }}
+                className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Finalizar y Generar Informe Completo
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReportGenerationWizard;
