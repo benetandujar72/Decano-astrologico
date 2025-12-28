@@ -8,6 +8,7 @@ from typing import Optional
 from app.api.endpoints.auth import get_current_user
 from app.services.report_generators import generate_report
 from app.services.subscription_permissions import require_feature
+from app.services.full_report_service import full_report_service
 import sys
 
 router = APIRouter()
@@ -92,13 +93,27 @@ async def generate_report_endpoint(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="carta_data es requerido"
             )
+            
+        # [MODIFICACIÓN] Generación automática de texto si no viene en el request
+        # Esto permite generar el informe completo de 25-30 páginas
+        final_analysis_text = request.analysis_text
+        if not final_analysis_text:
+            try:
+                print("[REPORTS] 🤖 Texto de análisis no provisto. Iniciando generación automática FULL (25+ págs)...", file=sys.stderr)
+                user_name = request.nombre or current_user.get('full_name') or current_user.get('username') or "Consultante"
+                final_analysis_text = await full_report_service.generate_full_report(request.carta_data, user_name)
+                print(f"[REPORTS] ✅ Generación automática completada. Longitud: {len(final_analysis_text)} caracteres.", file=sys.stderr)
+            except Exception as e:
+                print(f"[REPORTS] ❌ Error en generación automática: {e}", file=sys.stderr)
+                # Fallback básico si falla la generación
+                final_analysis_text = "# Error en Generación Automática\n\nDisculpe, hubo un problema generando el análisis en tiempo real. Por favor intente más tarde."
         
         # Generar informe (con portada si hay nombre)
         try:
             report_content = generate_report(
                 carta_data=request.carta_data,
                 format=format_lower,
-                analysis_text=request.analysis_text,
+                analysis_text=final_analysis_text,
                 nombre=request.nombre
             )
         except ImportError as import_err:
