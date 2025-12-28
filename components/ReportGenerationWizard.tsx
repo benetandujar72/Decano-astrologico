@@ -177,24 +177,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       if (data.full_report) {
         onComplete(data.full_report);
       } else {
-        // Si no hay informe completo, construir desde módulos generados
-        const allModules = status?.modules.filter(m => m.is_generated) || [];
-        if (allModules.length === modules.length) {
-          // Todos los módulos están generados, construir informe
-          const sections = full_report_service._get_sections_definition();
-          let fullReport = '';
-          for (const section of sections) {
-            const moduleData = allModules.find(m => m.id === section.id);
-            if (moduleData) {
-              // Necesitamos obtener el contenido del módulo
-              // Por ahora, usar el status para construir
-              fullReport += `## ${section.title}\n\n[Contenido del módulo]\n\n---\n\n`;
-            }
-          }
-          onComplete(fullReport);
-        } else {
-          setError('No todos los módulos han sido generados');
-        }
+        setError('El informe completo aún no está disponible. Asegúrate de haber generado todos los módulos.');
       }
     } catch (err: any) {
       console.error('Error obteniendo informe completo:', err);

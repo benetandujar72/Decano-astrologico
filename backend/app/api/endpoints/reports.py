@@ -279,3 +279,272 @@ async def get_available_formats(current_user: dict = Depends(get_current_user)):
         ]
     }
 
+
+@router.post("/start-generation")
+async def start_report_generation(
+    request: StartReportGenerationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Inicia una sesión de generación de informe paso a paso.
+    Retorna el ID de sesión y la lista de módulos disponibles.
+    """
+    user_id = str(current_user.get("_id"))
+    user_name = request.nombre or current_user.get('full_name') or current_user.get('username') or "Consultante"
+    
+    # Obtener lista de módulos
+    sections = full_report_service._get_sections_definition()
+    modules_list = [
+        {
+            "id": s["id"],
+            "title": s["title"],
+            "expected_min_chars": s["expected_min_chars"]
+        }
+        for s in sections
+    ]
+    
+    # Crear sesión
+    session_data = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "carta_data": request.carta_data,
+        "generated_modules": {},
+        "current_module_index": 0,
+        "status": "in_progress",
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    result = await report_sessions_collection.insert_one(session_data)
+    session_id = str(result.inserted_id)
+    
+    return {
+        "session_id": session_id,
+        "total_modules": len(modules_list),
+        "modules": modules_list,
+        "current_module": modules_list[0] if modules_list else None
+    }
+
+
+@router.post("/generate-module")
+async def generate_module(
+    request: GenerateModuleRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera un módulo específico del informe.
+    Requiere que el módulo anterior haya sido generado (excepto el primero).
+    """
+    user_id = str(current_user.get("_id"))
+    
+    # Buscar sesión
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(request.session_id)})
+    except:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    # Verificar que el usuario es el dueño
+    if str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+    
+    # Obtener módulos
+    sections = full_report_service._get_sections_definition()
+    module_index = next((i for i, s in enumerate(sections) if s['id'] == request.module_id), -1)
+    
+    if module_index == -1:
+        raise HTTPException(status_code=400, detail=f"Módulo {request.module_id} no encontrado")
+    
+    # Verificar que los módulos anteriores estén generados (excepto el primero)
+    if module_index > 0:
+        previous_modules = [s['id'] for s in sections[:module_index]]
+        generated = session.get("generated_modules", {})
+        missing = [m for m in previous_modules if m not in generated]
+        if missing:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Debes generar primero los módulos anteriores: {', '.join(missing)}"
+            )
+    
+    # Generar módulo
+    try:
+        previous_modules = list(session.get("generated_modules", {}).keys())
+        content, is_last = await full_report_service.generate_single_module(
+            session["carta_data"],
+            session["user_name"],
+            request.module_id,
+            previous_modules
+        )
+        
+        # Guardar módulo generado
+        generated_modules = session.get("generated_modules", {})
+        generated_modules[request.module_id] = {
+            "content": content,
+            "generated_at": datetime.utcnow().isoformat(),
+            "length": len(content)
+        }
+        
+        # Actualizar sesión
+        update_data = {
+            "generated_modules": generated_modules,
+            "current_module_index": module_index + 1,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        if is_last:
+            update_data["status"] = "completed"
+            # Generar informe completo desde todos los módulos generados
+            all_content = []
+            for s in sections:
+                if s['id'] in generated_modules:
+                    module_data = generated_modules[s['id']]
+                    if isinstance(module_data, dict) and 'content' in module_data:
+                        all_content.append(f"## {s['title']}\n\n{module_data['content']}\n\n---\n\n")
+                    elif isinstance(module_data, str):
+                        all_content.append(f"## {s['title']}\n\n{module_data}\n\n---\n\n")
+            update_data["full_report"] = "\n".join(all_content)
+            update_data["full_report_length"] = len(update_data["full_report"])
+        
+        await report_sessions_collection.update_one(
+            {"_id": ObjectId(request.session_id)},
+            {"$set": update_data}
+        )
+        
+        # Obtener siguiente módulo
+        next_module = None
+        if not is_last and module_index + 1 < len(sections):
+            next_section = sections[module_index + 1]
+            next_module = {
+                "id": next_section["id"],
+                "title": next_section["title"],
+                "expected_min_chars": next_section["expected_min_chars"]
+            }
+        
+        return {
+            "module_id": request.module_id,
+            "content": content,
+            "length": len(content),
+            "is_last": is_last,
+            "next_module": next_module,
+            "progress": {
+                "current": module_index + 1,
+                "total": len(sections)
+            }
+        }
+        
+    except Exception as e:
+        print(f"[REPORTS] ❌ Error generando módulo {request.module_id}: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generando módulo: {str(e)}"
+        )
+
+
+@router.get("/generation-status/{session_id}")
+async def get_generation_status(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene el estado de una sesión de generación"""
+    user_id = str(current_user.get("_id"))
+    
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+    except:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    if str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+    
+    sections = full_report_service._get_sections_definition()
+    generated_modules = session.get("generated_modules", {})
+    
+    modules_status = []
+    for i, s in enumerate(sections):
+        is_generated = s['id'] in generated_modules
+        module_data = generated_modules.get(s['id'], {})
+        modules_status.append({
+            "id": s['id'],
+            "title": s['title'],
+            "is_generated": is_generated,
+            "length": module_data.get('length', 0) if isinstance(module_data, dict) else (len(module_data) if isinstance(module_data, str) else 0)
+        })
+    
+    return {
+        "session_id": session_id,
+        "status": session.get("status", "in_progress"),
+        "current_module_index": session.get("current_module_index", 0),
+        "total_modules": len(sections),
+        "modules": modules_status,
+        "has_full_report": "full_report" in session and session.get("full_report")
+    }
+
+
+@router.get("/generation-full-report/{session_id}")
+async def get_full_report_from_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene el informe completo generado de una sesión"""
+    user_id = str(current_user.get("_id"))
+    
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+    except:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    if str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+    
+    # Si ya está en la sesión, retornarlo
+    if "full_report" in session and session["full_report"]:
+        return {
+            "full_report": session["full_report"],
+            "total_length": len(session["full_report"]),
+            "status": session.get("status", "completed")
+        }
+    
+    # Si no está, construir desde módulos generados
+    generated_modules = session.get("generated_modules", {})
+    if not generated_modules:
+        raise HTTPException(status_code=400, detail="No hay módulos generados aún")
+    
+    sections = full_report_service._get_sections_definition()
+    all_content = []
+    
+    for s in sections:
+        if s['id'] in generated_modules:
+            module_data = generated_modules[s['id']]
+            if isinstance(module_data, dict) and 'content' in module_data:
+                all_content.append(f"## {s['title']}\n\n{module_data['content']}\n\n---\n\n")
+            elif isinstance(module_data, str):
+                all_content.append(f"## {s['title']}\n\n{module_data}\n\n---\n\n")
+    
+    full_report = "\n".join(all_content)
+    
+    # Guardar en sesión
+    await report_sessions_collection.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {
+            "full_report": full_report,
+            "full_report_length": len(full_report),
+            "status": "completed"
+        }}
+    )
+    
+    return {
+        "full_report": full_report,
+        "total_length": len(full_report),
+        "status": "completed"
+    }
+
