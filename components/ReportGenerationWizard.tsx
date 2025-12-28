@@ -342,8 +342,16 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
               {isGenerating && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
-                  <p className="text-gray-300">Generando módulo...</p>
+                  <p className="text-gray-300 font-semibold text-lg">Generando módulo...</p>
                   <p className="text-gray-400 text-sm mt-2">Esto puede tardar varios minutos</p>
+                  <p className="text-gray-500 text-xs mt-4">
+                    El sistema está analizando las efemérides y la documentación de Carutti
+                  </p>
+                  <div className="mt-6 w-full max-w-md">
+                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 animate-pulse" style={{ width: '60%' }} />
+                    </div>
+                  </div>
                 </div>
               )}
 
