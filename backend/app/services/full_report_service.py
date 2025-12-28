@@ -111,85 +111,86 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             print("✅ [PASO 0/10] Documentación cargada")
 
         # 2. Definir secciones del informe (ALINEADO ESTRICTAMENTE CON CORE CARUTTI v5.3)
+        # EXTENSIONES MÍNIMAS AUMENTADAS SIGNIFICATIVAMENTE PARA ALCANZAR 30 PÁGINAS
         sections = [
             {
                 "id": "modulo_1",
                 "title": "MÓDULO 1: ESTRUCTURA ENERGÉTICA BASE (DIAGNÓSTICO)",
                 "topic": "general",
-                "prompt": "EJECUTA EL MÓDULO 1 del System Prompt: 'ESTRUCTURA ENERGÉTICA BASE'. Analiza: El Balance de Sustancia (Elementos), El Ritmo (Modalidades), La Tensión Vital Primaria (Sol-Luna-Asc) y la Polarización Transpersonal. Sigue ESTRICTAMENTE el 'Protocolo de Ingesta de Documentación' y el 'Protocolo de Invisibilidad'. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA EL MÓDULO 1 del System Prompt: 'ESTRUCTURA ENERGÉTICA BASE'. Analiza EXHAUSTIVAMENTE: El Balance de Sustancia (Elementos) - desarrolla cada elemento en profundidad, El Ritmo (Modalidades) - analiza cada modalidad y su impacto, La Tensión Vital Primaria (Sol-Luna-Asc) - integra los tres componentes con detalle, y la Polarización Transpersonal - identifica y desarrolla cada aspecto transpersonal. Sigue ESTRICTAMENTE el 'Protocolo de Ingesta de Documentación' y el 'Protocolo de Invisibilidad'. EXTENSIÓN MÍNIMA: 6000 caracteres. Desarrolla cada punto con 3-4 párrafos densos. Profundiza en mecánica, psicología, vivencia y proyección.",
+                "expected_min_chars": 6000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_fundamentos",
                 "title": "MÓDULO 2-I: FUNDAMENTOS DEL SER",
                 "topic": "fundamentos",
-                "prompt": "EJECUTA la parte I del MÓDULO 2 (ANÁLISIS PLANETARIO). Analiza: Sol, Luna, Ascendente y Regente del Ascendente. Recuerda: Función, Escenario, Dispositor y Aspectos. Cero definiciones de diccionario, solo mecánica energética pura. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA la parte I del MÓDULO 2 (ANÁLISIS PLANETARIO). Analiza EXHAUSTIVAMENTE cada uno: Sol (función, escenario, dispositor, aspectos, manifestación psicológica, vivencia, proyección), Luna (refugio regresivo, función, escenario, dispositor, aspectos, manifestación emocional), Ascendente (destino, energía no reconocida, función, signo, regente), Regente del Ascendente (función, posición, aspectos, manifestación). Cero definiciones de diccionario, solo mecánica energética pura. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 1000 caracteres por planeta/componente.",
+                "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_personales",
                 "title": "MÓDULO 2-II: PLANETAS PERSONALES",
                 "topic": "personales",
-                "prompt": "EJECUTA la parte II del MÓDULO 2. Analiza: Mercurio, Venus y Marte. Recuerda: Función, Escenario, Dispositor y Aspectos. Cero definiciones de diccionario, solo mecánica energética pura. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA la parte II del MÓDULO 2. Analiza EXHAUSTIVAMENTE cada uno: Mercurio (función, escenario, dispositor, aspectos, manifestación mental, comunicación, vivencia), Venus (función, escenario, dispositor, aspectos, manifestación afectiva, valores, vivencia), Marte (función, escenario, dispositor, aspectos, manifestación de acción, impulso, vivencia). Para cada planeta desarrolla: mecánica energética, psicología profunda, vivencia concreta, proyección y evolución. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 1500 caracteres por planeta.",
+                "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_sociales",
                 "title": "MÓDULO 2-III: PLANETAS SOCIALES",
                 "topic": "sociales",
-                "prompt": "EJECUTA la parte III del MÓDULO 2. Analiza: Júpiter y Saturno. Presta especial atención a la función de Saturno como estructura. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA la parte III del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Júpiter (función, escenario, dispositor, aspectos, expansión, filosofía, vivencia) y Saturno (función como estructura, escenario, dispositor, aspectos, límites, responsabilidad, esqueleto del dharma, vivencia). Presta especial atención a la función de Saturno como estructura del destino. Desarrolla cada planeta con profundidad ensayística: mecánica, psicología, vivencia, proyección y evolución. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 2000 caracteres por planeta.",
+                "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_transpersonales",
                 "title": "MÓDULO 2-IV: PLANETAS TRANSPERSONALES",
                 "topic": "transpersonales",
-                "prompt": "EJECUTA la parte IV del MÓDULO 2. Analiza: Urano, Neptuno y Plutón. Presta especial atención a la 'Polarización Transpersonal'. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA la parte IV del MÓDULO 2. Analiza EXHAUSTIVAMENTE cada uno: Urano (función, escenario, dispositor, aspectos, ruptura, innovación, vivencia), Neptuno (función, escenario, dispositor, aspectos, disolución, trascendencia, vivencia), Plutón (función, escenario, dispositor, aspectos, transformación, poder, vivencia). Presta especial atención a la 'Polarización Transpersonal'. Desarrolla cada planeta con profundidad ensayística: mecánica energética, psicología profunda, vivencia, proyección y evolución. EXTENSIÓN MÍNIMA: 6000 caracteres. Mínimo 1800 caracteres por planeta.",
+                "expected_min_chars": 6000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_nodos",
                 "title": "MÓDULO 2-V: LOS NODOS LUNARES",
                 "topic": "nodos",
-                "prompt": "EJECUTA la parte V del MÓDULO 2. Analiza: Los Nodos Lunares (Norte y Sur). Analiza el Eje Evolutivo: de la inercia Sur a la ingesta Norte. Extensión mínima: 1500 caracteres.",
-                "expected_min_chars": 1500,
+                "prompt": "EJECUTA la parte V del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Los Nodos Lunares (Norte y Sur). Desarrolla: Nodo Sur (inercia, patrones kármicos, zona de confort, lo conocido, manifestación), Nodo Norte (dharma, dirección evolutiva, desafío, lo desconocido, manifestación), el Eje Evolutivo completo (de la inercia Sur a la ingesta Norte), la tensión entre ambos, y la integración. Profundiza en mecánica, psicología, vivencia y proyección. EXTENSIÓN MÍNIMA: 4000 caracteres. Mínimo 1500 caracteres por nodo más análisis del eje.",
+                "expected_min_chars": 4000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_aspectos",
                 "title": "MÓDULO 2-VI: ASPECTOS CLAVE",
                 "topic": "aspectos",
-                "prompt": "EJECUTA la parte VI del MÓDULO 2. Analiza: Aspectos Clave (Tensiones estructurales y Facilitadores). Identifica los aspectos más significativos según la matriz de orbes. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA la parte VI del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Aspectos Clave (Tensiones estructurales y Facilitadores). Identifica TODOS los aspectos significativos según la matriz de orbes. Para cada aspecto mayor desarrolla: identificación técnica (planetas, tipo, orbe), mecánica energética, manifestación psicológica, vivencia concreta, proyección y oportunidad evolutiva. Incluye aspectos mayores (conjunciones, oposiciones, cuadraturas, trígonos, sextiles) y configuraciones (T-cuadradas, Grandes Trígonos, Yods, etc.). EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 300-400 caracteres por aspecto significativo.",
+                "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_ejes",
                 "title": "MÓDULO 2-VII: LOS EJES DE VIDA (ANÁLISIS DE CASAS)",
                 "topic": "ejes",
-                "prompt": "EJECUTA la parte VII del MÓDULO 2. Analiza los 6 Ejes de Vida siguiendo OBLIGATORIAMENTE el formato rígido especificado en el System Prompt. CASAS VACÍAS: Analizar obligatoriamente Signo en cúspide + Regente con misma profundidad (mín. 80 palabras por polo). Extensión mínima: 4000 caracteres.",
-                "expected_min_chars": 4000,
+                "prompt": "EJECUTA la parte VII del MÓDULO 2. Analiza EXHAUSTIVAMENTE los 6 Ejes de Vida siguiendo OBLIGATORIAMENTE el formato rígido especificado en el System Prompt. Para CADA eje desarrolla con máxima profundidad: Título y Signos, Dinámica Psicológica (intro extensa), Polo A (análisis exhaustivo del Signo + cada planeta individualmente con subapartados + si está vacía analiza Signo y Regente con MÍNIMO 150 palabras), Polo B (análisis exhaustivo de la Proyección/Destino + cada planeta individualmente + si está vacía analiza Signo y Regente con MÍNIMO 150 palabras), Síntesis del Eje (tensión y resolución extensa). CASAS VACÍAS: Analizar obligatoriamente Signo en cúspide + Regente con misma profundidad que si hubiera planetas. EXTENSIÓN MÍNIMA: 8000 caracteres. Mínimo 1200 caracteres por eje.",
+                "expected_min_chars": 8000,
                 "requires_template": True
             },
             {
                 "id": "modulo_2_sintesis",
                 "title": "MÓDULO 2-VIII: SÍNTESIS ARQUETÍPICA",
                 "topic": "general",
-                "prompt": "EJECUTA la parte VIII del MÓDULO 2. Realiza una Síntesis Arquetípica integrando todos los elementos analizados anteriormente. Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA la parte VIII del MÓDULO 2. Realiza una Síntesis Arquetípica EXHAUSTIVA integrando todos los elementos analizados anteriormente. Desarrolla: patrones arquetípicos dominantes, configuraciones maestras (stelliums, T-cuadradas, etc.), sombra y proyección (qué no se reconoce), el mito personal, y la integración sistémica. Profundiza en mecánica, psicología, vivencia y proyección. EXTENSIÓN MÍNIMA: 5000 caracteres.",
+                "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
                 "id": "modulo_3_recomendaciones",
                 "title": "MÓDULO 3: RECOMENDACIONES EVOLUTIVAS PRINCIPALES",
                 "topic": "evolucion",
-                "prompt": "EJECUTA EL MÓDULO 3. Analiza: A. Fortalezas Base, B. Integración de Tensiones Principales, C. Orientación hacia el Nodo Norte, D. Cierre Motivacional (Sin lenguaje de éxito). Extensión mínima: 2000 caracteres.",
-                "expected_min_chars": 2000,
+                "prompt": "EJECUTA EL MÓDULO 3. Analiza EXHAUSTIVAMENTE: A. Fortalezas Base (identifica y desarrolla cada fortaleza con detalle), B. Integración de Tensiones Principales (cómo integrar cada tensión identificada), C. Orientación hacia el Nodo Norte (camino evolutivo específico y práctico), D. Cierre Motivacional (sin lenguaje de éxito, enfoque en proceso y crecimiento). Desarrolla cada sección con profundidad ensayística. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 1000 caracteres por subsección.",
+                "expected_min_chars": 5000,
                 "requires_template": False
             }
         ]
@@ -203,8 +204,8 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             
             try:
                 # Obtener contexto relevante de documentación
-                # Aumentar contexto según el módulo para asegurar exhaustividad
-                max_context_chars = 6000 if section['requires_template'] else 5000
+                # Aumentar SIGNIFICATIVAMENTE el contexto para asegurar exhaustividad (30 páginas)
+                max_context_chars = 10000 if section['requires_template'] else 8000
                 # Usar get_context_for_module para búsqueda más específica
                 context = self.doc_service.get_context_for_module(section['id'], max_chars=max_context_chars)
                 
@@ -224,12 +225,15 @@ CONTEXTO DE DOCUMENTACIÓN (Base de Conocimiento Carutti):
 DATOS DE LA CARTA:
 {str(chart_data)}
 
-DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD:
-- PROHIBIDO RESUMIR: Objetivo exhaustividad máxima
-- Todos los informes deben tener el mismo "peso" y densidad
-- PROFUNDIDAD ENSAYÍSTICA: Desarrolla mecánica, psicología, vivencia, proyección y evolución
-- Si puedes escribir 4 párrafos, escribe 4
-- CASAS VACÍAS: Si una casa no tiene planetas, analiza OBLIGATORIAMENTE el Signo en la cúspide y la posición de su Regente con la misma profundidad
+DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD (CRÍTICO PARA 30 PÁGINAS):
+- PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA
+- Todos los informes deben tener el mismo "peso" y densidad (30 páginas mínimo)
+- PROFUNDIDAD ENSAYÍSTICA: Desarrolla mecánica, psicología, vivencia, proyección y evolución con MÁXIMO DETALLE
+- Si puedes escribir 4 párrafos, escribe 8. Si puedes escribir 8, escribe 12
+- DESARROLLA CADA PUNTO con múltiples párrafos densos (mínimo 3-4 párrafos por concepto principal)
+- Incluye ejemplos concretos, manifestaciones prácticas, vivencias específicas
+- CASAS VACÍAS: Si una casa no tiene planetas, analiza OBLIGATORIAMENTE el Signo en la cúspide y la posición de su Regente con la misma profundidad (mínimo 150 palabras por polo)
+- EXTENSIÓN MÍNIMA PARA ESTA SECCIÓN: {section['expected_min_chars']} caracteres. Si generas menos, estás resumiendo. EXPÁNDE.
 
 INSTRUCCIÓN DE COMANDO:
 {section['prompt']}
@@ -239,14 +243,19 @@ INSTRUCCIÓN DE COMANDO:
                 if section['requires_template']:
                     base_prompt += self._generate_ejes_template_prompt()
                 
-                # Agregar instrucciones finales
-                base_prompt += """
-REGLAS CRÍTICAS DE ESTA SALIDA:
+                # Agregar instrucciones finales con énfasis en exhaustividad
+                base_prompt += f"""
+REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
 - MANTÉN el tono "Ghost Writer Académico" y el rigor del System Prompt
 - NO uses introducciones ni meta-comunicación
 - Empieza DIRECTAMENTE con el título del módulo
+- EXTENSIÓN MÍNIMA OBLIGATORIA: {section['expected_min_chars']} caracteres. Si generas menos, ESTÁS RESUMIENDO.
+- DESARROLLA CADA CONCEPTO con múltiples párrafos (mínimo 3-4 párrafos por concepto principal)
+- Incluye ejemplos concretos, manifestaciones prácticas, vivencias específicas
+- Profundiza en mecánica, psicología, vivencia, proyección y evolución para CADA elemento
 - Al final, incluye OBLIGATORIAMENTE: "Pregunta para reflexionar: [pregunta profunda, abierta y psicológica]"
 - Usa lenguaje de posibilidad: "tiende a", "puede", "frecuentemente" (evita "es", "siempre", "nunca")
+- RECUERDA: El objetivo es generar un informe de 30 páginas. Cada sección debe ser exhaustiva y detallada.
 """
                 
                 # Llamada a Gemini
@@ -282,13 +291,16 @@ REGLAS CRÍTICAS DE ESTA SALIDA:
         total_chars = len(final_markdown)
         
         print(f"\n📊 [VALIDACIÓN FINAL] Extensión total del informe: {total_chars} caracteres")
+        print(f"📊 [VALIDACIÓN FINAL] Objetivo: 50,000-60,000 caracteres para ~30 páginas")
         
-        if total_chars < 40000:
-            print(f"⚠️ [VALIDACIÓN FINAL] Advertencia: El informe es más corto de lo esperado (objetivo: 40,000-50,000 caracteres)")
-        elif total_chars > 50000:
-            print(f"✅ [VALIDACIÓN FINAL] El informe es exhaustivo ({total_chars} caracteres)")
+        if total_chars < 50000:
+            print(f"❌ [VALIDACIÓN FINAL] ERROR CRÍTICO: El informe es demasiado corto ({total_chars} caracteres)")
+            print(f"❌ [VALIDACIÓN FINAL] El informe debería tener al menos 50,000 caracteres para alcanzar 30 páginas")
+            print(f"⚠️ [VALIDACIÓN FINAL] Se recomienda regenerar con instrucciones de mayor extensión")
+        elif total_chars < 60000:
+            print(f"✅ [VALIDACIÓN FINAL] Extensión adecuada alcanzada ({total_chars} caracteres)")
         else:
-            print(f"✅ [VALIDACIÓN FINAL] Extensión óptima alcanzada ({total_chars} caracteres)")
+            print(f"✅ [VALIDACIÓN FINAL] El informe es muy exhaustivo ({total_chars} caracteres)")
         
         print(f"✅ [FIN] Generación de informe completo finalizada")
         
