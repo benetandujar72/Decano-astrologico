@@ -368,11 +368,20 @@ const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </section>
 
-        <footer className="mt-14 border-t border-white/10 pt-6 text-xs text-gray-400 flex items-center justify-between gap-4">
+        <footer className="mt-14 border-t border-white/10 pt-6 text-xs text-gray-400 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>© {new Date().getFullYear()} FRAKTAL</div>
-          <button type="button" onClick={onGoToApp} className="text-indigo-300 hover:text-indigo-200 transition-colors">
-            {isAuthenticated ? 'Ir a la app' : 'Entrar'}
-          </button>
+          <div className="flex items-center gap-6">
+            <button 
+              type="button" 
+              onClick={onViewServices} 
+              className="text-gray-400 hover:text-purple-400 transition-colors font-medium"
+            >
+              Contratar Servicios de Jon Landeta
+            </button>
+            <button type="button" onClick={onGoToApp} className="text-indigo-300 hover:text-indigo-200 transition-colors">
+              {isAuthenticated ? 'Ir a la app' : 'Entrar'}
+            </button>
+          </div>
         </footer>
       </div>
     </div>

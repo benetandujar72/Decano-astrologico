@@ -75,9 +75,9 @@ ${userTier === 'premium' || userTier === 'enterprise' ? '✨ ¡Tienes descuento 
       ? `Tu plan actual es: ${userTier.toUpperCase()}
 
 ${userTier === 'free' ? '• 5 cartas natales por mes\n• Exportación PDF\n• Contacto con Jon Landeta' :
-  userTier === 'pro' ? '• Cartas natales ilimitadas\n• Tránsitos y Progresiones\n• 1 consulta con experto IA\n• 1 crédito de capacitación anual' :
-  userTier === 'premium' ? '• Todo del plan Pro\n• Sinastría y Compuestas\n• 3 consultas con experto IA\n• 10% descuento en servicios\n• 3 créditos de capacitación' :
-  '• Plan empresarial completo\n• Capacitación ilimitada\n• 20% descuento en servicios'}
+        userTier === 'pro' ? '• Cartas natales ilimitadas\n• Tránsitos y Progresiones\n• 1 consulta con experto IA\n• 1 crédito de capacitación anual' :
+          userTier === 'premium' ? '• Todo del plan Pro\n• Sinastría y Compuestas\n• 3 consultas con experto IA\n• 10% descuento en servicios\n• 3 créditos de capacitación' :
+            '• Plan empresarial completo\n• Capacitación ilimitada\n• 20% descuento en servicios'}
 
 ¿Quieres mejorar tu plan?`
       : 'Para ver información sobre tu plan, por favor inicia sesión.',
@@ -116,8 +116,8 @@ Ve a "Servicios Profesionales" y busca la opción "Contacto con Jon Landeta".`,
       ? `¡Tu plan incluye capacitación!
 
 ${userTier === 'pro' ? '📚 1 crédito de capacitación anual' :
-  userTier === 'premium' ? '📚 3 créditos de capacitación anuales' :
-  '📚 Capacitación ILIMITADA'}
+        userTier === 'premium' ? '📚 3 créditos de capacitación anuales' :
+          '📚 Capacitación ILIMITADA'}
 
 Los programas de capacitación incluyen:
 • Fundamentos de astrología
@@ -259,28 +259,28 @@ Puedo ayudarte con información sobre:
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                className={`flex gap-4 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  message.sender === 'user'
-                    ? 'bg-purple-600'
-                    : 'bg-linear-to-br from-purple-500 to-pink-500'
-                }`}>
+                <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transform transition-transform hover:scale-105 ${message.sender === 'user'
+                  ? 'bg-linear-to-br from-indigo-500 to-purple-600 ring-2 ring-purple-500/30'
+                  : 'bg-linear-to-br from-emerald-500 to-teal-600 ring-2 ring-emerald-500/30'
+                  }`}>
                   {message.sender === 'user' ? (
                     <User className="w-5 h-5 text-white" />
                   ) : (
-                    <Sparkles className="w-5 h-5 text-white" />
+                    <Bot className="w-5 h-5 text-white" />
                   )}
                 </div>
-                <div className={`flex-1 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                  <div className={`inline-block max-w-[80%] px-4 py-2 rounded-2xl whitespace-pre-wrap ${
-                    message.sender === 'user'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-white/10 text-gray-200'
-                  }`}>
-                    {message.text}
+                <div className={`flex-1 ${message.sender === 'user' ? 'text-right' : 'text-left'} max-w-[85%]`}>
+                  <div className={`inline-block px-6 py-4 rounded-2xl text-sm leading-relaxed shadow-md ${message.sender === 'user'
+                    ? 'bg-linear-to-br from-indigo-600 to-purple-700 text-white rounded-tr-sm'
+                    : 'bg-slate-800/80 backdrop-blur-md border border-white/10 text-slate-200 rounded-tl-sm'
+                    }`}>
+                    <div className="whitespace-pre-wrap font-medium tracking-wide">
+                      {message.text}
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 px-2">
+                  <p className="text-[10px] text-gray-500 mt-1.5 px-1 font-mono uppercase tracking-wider opacity-70">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -307,20 +307,20 @@ Puedo ayudarte con información sobre:
 
           {/* Input */}
           <div className="p-4 bg-gray-900 border-t border-white/10">
-            <div className="flex gap-2">
+            <div className="flex gap-3 items-end">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Escribe tu pregunta..."
-                className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                className="flex-1 px-5 py-4 bg-slate-900/50 border border-white/10 rounded-2xl text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all shadow-inner"
               />
               <button
                 type="button"
                 onClick={handleSendMessage}
                 disabled={!inputMessage.trim()}
-                className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 active:translate-y-0"
                 aria-label="Enviar mensaje"
               >
                 <Send className="w-5 h-5" />
