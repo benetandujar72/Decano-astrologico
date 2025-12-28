@@ -370,13 +370,28 @@ async def generate_module(
     
     # Generar módulo
     try:
+        print(f"[REPORTS] 🚀 Iniciando generación de módulo {request.module_id} para sesión {request.session_id}", file=sys.stderr)
         previous_modules = list(session.get("generated_modules", {}).keys())
-        content, is_last = await full_report_service.generate_single_module(
-            session["carta_data"],
-            session["user_name"],
-            request.module_id,
-            previous_modules
-        )
+        
+        # Agregar timeout para evitar que se quede colgado
+        import asyncio
+        try:
+            content, is_last = await asyncio.wait_for(
+                full_report_service.generate_single_module(
+                    session["carta_data"],
+                    session["user_name"],
+                    request.module_id,
+                    previous_modules
+                ),
+                timeout=600.0  # 10 minutos máximo por módulo
+            )
+            print(f"[REPORTS] ✅ Módulo {request.module_id} generado exitosamente. Longitud: {len(content)} caracteres", file=sys.stderr)
+        except asyncio.TimeoutError:
+            print(f"[REPORTS] ❌ Timeout generando módulo {request.module_id} (más de 10 minutos)", file=sys.stderr)
+            raise HTTPException(
+                status_code=500,
+                detail=f"La generación del módulo tardó demasiado tiempo. Por favor intenta regenerar este módulo."
+            )
         
         # Guardar módulo generado
         generated_modules = session.get("generated_modules", {})
@@ -434,13 +449,21 @@ async def generate_module(
             }
         }
         
+    except HTTPException:
+        # Re-lanzar HTTPExceptions sin modificar
+        raise
     except Exception as e:
-        print(f"[REPORTS] ❌ Error generando módulo {request.module_id}: {e}", file=sys.stderr)
+        print(f"[REPORTS] ❌ Error generando módulo {request.module_id}: {type(e).__name__}: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
+        error_detail = str(e)
+        if "timeout" in error_detail.lower() or "timed out" in error_detail.lower():
+            error_detail = "La generación tardó demasiado tiempo. Por favor intenta regenerar este módulo."
+        elif "api" in error_detail.lower() or "key" in error_detail.lower():
+            error_detail = "Error de configuración de la API de IA. Contacta al administrador."
         raise HTTPException(
             status_code=500,
-            detail=f"Error generando módulo: {str(e)}"
+            detail=f"Error generando módulo {request.module_id}: {error_detail}"
         )
 
 

@@ -195,21 +195,37 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
         
         for attempt in range(max_retries + 1):
             print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando contenido (intento {attempt + 1}/{max_retries + 1})...")
-            response = await self.ai_service.get_chat_response(base_prompt, [])
-            
-            is_valid, error_msg = self._validate_section_content(
-                section['id'], 
-                response, 
-                section['expected_min_chars']
-            )
-            
-            if is_valid:
-                print(f"[MÓDULO {module_index + 1}/{len(sections)}] ✅ Confirmado: {len(response)} caracteres")
-                break
-            else:
-                if attempt < max_retries:
-                    print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto ({len(response)} chars). Reintentando...")
-                    base_prompt += f"\n\n⚠️ ADVERTENCIA CRÍTICA: El contenido anterior fue demasiado corto. DEBES generar AL MENOS {section['expected_min_chars']} caracteres. EXPÁNDE cada concepto con múltiples párrafos. NO RESUMAS."
+            try:
+                response = await self.ai_service.get_chat_response(base_prompt, [])
+                
+                if not response or len(response.strip()) == 0:
+                    raise ValueError("La respuesta de la IA está vacía")
+                
+                print(f"[MÓDULO {module_index + 1}/{len(sections)}] Respuesta recibida: {len(response)} caracteres")
+                
+                is_valid, error_msg = self._validate_section_content(
+                    section['id'], 
+                    response, 
+                    section['expected_min_chars']
+                )
+                
+                if is_valid:
+                    print(f"[MÓDULO {module_index + 1}/{len(sections)}] ✅ Confirmado: {len(response)} caracteres")
+                    break
+                else:
+                    if attempt < max_retries:
+                        print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto ({len(response)} chars, esperado: {section['expected_min_chars']}). Reintentando...")
+                        base_prompt += f"\n\n⚠️ ADVERTENCIA CRÍTICA: El contenido anterior fue demasiado corto. DEBES generar AL MENOS {section['expected_min_chars']} caracteres. EXPÁNDE cada concepto con múltiples párrafos. NO RESUMAS."
+                    else:
+                        print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto después de {max_retries + 1} intentos. Usando contenido generado.")
+            except Exception as e:
+                print(f"[MÓDULO {module_index + 1}/{len(sections)}] ❌ Error en intento {attempt + 1}: {type(e).__name__}: {e}")
+                if attempt == max_retries:
+                    raise Exception(f"Error generando módulo después de {max_retries + 1} intentos: {str(e)}")
+                # Continuar al siguiente intento
+        
+        if not response or len(response.strip()) == 0:
+            raise ValueError("No se pudo generar contenido para el módulo después de todos los intentos")
         
         return response, is_last
 

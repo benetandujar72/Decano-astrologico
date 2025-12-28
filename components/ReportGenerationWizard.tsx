@@ -98,13 +98,22 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   };
 
   const generateModule = async (moduleId: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      setError('No hay sesión activa');
+      return;
+    }
     
     setIsGenerating(true);
     setError(null);
     setCurrentModuleContent('');
 
     try {
+      console.log(`[WIZARD] Generando módulo: ${moduleId}`);
+      
+      // Crear AbortController para timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutos
+      
       const response = await fetch(`${API_URL}/reports/generate-module`, {
         method: 'POST',
         headers: {
@@ -114,24 +123,42 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         body: JSON.stringify({
           session_id: sessionId,
           module_id: moduleId
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Error generando módulo');
+        const errorMessage = errorData.detail || `Error HTTP ${response.status}: ${response.statusText}`;
+        console.error(`[WIZARD] Error en respuesta:`, errorMessage);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log(`[WIZARD] Módulo generado exitosamente. Longitud: ${data.length} caracteres`);
+      
+      if (!data.content || data.content.trim().length === 0) {
+        throw new Error('El módulo se generó pero está vacío. Por favor regenera.');
+      }
+      
       setCurrentModuleContent(data.content);
       
       // Actualizar estado
       await refreshStatus();
       
-      // NO obtener informe completo automáticamente - esperar confirmación del usuario
     } catch (err: any) {
-      console.error('Error generando módulo:', err);
-      setError(err.message || 'Error generando módulo');
+      console.error('[WIZARD] Error generando módulo:', err);
+      
+      let errorMessage = 'Error generando módulo';
+      if (err.name === 'AbortError') {
+        errorMessage = 'La generación tardó demasiado tiempo (más de 10 minutos). Por favor intenta regenerar este módulo.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
