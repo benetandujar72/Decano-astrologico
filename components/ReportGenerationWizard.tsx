@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { 
-  X, CheckCircle, Loader2, AlertCircle, ChevronRight, 
+  X, CheckCircle, Loader2, AlertCircle, 
   FileText, Sparkles, ArrowRight, RefreshCw
 } from 'lucide-react';
 
@@ -85,7 +85,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       setModules(data.modules || []);
       setCurrentModuleIndex(0);
       
-      // NO generar automáticamente - esperar confirmación del usuario
+      // Generar automáticamente el primer módulo
+      if (data.modules && data.modules.length > 0) {
+        await generateModule(data.modules[0].id);
+      }
     } catch (err: any) {
       console.error('Error inicializando sesión:', err);
       setError(err.message || 'Error iniciando generación de informe');
@@ -188,20 +191,16 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   };
 
   const handleNext = async () => {
-    if (!currentModuleContent) {
-      setError('Debes generar el módulo actual antes de continuar');
-      return;
-    }
-
     if (currentModuleIndex < modules.length - 1) {
-      // Avanzar al siguiente módulo
+      // Avanzar al siguiente módulo y generarlo automáticamente
       const nextIndex = currentModuleIndex + 1;
       setCurrentModuleIndex(nextIndex);
       setCurrentModuleContent(''); // Limpiar contenido anterior
       setError(null); // Limpiar errores
       
-      // El usuario debe presionar "Generar" para el siguiente módulo
-      // No generamos automáticamente
+      // Generar automáticamente el siguiente módulo
+      const nextModule = modules[nextIndex];
+      await generateModule(nextModule.id);
     } else {
       // Es el último módulo, obtener informe completo
       await getFullReport();
@@ -337,16 +336,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
               )}
 
               {!isGenerating && !currentModuleContent && !isLoading && (
-                <div className="text-center py-12">
-                  <button
-                    onClick={() => currentModule && generateModule(currentModule.id)}
-                    disabled={isGenerating}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Generar {currentModule?.title}
-                  </button>
-                  <p className="text-gray-400 text-sm mt-4">Este proceso puede tardar varios minutos</p>
+                <div className="text-center py-12 text-gray-400">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-400" />
+                  <p>Preparando generación del módulo...</p>
                 </div>
               )}
             </>
@@ -365,18 +357,24 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           </button>
 
           <div className="flex items-center gap-3">
-            {currentModuleContent && !isLastModule && (
+            {!isGenerating && currentModuleContent && !isLastModule && (
               <button
                 onClick={handleNext}
-                disabled={isGenerating}
-                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
               >
                 Proceder al Siguiente Módulo
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}
 
-            {isLastModule && currentModuleContent && (
+            {isGenerating && (
+              <div className="px-6 py-2 bg-gray-700 text-gray-300 rounded-lg font-semibold flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generando módulo...
+              </div>
+            )}
+
+            {!isGenerating && isLastModule && currentModuleContent && (
               <button
                 onClick={async () => {
                   await getFullReport();
