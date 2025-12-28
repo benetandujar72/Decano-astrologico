@@ -24,39 +24,48 @@ class FullReportService:
         con formato rígido obligatorio.
         """
         return """
-⚠️ FORMATO RÍGIDO OBLIGATORIO PARA EJES DE VIDA:
+⚠️ FORMATO RÍGIDO OBLIGATORIO PARA EJES DE VIDA (OBJETIVO: 30 PÁGINAS):
 
 ESTÁ PROHIBIDO integrar las casas en un solo párrafo narrativo. Debes usar OBLIGATORIAMENTE esta plantilla estructural para cada uno de los 6 ejes:
 
-PLANTILLA POR EJE (5 PARTES OBLIGATORIAS):
+PLANTILLA POR EJE (5 PARTES OBLIGATORIAS - MÍNIMO 1200 CARACTERES POR EJE):
 
 1. **Título del Eje y Signos** (ej: "EJE I-VII ARIES-LIBRA")
+   - Mínimo 100 caracteres
 
-2. **Dinámica Psicológica del Eje** (Introducción que explica la tensión fundamental del eje)
+2. **Dinámica Psicológica del Eje** (Introducción EXTENSA que explica la tensión fundamental del eje)
+   - Mínimo 300 caracteres
+   - Desarrolla la tensión arquetípica, la polaridad, y la dinámica psicológica
 
 3. **Polo A (Casa X):**
-   - Si tiene planetas: Analiza cada planeta individualmente con subapartados
-   - Si está VACÍA: Analiza OBLIGATORIAMENTE el Signo en la cúspide + la posición del Regente de ese signo
-   - MÍNIMO 80 palabras por polo
+   - Si tiene planetas: Analiza CADA planeta individualmente con subapartados extensos (mínimo 400 caracteres por planeta)
+   - Si está VACÍA: Analiza OBLIGATORIAMENTE el Signo en la cúspide (mínimo 300 caracteres) + la posición del Regente de ese signo (mínimo 300 caracteres) + aspectos del regente (mínimo 200 caracteres)
+   - MÍNIMO 150 palabras por polo (equivalente a ~750 caracteres)
    - Misma profundidad que si hubiera planetas
+   - Desarrolla: función, manifestación, vivencia, proyección
 
 4. **Polo B (Casa Y):**
-   - Si tiene planetas: Analiza cada planeta individualmente con subapartados
-   - Si está VACÍA: Analiza OBLIGATORIAMENTE el Signo en la cúspide + la posición del Regente de ese signo
-   - MÍNIMO 80 palabras por polo
+   - Si tiene planetas: Analiza CADA planeta individualmente con subapartados extensos (mínimo 400 caracteres por planeta)
+   - Si está VACÍA: Analiza OBLIGATORIAMENTE el Signo en la cúspide (mínimo 300 caracteres) + la posición del Regente de ese signo (mínimo 300 caracteres) + aspectos del regente (mínimo 200 caracteres)
+   - MÍNIMO 150 palabras por polo (equivalente a ~750 caracteres)
    - Misma profundidad que si hubiera planetas
+   - Desarrolla: función, manifestación, vivencia, proyección
 
 5. **Síntesis del Eje:** Tensión y resolución entre ambos polos
+   - Mínimo 300 caracteres
+   - Desarrolla cómo se integran ambos polos, la tensión, y la resolución
 
-LISTA DE EJES A CUBRIR (6 EJES OBLIGATORIOS):
-- Eje I – VII (Encuentro)
-- Eje II – VIII (Posesión/Fusión)
-- Eje III – IX (Pensamiento/Sentido)
-- Eje IV – X (Individuación)
-- Eje V – XI (Creatividad/Red)
-- Eje VI – XII (Orden/Caos)
+LISTA DE EJES A CUBRIR (6 EJES OBLIGATORIOS - MÍNIMO 1200 CARACTERES CADA UNO):
+- Eje I – VII (Encuentro): Mínimo 1200 caracteres
+- Eje II – VIII (Posesión/Fusión): Mínimo 1200 caracteres
+- Eje III – IX (Pensamiento/Sentido): Mínimo 1200 caracteres
+- Eje IV – X (Individuación): Mínimo 1200 caracteres
+- Eje V – XI (Creatividad/Red): Mínimo 1200 caracteres
+- Eje VI – XII (Orden/Caos): Mínimo 1200 caracteres
 
-RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas vacías NO son excusa para escribir menos.
+TOTAL MÍNIMO PARA ESTA SECCIÓN: 8000 caracteres (6 ejes × 1200 + introducción y síntesis)
+
+RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas vacías NO son excusa para escribir menos. El objetivo es 30 páginas. EXPÁNDE cada eje con máxima profundidad.
 """
 
     def _validate_section_content(self, section_id: str, content: str, expected_min_chars: int) -> tuple:
@@ -258,25 +267,37 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
 - RECUERDA: El objetivo es generar un informe de 30 páginas. Cada sección debe ser exhaustiva y detallada.
 """
                 
-                # Llamada a Gemini
-                print(f"[PASO {idx}/{total_sections}] Generando contenido con AI...")
-                response = await self.ai_service.get_chat_response(base_prompt, [])
+                # Llamada a Gemini con reintentos si es demasiado corto
+                max_retries = 2
+                response = ""
+                is_valid = False
                 
-                # Validar contenido generado
-                print(f"[PASO {idx}/{total_sections}] Validando contenido generado...")
-                is_valid, error_msg = self._validate_section_content(
-                    section['id'], 
-                    response, 
-                    section['expected_min_chars']
-                )
+                for attempt in range(max_retries + 1):
+                    print(f"[PASO {idx}/{total_sections}] Generando contenido con AI (intento {attempt + 1}/{max_retries + 1})...")
+                    response = await self.ai_service.get_chat_response(base_prompt, [])
+                    
+                    # Validar contenido generado
+                    print(f"[PASO {idx}/{total_sections}] Validando contenido generado...")
+                    is_valid, error_msg = self._validate_section_content(
+                        section['id'], 
+                        response, 
+                        section['expected_min_chars']
+                    )
+                    
+                    if is_valid:
+                        print(f"[PASO {idx}/{total_sections}] ✅ Confirmado: {len(response)} caracteres generados")
+                        break
+                    else:
+                        if attempt < max_retries:
+                            print(f"[PASO {idx}/{total_sections}] ⚠️ Contenido demasiado corto ({len(response)} chars, esperado: {section['expected_min_chars']})")
+                            print(f"[PASO {idx}/{total_sections}] Reintentando con instrucciones más exigentes...")
+                            # Agregar advertencia más fuerte al prompt
+                            base_prompt += f"\n\n⚠️ ADVERTENCIA CRÍTICA: El contenido anterior fue demasiado corto. DEBES generar AL MENOS {section['expected_min_chars']} caracteres. EXPÁNDE cada concepto con múltiples párrafos. NO RESUMAS."
+                        else:
+                            print(f"[PASO {idx}/{total_sections}] ⚠️ Advertencia de validación después de {max_retries + 1} intentos: {error_msg}")
+                            print(f"[PASO {idx}/{total_sections}] Continuando con contenido generado (puede requerir revisión)")
                 
-                if is_valid:
-                    print(f"[PASO {idx}/{total_sections}] ✅ Confirmado: {len(response)} caracteres generados")
-                    full_report_content.append(f"## {section['title']}\n\n{response}\n\n---\n\n")
-                else:
-                    print(f"[PASO {idx}/{total_sections}] ⚠️ Advertencia de validación: {error_msg}")
-                    print(f"[PASO {idx}/{total_sections}] Continuando con contenido generado (puede requerir revisión)")
-                    full_report_content.append(f"## {section['title']}\n\n{response}\n\n---\n\n")
+                full_report_content.append(f"## {section['title']}\n\n{response}\n\n---\n\n")
                 
                 print(f"[PASO {idx}/{total_sections}] Procediendo al siguiente paso...\n")
                 
