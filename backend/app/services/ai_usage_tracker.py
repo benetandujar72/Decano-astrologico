@@ -147,7 +147,7 @@ async def get_usage_stats(
     
     result = await ai_usage_collection.aggregate(pipeline).to_list(length=1)
     
-    if not result:
+    if not result or not result[0]:
         return {
             "total_actions": 0,
             "total_tokens": 0,

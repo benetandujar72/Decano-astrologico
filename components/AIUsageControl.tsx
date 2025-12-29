@@ -251,7 +251,7 @@ const AIUsageControl: React.FC = () => {
       </div>
 
       {/* Estadísticas Generales */}
-      {!loading && !error && stats && (
+      {!loading && !error && stats && stats.total_actions > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 rounded-lg p-6 border border-purple-500/30">
             <div className="flex items-center justify-between mb-2">
@@ -294,8 +294,22 @@ const AIUsageControl: React.FC = () => {
         </div>
       )}
 
-      {/* Estadísticas por Tipo de Acción */}
-      {!loading && !error && stats && Object.keys(stats.by_action_type).length > 0 && (
+      {/* Mensaje cuando no hay datos */}
+      {!loading && !error && stats && stats.total_actions === 0 && (
+        <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-8 text-center">
+          <Brain className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">No hay datos de uso de IA aún</h3>
+          <p className="text-gray-300 mb-4">
+            Los registros aparecerán aquí después de que se generen informes usando el sistema de generación paso a paso.
+          </p>
+          <p className="text-gray-400 text-sm">
+            Cada vez que se genera un módulo de informe, se registra automáticamente el uso de tokens y el costo estimado.
+          </p>
+        </div>
+      )}
+
+      {/* Estadísticas Generales */}
+      {!loading && !error && stats && stats.total_actions > 0 && (
         <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <Filter className="w-5 h-5 text-purple-400" />
