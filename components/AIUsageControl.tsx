@@ -67,10 +67,14 @@ const AIUsageControl: React.FC = () => {
         const data = await response.json();
         setStats(data);
       } else {
-        throw new Error('Error obteniendo estadísticas');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.detail || `Error HTTP ${response.status}: ${response.statusText}`;
+        console.error('[AIUsageControl] Error obteniendo stats:', errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error('[AIUsageControl] Error en fetchStats:', err);
+      setError(err.message || 'Error obteniendo estadísticas');
     }
   };
 
@@ -92,19 +96,35 @@ const AIUsageControl: React.FC = () => {
         const data = await response.json();
         setHistory(data.records || []);
       } else {
-        throw new Error('Error obteniendo historial');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.detail || `Error HTTP ${response.status}: ${response.statusText}`;
+        console.error('[AIUsageControl] Error obteniendo history:', errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error('[AIUsageControl] Error en fetchHistory:', err);
+      setError(err.message || 'Error obteniendo historial');
     }
   };
 
   useEffect(() => {
     const loadData = async () => {
+      if (!token) {
+        setError('No hay token de autenticación');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       setError(null);
-      await Promise.all([fetchStats(), fetchHistory()]);
-      setLoading(false);
+      
+      try {
+        await Promise.all([fetchStats(), fetchHistory()]);
+      } catch (err) {
+        console.error('[AIUsageControl] Error cargando datos:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
   }, [startDate, endDate, selectedUserId, selectedActionType, currentPage]);
