@@ -55,7 +55,23 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
   // Inicializar sesión al montar
   useEffect(() => {
-    initializeSession();
+    let mounted = true;
+    
+    const init = async () => {
+      try {
+        await initializeSession();
+      } catch (err) {
+        if (mounted) {
+          console.error('[WIZARD] Error en inicialización:', err);
+        }
+      }
+    };
+    
+    init();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const initializeSession = async () => {
@@ -81,13 +97,22 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
 
       const data = await response.json();
+      
+      if (!data.session_id) {
+        throw new Error('No se recibió session_id del servidor');
+      }
+      
+      console.log('[WIZARD] Sesión inicializada:', data.session_id);
+      
+      // Actualizar estado
       setSessionId(data.session_id);
       setModules(data.modules || []);
       setCurrentModuleIndex(0);
       
-      // Generar automáticamente el primer módulo
-      if (data.modules && data.modules.length > 0) {
-        await generateModule(data.modules[0].id);
+      // Generar automáticamente el primer módulo usando el sessionId directamente
+      if (data.session_id && data.modules && data.modules.length > 0) {
+        // Usar el sessionId directamente de la respuesta, no del estado
+        await generateModuleWithSession(data.session_id, data.modules[0].id);
       }
     } catch (err: any) {
       console.error('Error inicializando sesión:', err);
@@ -97,18 +122,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }
   };
 
-  const generateModule = async (moduleId: string) => {
-    if (!sessionId) {
-      setError('No hay sesión activa');
-      return;
-    }
-    
+  const generateModuleWithSession = async (sessionIdToUse: string, moduleId: string) => {
     setIsGenerating(true);
     setError(null);
     setCurrentModuleContent('');
 
     try {
-      console.log(`[WIZARD] Generando módulo: ${moduleId}`);
+      console.log(`[WIZARD] Generando módulo: ${moduleId} con sesión: ${sessionIdToUse}`);
       
       // Crear AbortController para timeout
       const controller = new AbortController();
@@ -121,7 +141,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          session_id: sessionId,
+          session_id: sessionIdToUse,
           module_id: moduleId
         }),
         signal: controller.signal
@@ -162,6 +182,18 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const generateModule = async (moduleId: string) => {
+    // Obtener sessionId del estado actual
+    const currentSessionId = sessionId;
+    if (!currentSessionId) {
+      console.error('[WIZARD] No hay sessionId disponible en el estado');
+      setError('No hay sesión activa. Por favor, cierra y vuelve a abrir el wizard.');
+      return;
+    }
+    
+    await generateModuleWithSession(currentSessionId, moduleId);
   };
 
   const refreshStatus = async () => {
