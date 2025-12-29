@@ -1844,6 +1844,7 @@ ${analysisText}
               setShowReportWizard(false);
               setGeneratedFullReport(null);
             }}
+            autoGenerateAll={true}
           />
         )}
 

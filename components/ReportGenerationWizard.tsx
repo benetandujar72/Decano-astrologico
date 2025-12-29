@@ -13,6 +13,7 @@ interface ReportGenerationWizardProps {
   nombre: string;
   onComplete: (fullReport: string) => void;
   onClose: () => void;
+  autoGenerateAll?: boolean; // Nueva opción para generar todos automáticamente
 }
 
 interface Module {
@@ -39,7 +40,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   cartaData,
   nombre,
   onComplete,
-  onClose
+  onClose,
+  autoGenerateAll = false
 }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -49,6 +51,23 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<GenerationStatus | null>(null);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
+  const [generatedModulesCount, setGeneratedModulesCount] = useState(0);
+  
+  // Estimación de tiempo por módulo (en segundos)
+  const TIME_ESTIMATES: Record<string, number> = {
+    'modulo_1': 300, // 5 minutos
+    'modulo_2_fundamentos': 240, // 4 minutos
+    'modulo_2_personales': 240, // 4 minutos
+    'modulo_2_sociales': 240, // 4 minutos
+    'modulo_2_transpersonales': 300, // 5 minutos
+    'modulo_2_nodos': 180, // 3 minutos
+    'modulo_2_aspectos': 240, // 4 minutos
+    'modulo_2_ejes': 480, // 8 minutos (el más complejo)
+    'modulo_2_sintesis': 240, // 4 minutos
+    'modulo_3_recomendaciones': 240, // 4 minutos
+  };
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const token = localStorage.getItem('fraktal_token');
@@ -111,8 +130,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       
       // Generar automáticamente el primer módulo usando el sessionId directamente
       if (data.session_id && data.modules && data.modules.length > 0) {
-        // Usar el sessionId directamente de la respuesta, no del estado
-        await generateModuleWithSession(data.session_id, data.modules[0].id);
+        if (autoGenerateAll) {
+          // Modo automático: generar todos los módulos sin confirmación
+          await generateAllModulesAutomatically(data.session_id, data.modules);
+        } else {
+          // Modo paso a paso: generar solo el primero
+          await generateModuleWithSession(data.session_id, data.modules[0].id);
+        }
       }
     } catch (err: any) {
       console.error('Error inicializando sesión:', err);
@@ -129,6 +153,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
     try {
       console.log(`[WIZARD] Generando módulo: ${moduleId} con sesión: ${sessionIdToUse}`);
+      
+      const startTime = Date.now();
+      const estimatedTime = TIME_ESTIMATES[moduleId] || 240; // Default 4 minutos
       
       // Crear AbortController para timeout
       const controller = new AbortController();
@@ -148,6 +175,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       });
 
       clearTimeout(timeoutId);
+      
+      const elapsedTime = Math.round((Date.now() - startTime) / 1000);
+      console.log(`[WIZARD] Módulo ${moduleId} generado en ${elapsedTime}s (estimado: ${estimatedTime}s)`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -249,6 +279,54 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }
   };
 
+  const generateAllModulesAutomatically = async (sessionIdToUse: string, modulesList: Module[]) => {
+    setIsAutoGenerating(true);
+    setError(null);
+    setGeneratedModulesCount(0);
+    
+    // Calcular tiempo total estimado
+    const totalEstimatedTime = modulesList.reduce((total, module) => {
+      return total + (TIME_ESTIMATES[module.id] || 240); // Default 4 minutos
+    }, 0);
+    setEstimatedTimeRemaining(totalEstimatedTime);
+    
+    try {
+      for (let i = 0; i < modulesList.length; i++) {
+        const module = modulesList[i];
+        setCurrentModuleIndex(i);
+        setCurrentModuleContent('');
+        
+        // Actualizar tiempo restante
+        const remaining = modulesList.slice(i).reduce((total, m) => {
+          return total + (TIME_ESTIMATES[m.id] || 240);
+        }, 0);
+        setEstimatedTimeRemaining(remaining);
+        
+        console.log(`[WIZARD] Generando módulo ${i + 1}/${modulesList.length}: ${module.id}`);
+        
+        // Generar módulo
+        await generateModuleWithSession(sessionIdToUse, module.id);
+        
+        setGeneratedModulesCount(i + 1);
+        
+        // Pequeño delay entre módulos para no saturar
+        if (i < modulesList.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      // Todos los módulos generados, obtener informe completo
+      await getFullReport();
+      
+    } catch (err: any) {
+      console.error('[WIZARD] Error en generación automática:', err);
+      setError(err.message || 'Error generando módulos automáticamente');
+    } finally {
+      setIsAutoGenerating(false);
+      setEstimatedTimeRemaining(null);
+    }
+  };
+
   const handleNext = async () => {
     if (currentModuleIndex < modules.length - 1) {
       // Avanzar al siguiente módulo y generarlo automáticamente
@@ -256,6 +334,12 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       setCurrentModuleIndex(nextIndex);
       setCurrentModuleContent(''); // Limpiar contenido anterior
       setError(null); // Limpiar errores
+      
+      // Actualizar tiempo estimado restante
+      const remaining = modules.slice(nextIndex).reduce((total, m) => {
+        return total + (TIME_ESTIMATES[m.id] || 240);
+      }, 0);
+      setEstimatedTimeRemaining(remaining);
       
       // Generar automáticamente el siguiente módulo
       const nextModule = modules[nextIndex];
@@ -302,9 +386,19 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-300">
-              Módulo {currentModuleIndex + 1} de {modules.length}
+              {isAutoGenerating 
+                ? `Generando automáticamente: Módulo ${generatedModulesCount + 1} de ${modules.length}`
+                : `Módulo ${currentModuleIndex + 1} de ${modules.length}`
+              }
             </span>
-            <span className="text-sm text-gray-300">{Math.round(progress)}%</span>
+            <div className="flex items-center gap-3">
+              {estimatedTimeRemaining !== null && (
+                <span className="text-sm text-purple-400 font-semibold">
+                  ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
+                </span>
+              )}
+              <span className="text-sm text-gray-300">{Math.round(progress)}%</span>
+            </div>
           </div>
           <div className="w-full bg-gray-700 rounded-full h-2">
             <div
@@ -371,11 +465,26 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
                 </p>
               </div>
 
-              {isGenerating && (
+              {(isGenerating || isAutoGenerating) && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
-                  <p className="text-gray-300 font-semibold text-lg">Generando módulo...</p>
-                  <p className="text-gray-400 text-sm mt-2">Esto puede tardar varios minutos</p>
+                  <p className="text-gray-300 font-semibold text-lg">
+                    {isAutoGenerating 
+                      ? `Generando módulo ${generatedModulesCount + 1} de ${modules.length}...`
+                      : 'Generando módulo...'
+                    }
+                  </p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    {isAutoGenerating 
+                      ? `Proceso automático en curso. Todos los módulos se generarán secuencialmente.`
+                      : 'Esto puede tardar varios minutos'
+                    }
+                  </p>
+                  {estimatedTimeRemaining !== null && (
+                    <p className="text-purple-400 font-semibold mt-3">
+                      ⏱️ Tiempo estimado restante: {formatTimeRemaining(estimatedTimeRemaining)}
+                    </p>
+                  )}
                   <p className="text-gray-500 text-xs mt-4">
                     El sistema está analizando las efemérides y la documentación de Carutti
                   </p>
@@ -413,47 +522,71 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-700 bg-gray-800/50 flex items-center justify-between">
-          <button
-            onClick={handleRegenerate}
-            disabled={isGenerating || !currentModuleContent}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Regenerar Módulo Actual
-          </button>
+        {!isAutoGenerating && (
+          <div className="p-6 border-t border-gray-700 bg-gray-800/50 flex items-center justify-between">
+            <button
+              onClick={handleRegenerate}
+              disabled={isGenerating || !currentModuleContent}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Regenerar Módulo Actual
+            </button>
 
-          <div className="flex items-center gap-3">
-            {!isGenerating && currentModuleContent && !isLastModule && (
-              <button
-                onClick={handleNext}
-                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
-              >
-                Proceder al Siguiente Módulo
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {!isGenerating && currentModuleContent && !isLastModule && (
+                <button
+                  onClick={handleNext}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                >
+                  Proceder al Siguiente Módulo
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
 
-            {isGenerating && (
-              <div className="px-6 py-2 bg-gray-700 text-gray-300 rounded-lg font-semibold flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generando módulo...
-              </div>
-            )}
+              {isGenerating && (
+                <div className="px-6 py-2 bg-gray-700 text-gray-300 rounded-lg font-semibold flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generando módulo...
+                </div>
+              )}
 
-            {!isGenerating && isLastModule && currentModuleContent && (
-              <button
-                onClick={async () => {
-                  await getFullReport();
-                }}
-                className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Finalizar y Generar Informe Completo
-              </button>
-            )}
+              {!isGenerating && isLastModule && currentModuleContent && (
+                <button
+                  onClick={async () => {
+                    await getFullReport();
+                  }}
+                  className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Finalizar y Generar Informe Completo
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Footer para modo automático */}
+        {isAutoGenerating && (
+          <div className="p-6 border-t border-gray-700 bg-gray-800/50">
+            <div className="flex items-center justify-center gap-4">
+              <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+              <div className="text-center">
+                <p className="text-white font-semibold">
+                  Generando automáticamente todos los módulos...
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  {generatedModulesCount} de {modules.length} módulos completados
+                </p>
+                {estimatedTimeRemaining !== null && (
+                  <p className="text-purple-400 text-sm mt-2 font-semibold">
+                    ⏱️ Tiempo restante estimado: {formatTimeRemaining(estimatedTimeRemaining)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

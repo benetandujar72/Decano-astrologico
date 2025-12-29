@@ -27,7 +27,7 @@ app = FastAPI(
 # Configurar CORS
 _cors_origins = os.getenv(
     "CORS_ORIGINS",
-    "https://decano-astrologico.vercel.app,http://localhost:3000,http://127.0.0.1:3000",
+    "https://decano-astrologico.vercel.app,https://app.programafraktal.com,http://localhost:3000,http://127.0.0.1:3000",
 )
 allowed_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
