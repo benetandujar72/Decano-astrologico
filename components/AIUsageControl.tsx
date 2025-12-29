@@ -339,11 +339,18 @@ const AIUsageControl: React.FC = () => {
           Historial de Uso (Trazabilidad Forense)
         </h3>
 
-        {!loading && !error && history.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
+            <span className="ml-3 text-gray-300">Cargando historial...</span>
+          </div>
+        ) : error ? (
+          <p className="text-red-400 text-center py-8">{error}</p>
+        ) : history.length === 0 ? (
           <p className="text-gray-400 text-center py-8">
             No hay registros para mostrar. Los registros aparecerán aquí después de generar informes.
           </p>
-        ) : !loading && !error ? (
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
