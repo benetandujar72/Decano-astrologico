@@ -7,11 +7,12 @@ import {
   TrendingUp, Activity, Settings, ArrowLeft,
   Search, Edit, Trash2, Eye, Plus, Star, Key,
   UserX, UserCheck, ChevronLeft, ChevronRight,
-  Filter, History, Check, AlertCircle
+  Filter, History, Check, AlertCircle, Brain, Zap
 } from 'lucide-react';
 import { ResetPasswordModal, AuditLogsModal } from './UserModals';
 import PromptEditorModal from './PromptEditorModal';
 import UserDetailView from './UserDetailView';
+import AIUsageControl from './AIUsageControl';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -100,7 +101,7 @@ interface SpecializedPrompt {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'invoices' | 'prompts' | 'admin-plans'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'invoices' | 'prompts' | 'admin-plans' | 'ai-usage'>('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -660,7 +661,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
     { id: 'admin-plans', name: 'Mi Plan', icon: Crown },
     { id: 'subscriptions', name: 'Suscripciones', icon: Crown },
     { id: 'invoices', name: 'Facturas', icon: FileText },
-    { id: 'prompts', name: 'Prompts', icon: Settings }
+    { id: 'prompts', name: 'Prompts', icon: Settings },
+    { id: 'ai-usage', name: 'Control IA', icon: Brain }
   ];
 
   return (
@@ -1514,6 +1516,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'ai-usage' && (
+            <AIUsageControl />
           )}
 
           {activeTab === 'invoices' && (

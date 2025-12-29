@@ -2,7 +2,7 @@
 Servicio de IA experta para consultas astrológicas
 Utiliza Google Gemini para responder preguntas sobre informes astrológicos
 """
-from typing import Optional
+from typing import Optional, Dict
 import os
 import google.generativeai as genai
 
@@ -98,22 +98,49 @@ Utiliza este informe como contexto para responder las preguntas del usuario de m
 
             # Obtener respuesta de Gemini
             print(f"🤖 AIExpertService - Generando respuesta con modelo: {self.current_model}")
-            response = await self._generate_async(chat, full_message)
+            response_text, usage_metadata = await self._generate_async(chat, full_message)
+            
+            if usage_metadata:
+                print(f"📊 Tokens usados - Prompt: {usage_metadata.get('prompt_token_count', 0)}, Response: {usage_metadata.get('candidates_token_count', 0)}, Total: {usage_metadata.get('total_token_count', 0)}")
+            
             print(f"✅ AIExpertService - Respuesta generada correctamente con {self.current_model}")
 
-            return response
+            # Almacenar metadata en el objeto para acceso posterior
+            if not hasattr(self, '_last_usage_metadata'):
+                self._last_usage_metadata = {}
+            self._last_usage_metadata = usage_metadata or {}
+
+            return response_text
 
         except Exception as e:
             print(f"❌ Error en AIExpertService.get_chat_response con {self.current_model}: {e}")
             raise Exception(f"Error al obtener respuesta del experto IA: {str(e)}")
+    
+    def get_last_usage_metadata(self) -> Optional[Dict]:
+        """Obtiene la metadata de uso de la última llamada"""
+        return getattr(self, '_last_usage_metadata', None)
 
-    async def _generate_async(self, chat, message: str) -> str:
-        """Wrapper asíncrono para generar respuesta con Gemini"""
+    async def _generate_async(self, chat, message: str) -> tuple[str, Optional[Dict]]:
+        """
+        Wrapper asíncrono para generar respuesta con Gemini
+        Retorna (texto, metadata) donde metadata incluye información de tokens
+        """
         import asyncio
         
         def _sync_generate():
             response = chat.send_message(message)
-            return response.text
+            text = response.text
+            
+            # Extraer información de tokens si está disponible
+            usage_metadata = None
+            if hasattr(response, 'usage_metadata'):
+                usage_metadata = {
+                    'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', 0),
+                    'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', 0),
+                    'total_token_count': getattr(response.usage_metadata, 'total_token_count', 0)
+                }
+            
+            return text, usage_metadata
         
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _sync_generate)

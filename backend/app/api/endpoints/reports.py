@@ -375,8 +375,11 @@ async def generate_module(
         
         # Agregar timeout para evitar que se quede colgado
         import asyncio
+        from app.models.ai_usage_tracking import AIUsageRecord, AIActionType
+        from app.services.ai_usage_tracker import track_ai_usage
+        
         try:
-            content, is_last = await asyncio.wait_for(
+            content, is_last, usage_metadata = await asyncio.wait_for(
                 full_report_service.generate_single_module(
                     session["carta_data"],
                     session["user_name"],
@@ -386,6 +389,27 @@ async def generate_module(
                 timeout=600.0  # 10 minutos máximo por módulo
             )
             print(f"[REPORTS] ✅ Módulo {request.module_id} generado exitosamente. Longitud: {len(content)} caracteres", file=sys.stderr)
+            
+            # Registrar uso de IA
+            try:
+                await track_ai_usage(
+                    user_id=user_id,
+                    user_name=session["user_name"],
+                    action_type=AIActionType.REPORT_MODULE_GENERATION,
+                    model_used=full_report_service.ai_service.current_model,
+                    prompt_tokens=usage_metadata.get('prompt_token_count', 0),
+                    response_tokens=usage_metadata.get('candidates_token_count', 0),
+                    total_tokens=usage_metadata.get('total_token_count', 0),
+                    session_id=request.session_id,
+                    module_id=request.module_id,
+                    metadata={
+                        'content_length': len(content),
+                        'attempts': usage_metadata.get('attempts', 1),
+                        'module_title': next((s['title'] for s in full_report_service._get_sections_definition() if s['id'] == request.module_id), 'Unknown')
+                    }
+                )
+            except Exception as track_err:
+                print(f"[REPORTS] ⚠️ Error registrando uso de IA (continuando): {track_err}", file=sys.stderr)
         except asyncio.TimeoutError:
             print(f"[REPORTS] ❌ Timeout generando módulo {request.module_id} (más de 10 minutos)", file=sys.stderr)
             raise HTTPException(

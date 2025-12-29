@@ -111,7 +111,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         user_name: str, 
         module_id: str,
         previous_modules: List[str] = None
-    ) -> tuple[str, bool]:
+    ) -> tuple[str, bool, Dict]:
         """
         Genera un único módulo del informe.
         
@@ -193,10 +193,17 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
         response = ""
         is_valid = False
         
+        usage_metadata_list = []  # Para acumular metadata de todos los intentos
+        
         for attempt in range(max_retries + 1):
             print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando contenido (intento {attempt + 1}/{max_retries + 1})...")
             try:
                 response = await self.ai_service.get_chat_response(base_prompt, [])
+                
+                # Obtener metadata de tokens
+                last_metadata = self.ai_service.get_last_usage_metadata()
+                if last_metadata:
+                    usage_metadata_list.append(last_metadata)
                 
                 if not response or len(response.strip()) == 0:
                     raise ValueError("La respuesta de la IA está vacía")
@@ -227,7 +234,15 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
         if not response or len(response.strip()) == 0:
             raise ValueError("No se pudo generar contenido para el módulo después de todos los intentos")
         
-        return response, is_last
+        # Calcular total de tokens de todos los intentos
+        total_usage_metadata = {
+            'prompt_token_count': sum(m.get('prompt_token_count', 0) for m in usage_metadata_list),
+            'candidates_token_count': sum(m.get('candidates_token_count', 0) for m in usage_metadata_list),
+            'total_token_count': sum(m.get('total_token_count', 0) for m in usage_metadata_list),
+            'attempts': len(usage_metadata_list)
+        }
+        
+        return response, is_last, total_usage_metadata
 
     def _get_sections_definition(self) -> List[Dict]:
         """Retorna la definición de todas las secciones"""

@@ -9,7 +9,10 @@ import os
 from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user, get_password_hash
 from app.models.subscription import Invoice, Quote, SubscriptionTier
+from app.models.ai_usage_tracking import AIActionType
+from app.services.ai_usage_tracker import get_usage_stats, get_usage_history
 from pydantic import BaseModel
+from typing import Dict, Any
 
 load_dotenv()
 
@@ -32,6 +35,7 @@ payments_collection = db.payments
 invoices_collection = db.invoices
 quotes_collection = db.quotes
 demo_sessions_collection = db.demo_sessions
+ai_usage_collection = db.ai_usage_records
 
 
 def require_admin(current_user: dict = Depends(get_current_user)):
@@ -1261,5 +1265,147 @@ async def grant_admin_plan_access(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error asignando plan: {str(e)}"
+        )
+
+
+# ==================== CONTROL DE TOKENS Y GASTO DE IA ====================
+
+@router.get("/ai-usage/stats")
+async def get_ai_usage_stats(
+    start_date: Optional[str] = Query(None, description="Fecha de inicio (ISO format)"),
+    end_date: Optional[str] = Query(None, description="Fecha de fin (ISO format)"),
+    user_id: Optional[str] = Query(None, description="Filtrar por usuario"),
+    action_type: Optional[str] = Query(None, description="Filtrar por tipo de acción"),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Obtiene estadísticas agregadas de uso de IA y tokens
+    Solo accesible para administradores
+    """
+    try:
+        start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
+        end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else None
+        action = AIActionType(action_type) if action_type else None
+        
+        stats = await get_usage_stats(
+            start_date=start,
+            end_date=end,
+            user_id=user_id,
+            action_type=action
+        )
+        
+        return stats
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato de fecha inválido: {str(e)}"
+        )
+    except Exception as e:
+        print(f"❌ Error obteniendo estadísticas de IA: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo estadísticas: {str(e)}"
+        )
+
+
+@router.get("/ai-usage/history")
+async def get_ai_usage_history(
+    start_date: Optional[str] = Query(None, description="Fecha de inicio (ISO format)"),
+    end_date: Optional[str] = Query(None, description="Fecha de fin (ISO format)"),
+    user_id: Optional[str] = Query(None, description="Filtrar por usuario"),
+    action_type: Optional[str] = Query(None, description="Filtrar por tipo de acción"),
+    limit: int = Query(100, ge=1, le=1000, description="Límite de registros"),
+    skip: int = Query(0, ge=0, description="Registros a saltar"),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Obtiene el historial completo de uso de IA con trazabilidad forense
+    Solo accesible para administradores
+    """
+    try:
+        start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
+        end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else None
+        action = AIActionType(action_type) if action_type else None
+        
+        history = await get_usage_history(
+            start_date=start,
+            end_date=end,
+            user_id=user_id,
+            action_type=action,
+            limit=limit,
+            skip=skip
+        )
+        
+        # Convertir ObjectId a string para JSON
+        for record in history:
+            if '_id' in record:
+                record['_id'] = str(record['_id'])
+            if 'created_at' in record and isinstance(record['created_at'], datetime):
+                record['created_at'] = record['created_at'].isoformat()
+        
+        return {
+            "total": len(history),
+            "limit": limit,
+            "skip": skip,
+            "records": history
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato de fecha inválido: {str(e)}"
+        )
+    except Exception as e:
+        print(f"❌ Error obteniendo historial de IA: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo historial: {str(e)}"
+        )
+
+
+@router.get("/ai-usage/user/{user_id}")
+async def get_user_ai_usage(
+    user_id: str,
+    start_date: Optional[str] = Query(None, description="Fecha de inicio (ISO format)"),
+    end_date: Optional[str] = Query(None, description="Fecha de fin (ISO format)"),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Obtiene el historial de uso de IA de un usuario específico
+    Solo accesible para administradores
+    """
+    try:
+        start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
+        end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else None
+        
+        stats = await get_usage_stats(
+            start_date=start,
+            end_date=end,
+            user_id=user_id
+        )
+        
+        history = await get_usage_history(
+            start_date=start,
+            end_date=end,
+            user_id=user_id,
+            limit=1000
+        )
+        
+        # Convertir ObjectId a string
+        for record in history:
+            if '_id' in record:
+                record['_id'] = str(record['_id'])
+            if 'created_at' in record and isinstance(record['created_at'], datetime):
+                record['created_at'] = record['created_at'].isoformat()
+        
+        return {
+            "user_id": user_id,
+            "stats": stats,
+            "history": history
+        }
+    except Exception as e:
+        print(f"❌ Error obteniendo uso de IA del usuario: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo uso del usuario: {str(e)}"
         )
 
