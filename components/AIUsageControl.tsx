@@ -3,7 +3,7 @@
  * Sistema de trazabilidad forense
  */
 import React, { useState, useEffect } from 'react';
-import { Brain, Zap, DollarSign, TrendingUp, Calendar, User, Filter, Download, RefreshCw } from 'lucide-react';
+import { Brain, Zap, DollarSign, TrendingUp, Calendar, User, Filter, Download, RefreshCw, AlertCircle, History } from 'lucide-react';
 
 interface AIUsageStats {
   total_actions: number;
@@ -190,7 +190,14 @@ const AIUsageControl: React.FC = () => {
 
       {error && (
         <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-400 mb-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-semibold">Error</span>
+          </div>
           <p className="text-red-300">{error}</p>
+          <p className="text-red-400 text-xs mt-2">
+            Revisa la consola del navegador (F12) para más detalles
+          </p>
         </div>
       )}
 
@@ -244,7 +251,7 @@ const AIUsageControl: React.FC = () => {
       </div>
 
       {/* Estadísticas Generales */}
-      {stats && (
+      {!loading && !error && stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 rounded-lg p-6 border border-purple-500/30">
             <div className="flex items-center justify-between mb-2">
@@ -288,7 +295,7 @@ const AIUsageControl: React.FC = () => {
       )}
 
       {/* Estadísticas por Tipo de Acción */}
-      {stats && Object.keys(stats.by_action_type).length > 0 && (
+      {!loading && !error && stats && Object.keys(stats.by_action_type).length > 0 && (
         <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <Filter className="w-5 h-5 text-purple-400" />
@@ -318,9 +325,11 @@ const AIUsageControl: React.FC = () => {
           Historial de Uso (Trazabilidad Forense)
         </h3>
 
-        {history.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">No hay registros para mostrar</p>
-        ) : (
+        {!loading && !error && history.length === 0 ? (
+          <p className="text-gray-400 text-center py-8">
+            No hay registros para mostrar. Los registros aparecerán aquí después de generar informes.
+          </p>
+        ) : !loading && !error ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
