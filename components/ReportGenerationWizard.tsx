@@ -2,7 +2,7 @@
  * Wizard para generación de informes paso a paso
  * Genera cada módulo con confirmación del usuario antes de continuar
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, CheckCircle, Loader2, AlertCircle, 
   FileText, Sparkles, ArrowRight, RefreshCw
@@ -54,6 +54,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
   const [generatedModulesCount, setGeneratedModulesCount] = useState(0);
+
+  const remainingRef = useRef<number>(0);
+  const timerRef = useRef<number | null>(null);
   
   // Estimación de tiempo por módulo (en segundos)
   const TIME_ESTIMATES: Record<string, number> = {
@@ -71,6 +74,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const token = localStorage.getItem('fraktal_token');
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   // Inicializar sesión al montar
   useEffect(() => {
@@ -90,6 +95,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     
     return () => {
       mounted = false;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, []);
 
@@ -146,22 +155,50 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }
   };
 
+  const pollModuleUntilDone = async (sessionIdToUse: string, moduleId: string) => {
+    const start = Date.now();
+    const maxWaitMs = 60 * 30 * 1000; // 30 minutos por módulo como polling (el job sigue en server)
+
+    while (true) {
+      if (Date.now() - start > maxWaitMs) {
+        throw new Error('Tiempo de espera agotado consultando el estado del módulo. Vuelve a intentarlo.');
+      }
+
+      const response = await fetch(`${API_URL}/reports/module-status/${sessionIdToUse}/${moduleId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error consultando estado: HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'done') {
+        return data;
+      }
+
+      if (data.status === 'error') {
+        throw new Error(data.error || 'Error generando el módulo en el servidor');
+      }
+
+      await sleep(2500);
+    }
+  };
+
   const generateModuleWithSession = async (sessionIdToUse: string, moduleId: string) => {
     setIsGenerating(true);
     setError(null);
     setCurrentModuleContent('');
 
     try {
-      console.log(`[WIZARD] Generando módulo: ${moduleId} con sesión: ${sessionIdToUse}`);
-      
-      const startTime = Date.now();
-      const estimatedTime = TIME_ESTIMATES[moduleId] || 240; // Default 4 minutos
-      
-      // Crear AbortController para timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutos
-      
-      const response = await fetch(`${API_URL}/reports/generate-module`, {
+      console.log(`[WIZARD] Encolando módulo: ${moduleId} con sesión: ${sessionIdToUse}`);
+
+      // Encolar job (respuesta rápida, sin Pending infinito)
+      const queueResponse = await fetch(`${API_URL}/reports/queue-module`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,30 +207,24 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         body: JSON.stringify({
           session_id: sessionIdToUse,
           module_id: moduleId
-        }),
-        signal: controller.signal
+        })
       });
 
-      clearTimeout(timeoutId);
-      
-      const elapsedTime = Math.round((Date.now() - startTime) / 1000);
-      console.log(`[WIZARD] Módulo ${moduleId} generado en ${elapsedTime}s (estimado: ${estimatedTime}s)`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.detail || `Error HTTP ${response.status}: ${response.statusText}`;
-        console.error(`[WIZARD] Error en respuesta:`, errorMessage);
+      if (!queueResponse.ok) {
+        const errorData = await queueResponse.json().catch(() => ({}));
+        const errorMessage = errorData.detail || `Error encolando módulo: HTTP ${queueResponse.status}`;
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      console.log(`[WIZARD] Módulo generado exitosamente. Longitud: ${data.length} caracteres`);
-      
-      if (!data.content || data.content.trim().length === 0) {
+      // Polling hasta que el job termine
+      console.log(`[WIZARD] Polling estado del módulo: ${moduleId}`);
+      const result = await pollModuleUntilDone(sessionIdToUse, moduleId);
+
+      if (!result.content || String(result.content).trim().length === 0) {
         throw new Error('El módulo se generó pero está vacío. Por favor regenera.');
       }
-      
-      setCurrentModuleContent(data.content);
+
+      setCurrentModuleContent(result.content);
       
       // Actualizar estado
       await refreshStatus();
@@ -202,9 +233,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       console.error('[WIZARD] Error generando módulo:', err);
       
       let errorMessage = 'Error generando módulo';
-      if (err.name === 'AbortError') {
-        errorMessage = 'La generación tardó demasiado tiempo (más de 10 minutos). Por favor intenta regenerar este módulo.';
-      } else if (err.message) {
+      if (err.message) {
         errorMessage = err.message;
       }
       
@@ -302,16 +331,17 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     const totalEstimatedTime = modulesList.reduce((total, module) => {
       return total + (TIME_ESTIMATES[module.id] || 240); // Default 4 minutos
     }, 0);
+    remainingRef.current = totalEstimatedTime;
     setEstimatedTimeRemaining(totalEstimatedTime);
-    
-    // Timer para actualizar tiempo restante en tiempo real
-    let timeElapsed = 0;
-    const timerInterval = setInterval(() => {
-      timeElapsed += 1;
-      const currentRemaining = estimatedTimeRemaining !== null 
-        ? Math.max(0, estimatedTimeRemaining - timeElapsed)
-        : 0;
-      setEstimatedTimeRemaining(currentRemaining);
+
+    // Timer estable (sin closure sobre state)
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    timerRef.current = window.setInterval(() => {
+      remainingRef.current = Math.max(0, remainingRef.current - 1);
+      setEstimatedTimeRemaining(remainingRef.current);
     }, 1000);
     
     try {
@@ -324,33 +354,33 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const remaining = modulesList.slice(i).reduce((total, m) => {
           return total + (TIME_ESTIMATES[m.id] || 240);
         }, 0);
-        setEstimatedTimeRemaining(remaining);
-        timeElapsed = 0; // Reset contador para este módulo
+        remainingRef.current = remaining;
+        setEstimatedTimeRemaining(remainingRef.current);
         
         console.log(`[WIZARD] Generando módulo ${i + 1}/${modulesList.length}: ${module.id}`);
         console.log(`[WIZARD] Tiempo estimado para este módulo: ${TIME_ESTIMATES[module.id] || 240}s`);
         
-        const moduleStartTime = Date.now();
-        
         // Generar módulo
         await generateModuleWithSession(sessionIdToUse, module.id);
         
-        const moduleElapsed = Math.round((Date.now() - moduleStartTime) / 1000);
-        console.log(`[WIZARD] Módulo ${i + 1} completado en ${moduleElapsed}s`);
-        
         setGeneratedModulesCount(i + 1);
-        
-        // Actualizar tiempo restante restando el tiempo real usado
-        const newRemaining = remaining - moduleElapsed;
-        setEstimatedTimeRemaining(Math.max(0, newRemaining));
+
+        // Recalcular remaining en base a módulos pendientes (evita drift)
+        const remainingAfter = modulesList.slice(i + 1).reduce((total, m) => {
+          return total + (TIME_ESTIMATES[m.id] || 240);
+        }, 0);
+        remainingRef.current = remainingAfter;
+        setEstimatedTimeRemaining(remainingRef.current);
         
         // Pequeño delay entre módulos para no saturar
         if (i < modulesList.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
-      
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       
       // Todos los módulos generados, obtener informe completo
       await getFullReport();
@@ -358,7 +388,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     } catch (err: any) {
       console.error('[WIZARD] Error en generación automática:', err);
       setError(err.message || 'Error generando módulos automáticamente');
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     } finally {
       setIsAutoGenerating(false);
       setEstimatedTimeRemaining(null);

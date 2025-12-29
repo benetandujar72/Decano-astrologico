@@ -143,7 +143,14 @@ Utiliza este informe como contexto para responder las preguntas del usuario de m
             return text, usage_metadata
         
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _sync_generate)
+        timeout_seconds = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "240"))
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _sync_generate),
+                timeout=timeout_seconds,
+            )
+        except asyncio.TimeoutError as e:
+            raise Exception(f"Timeout de Gemini ({timeout_seconds}s) esperando respuesta") from e
 
     async def generate_welcome_message(self, user_name: Optional[str] = None) -> str:
         """

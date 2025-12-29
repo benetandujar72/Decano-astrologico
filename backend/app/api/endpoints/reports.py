@@ -4,7 +4,7 @@ Endpoints para generación de informes astrológicos en múltiples formatos
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Any, Dict
 from app.api.endpoints.auth import get_current_user
 from app.services.report_generators import generate_report
 from app.services.subscription_permissions import require_feature
@@ -15,6 +15,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import sys
+import asyncio
 
 load_dotenv()
 
@@ -72,6 +73,151 @@ class GenerateModuleRequest(BaseModel):
     """Genera un módulo específico del informe"""
     session_id: str = Field(..., description="ID de la sesión de generación")
     module_id: str = Field(..., description="ID del módulo a generar")
+
+async def _set_module_run_fields(session_id: str, module_id: str, fields: Dict[str, Any]) -> None:
+    """Actualiza campos del estado de ejecución de un módulo en Mongo."""
+    await report_sessions_collection.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {f"module_runs.{module_id}.{k}": v for k, v in fields.items()}}
+    )
+
+async def _push_module_step(session_id: str, module_id: str, step: str, ok: bool = True, note: Optional[str] = None, meta: Optional[Dict[str, Any]] = None) -> None:
+    """Agrega un paso de progreso (forense) al módulo."""
+    step_doc: Dict[str, Any] = {
+        "step": step,
+        "ok": ok,
+        "at": datetime.utcnow().isoformat(),
+    }
+    if note:
+        step_doc["note"] = note
+    if meta:
+        step_doc["meta"] = meta
+    await report_sessions_collection.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$push": {f"module_runs.{module_id}.steps": step_doc},
+         "$set": {f"module_runs.{module_id}.updated_at": datetime.utcnow().isoformat()}}
+    )
+
+async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None:
+    """Job asíncrono: genera un módulo sin mantener la conexión HTTP abierta."""
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            return
+        if str(session.get("user_id")) != user_id:
+            return
+
+        sections = full_report_service._get_sections_definition()
+        module_index = next((i for i, s in enumerate(sections) if s["id"] == module_id), -1)
+        if module_index == -1:
+            await _set_module_run_fields(session_id, module_id, {"status": "error", "error": "Módulo no encontrado"})
+            return
+
+        await _set_module_run_fields(session_id, module_id, {
+            "status": "running",
+            "started_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "error": None,
+        })
+        await _push_module_step(session_id, module_id, "job_started", True)
+
+        previous_modules = list(session.get("generated_modules", {}).keys())
+
+        # Hook de progreso desde el generador
+        async def progress_cb(step: str, meta: Optional[Dict[str, Any]] = None) -> None:
+            await _push_module_step(session_id, module_id, step, True, meta=meta)
+
+        # Ejecutar con timeout alto (la clave es NO mantener HTTP abierto)
+        content, is_last, usage_metadata = await asyncio.wait_for(
+            full_report_service.generate_single_module(
+                session["carta_data"],
+                session["user_name"],
+                module_id,
+                previous_modules,
+                progress_cb=progress_cb,
+            ),
+            timeout=60 * 20,  # 20 minutos por módulo como job
+        )
+
+        # Guardar módulo generado
+        generated_modules = session.get("generated_modules", {})
+        generated_modules[module_id] = {
+            "content": content,
+            "generated_at": datetime.utcnow().isoformat(),
+            "length": len(content),
+        }
+
+        update_data: Dict[str, Any] = {
+            "generated_modules": generated_modules,
+            "current_module_index": module_index + 1,
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+
+        if is_last:
+            update_data["status"] = "completed"
+            all_content = []
+            for s in sections:
+                if s["id"] in generated_modules:
+                    module_data = generated_modules[s["id"]]
+                    if isinstance(module_data, dict) and "content" in module_data:
+                        all_content.append(f"## {s['title']}\n\n{module_data['content']}\n\n---\n\n")
+                    elif isinstance(module_data, str):
+                        all_content.append(f"## {s['title']}\n\n{module_data}\n\n---\n\n")
+            update_data["full_report"] = "\n".join(all_content)
+            update_data["full_report_length"] = len(update_data["full_report"])
+
+        await report_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": update_data},
+        )
+
+        # Marcar job como completado
+        await _set_module_run_fields(session_id, module_id, {
+            "status": "done",
+            "length": len(content),
+            "done_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        await _push_module_step(session_id, module_id, "job_done", True, meta={"length": len(content)})
+
+        # Registrar uso de IA (no bloquea el job si falla)
+        try:
+            from app.models.ai_usage_tracking import AIActionType
+            from app.services.ai_usage_tracker import track_ai_usage
+
+            await track_ai_usage(
+                user_id=user_id,
+                user_name=session["user_name"],
+                action_type=AIActionType.REPORT_MODULE_GENERATION,
+                model_used=full_report_service.ai_service.current_model,
+                prompt_tokens=usage_metadata.get("prompt_token_count", 0),
+                response_tokens=usage_metadata.get("candidates_token_count", 0),
+                total_tokens=usage_metadata.get("total_token_count", 0),
+                session_id=session_id,
+                module_id=module_id,
+                metadata={
+                    "content_length": len(content),
+                    "attempts": usage_metadata.get("attempts", 1),
+                    "module_title": next((s["title"] for s in sections if s["id"] == module_id), "Unknown"),
+                },
+            )
+        except Exception as track_err:
+            await _push_module_step(session_id, module_id, "ai_usage_track_failed", False, note=str(track_err))
+
+    except asyncio.TimeoutError:
+        await _set_module_run_fields(session_id, module_id, {
+            "status": "error",
+            "error": "Timeout generando módulo (job)",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        await _push_module_step(session_id, module_id, "timeout", False)
+    except Exception as e:
+        await _set_module_run_fields(session_id, module_id, {
+            "status": "error",
+            "error": f"{type(e).__name__}: {str(e)}",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        await _push_module_step(session_id, module_id, "exception", False, note=f"{type(e).__name__}: {str(e)}")
 
 
 @router.post("/generate")
@@ -309,6 +455,7 @@ async def start_report_generation(
         "user_name": user_name,
         "carta_data": request.carta_data,
         "generated_modules": {},
+        "module_runs": {},
         "current_module_index": 0,
         "status": "in_progress",
         "created_at": datetime.utcnow().isoformat(),
@@ -323,6 +470,108 @@ async def start_report_generation(
         "total_modules": len(modules_list),
         "modules": modules_list,
         "current_module": modules_list[0] if modules_list else None
+    }
+
+@router.post("/queue-module")
+async def queue_module(
+    request: GenerateModuleRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Encola (inicia) la generación de un módulo como job en background.
+    Responde rápido para evitar Pending/timeout del navegador/proxy.
+    """
+    user_id = str(current_user.get("_id"))
+
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(request.session_id)})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+
+    sections = full_report_service._get_sections_definition()
+    module_index = next((i for i, s in enumerate(sections) if s["id"] == request.module_id), -1)
+    if module_index == -1:
+        raise HTTPException(status_code=400, detail=f"Módulo {request.module_id} no encontrado")
+
+    # Verificar que módulos previos estén generados
+    if module_index > 0:
+        previous_modules = [s["id"] for s in sections[:module_index]]
+        generated = session.get("generated_modules", {})
+        missing = [m for m in previous_modules if m not in generated]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Debes generar primero los módulos anteriores: {', '.join(missing)}")
+
+    # Si ya generado, devolver estado inmediato
+    if request.module_id in session.get("generated_modules", {}):
+        module_data = session["generated_modules"][request.module_id]
+        length = module_data.get("length", 0) if isinstance(module_data, dict) else len(str(module_data))
+        return {"session_id": request.session_id, "module_id": request.module_id, "status": "done", "length": length}
+
+    # Evitar duplicar jobs si ya está en running/queued
+    module_runs = session.get("module_runs", {}) or {}
+    current_run = module_runs.get(request.module_id, {}) if isinstance(module_runs, dict) else {}
+    if current_run.get("status") in {"queued", "running"}:
+        return {"session_id": request.session_id, "module_id": request.module_id, "status": current_run.get("status", "queued")}
+
+    # Marcar como queued y lanzar tarea
+    await _set_module_run_fields(request.session_id, request.module_id, {
+        "status": "queued",
+        "queued_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+        "steps": [],
+        "error": None,
+    })
+    await _push_module_step(request.session_id, request.module_id, "queued", True)
+
+    asyncio.create_task(_run_module_job(request.session_id, request.module_id, user_id))
+
+    return {"session_id": request.session_id, "module_id": request.module_id, "status": "queued"}
+
+@router.get("/module-status/{session_id}/{module_id}")
+async def get_module_status(
+    session_id: str,
+    module_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Devuelve el estado de un módulo (y el contenido si ya está generado)."""
+    user_id = str(current_user.get("_id"))
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+
+    module_runs = session.get("module_runs", {}) or {}
+    run_info = module_runs.get(module_id, {}) if isinstance(module_runs, dict) else {}
+
+    # Si ya está generado, incluir contenido
+    generated_modules = session.get("generated_modules", {}) or {}
+    if module_id in generated_modules:
+        module_data = generated_modules[module_id]
+        content = module_data.get("content") if isinstance(module_data, dict) else str(module_data)
+        length = module_data.get("length", len(content)) if isinstance(module_data, dict) else len(content)
+        return {
+            "session_id": session_id,
+            "module_id": module_id,
+            "status": "done",
+            "length": length,
+            "content": content,
+            "run": run_info,
+        }
+
+    return {
+        "session_id": session_id,
+        "module_id": module_id,
+        "status": run_info.get("status", "not_started"),
+        "error": run_info.get("error"),
+        "run": run_info,
     }
 
 

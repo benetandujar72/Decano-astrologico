@@ -2,7 +2,7 @@
 import os
 import asyncio
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable, Awaitable
 from app.services.documentation_service import documentation_service
 from app.services.ai_expert_service import get_ai_expert_service
 
@@ -110,7 +110,8 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         chart_data: Dict, 
         user_name: str, 
         module_id: str,
-        previous_modules: List[str] = None
+        previous_modules: List[str] = None,
+        progress_cb: Optional[Callable[[str, Optional[Dict]], Awaitable[None]]] = None,
     ) -> tuple[str, bool, Dict]:
         """
         Genera un único módulo del informe.
@@ -120,10 +121,21 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         """
         if previous_modules is None:
             previous_modules = []
+
+        async def _progress(step: str, meta: Optional[Dict] = None) -> None:
+            if progress_cb:
+                try:
+                    await progress_cb(step, meta)
+                except Exception:
+                    # Nunca romper generación por fallo de tracking
+                    pass
         
         # Asegurar documentación cargada
         if not self.doc_service.is_loaded:
-            self.doc_service.load_documentation()
+            await _progress("docs_load_start")
+            # Evitar bloquear el event loop con lectura/parseo de PDFs
+            await asyncio.to_thread(self.doc_service.load_documentation)
+            await _progress("docs_load_done")
         
         # Obtener la sección correspondiente
         sections = self._get_sections_definition()
@@ -136,10 +148,13 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         is_last = (module_index == len(sections) - 1)
         
         print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando: {section['title']}")
+        await _progress("module_begin", {"index": module_index + 1, "total": len(sections), "title": section["title"]})
         
         # Obtener contexto de documentación
         max_context_chars = 10000 if section['requires_template'] else 8000
+        await _progress("context_fetch_start", {"max_chars": max_context_chars})
         context = self.doc_service.get_context_for_module(section['id'], max_chars=max_context_chars)
+        await _progress("context_fetch_done", {"context_chars": len(context)})
         
         # Construir prompt
         base_prompt = f"""
@@ -197,6 +212,7 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
         
         for attempt in range(max_retries + 1):
             print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando contenido (intento {attempt + 1}/{max_retries + 1})...")
+            await _progress("ai_attempt_start", {"attempt": attempt + 1, "max_attempts": max_retries + 1})
             try:
                 response = await self.ai_service.get_chat_response(base_prompt, [])
                 
@@ -209,6 +225,7 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
                     raise ValueError("La respuesta de la IA está vacía")
                 
                 print(f"[MÓDULO {module_index + 1}/{len(sections)}] Respuesta recibida: {len(response)} caracteres")
+                await _progress("ai_attempt_done", {"attempt": attempt + 1, "response_chars": len(response)})
                 
                 is_valid, error_msg = self._validate_section_content(
                     section['id'], 
@@ -218,8 +235,10 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
                 
                 if is_valid:
                     print(f"[MÓDULO {module_index + 1}/{len(sections)}] ✅ Confirmado: {len(response)} caracteres")
+                    await _progress("validation_ok", {"response_chars": len(response)})
                     break
                 else:
+                    await _progress("validation_failed", {"reason": error_msg, "response_chars": len(response), "expected_min_chars": section["expected_min_chars"]})
                     if attempt < max_retries:
                         print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto ({len(response)} chars, esperado: {section['expected_min_chars']}). Reintentando...")
                         base_prompt += f"\n\n⚠️ ADVERTENCIA CRÍTICA: El contenido anterior fue demasiado corto. DEBES generar AL MENOS {section['expected_min_chars']} caracteres. EXPÁNDE cada concepto con múltiples párrafos. NO RESUMAS."
@@ -227,6 +246,7 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
                         print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto después de {max_retries + 1} intentos. Usando contenido generado.")
             except Exception as e:
                 print(f"[MÓDULO {module_index + 1}/{len(sections)}] ❌ Error en intento {attempt + 1}: {type(e).__name__}: {e}")
+                await _progress("ai_attempt_error", {"attempt": attempt + 1, "error": f"{type(e).__name__}: {str(e)}"})
                 if attempt == max_retries:
                     raise Exception(f"Error generando módulo después de {max_retries + 1} intentos: {str(e)}")
                 # Continuar al siguiente intento
@@ -241,6 +261,8 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
             'total_token_count': sum(m.get('total_token_count', 0) for m in usage_metadata_list),
             'attempts': len(usage_metadata_list)
         }
+
+        await _progress("module_done", {"response_chars": len(response), "attempts": total_usage_metadata.get("attempts", 0)})
         
         return response, is_last, total_usage_metadata
 
