@@ -304,24 +304,45 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }, 0);
     setEstimatedTimeRemaining(totalEstimatedTime);
     
+    // Timer para actualizar tiempo restante en tiempo real
+    let timeElapsed = 0;
+    const timerInterval = setInterval(() => {
+      timeElapsed += 1;
+      const currentRemaining = estimatedTimeRemaining !== null 
+        ? Math.max(0, estimatedTimeRemaining - timeElapsed)
+        : 0;
+      setEstimatedTimeRemaining(currentRemaining);
+    }, 1000);
+    
     try {
       for (let i = 0; i < modulesList.length; i++) {
         const module = modulesList[i];
         setCurrentModuleIndex(i);
         setCurrentModuleContent('');
         
-        // Actualizar tiempo restante
+        // Calcular tiempo restante basado en módulos pendientes
         const remaining = modulesList.slice(i).reduce((total, m) => {
           return total + (TIME_ESTIMATES[m.id] || 240);
         }, 0);
         setEstimatedTimeRemaining(remaining);
+        timeElapsed = 0; // Reset contador para este módulo
         
         console.log(`[WIZARD] Generando módulo ${i + 1}/${modulesList.length}: ${module.id}`);
+        console.log(`[WIZARD] Tiempo estimado para este módulo: ${TIME_ESTIMATES[module.id] || 240}s`);
+        
+        const moduleStartTime = Date.now();
         
         // Generar módulo
         await generateModuleWithSession(sessionIdToUse, module.id);
         
+        const moduleElapsed = Math.round((Date.now() - moduleStartTime) / 1000);
+        console.log(`[WIZARD] Módulo ${i + 1} completado en ${moduleElapsed}s`);
+        
         setGeneratedModulesCount(i + 1);
+        
+        // Actualizar tiempo restante restando el tiempo real usado
+        const newRemaining = remaining - moduleElapsed;
+        setEstimatedTimeRemaining(Math.max(0, newRemaining));
         
         // Pequeño delay entre módulos para no saturar
         if (i < modulesList.length - 1) {
@@ -329,12 +350,15 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         }
       }
       
+      clearInterval(timerInterval);
+      
       // Todos los módulos generados, obtener informe completo
       await getFullReport();
       
     } catch (err: any) {
       console.error('[WIZARD] Error en generación automática:', err);
       setError(err.message || 'Error generando módulos automáticamente');
+      clearInterval(timerInterval);
     } finally {
       setIsAutoGenerating(false);
       setEstimatedTimeRemaining(null);
