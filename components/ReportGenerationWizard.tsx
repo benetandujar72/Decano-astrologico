@@ -73,7 +73,15 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   };
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  const token = localStorage.getItem('fraktal_token');
+  
+  // Función para obtener el token dinámicamente (por si expira durante la generación)
+  const getToken = () => {
+    const token = localStorage.getItem('fraktal_token');
+    if (!token) {
+      throw new Error('No estás autenticado. Por favor, inicia sesión nuevamente.');
+    }
+    return token;
+  };
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -107,6 +115,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     setError(null);
     
     try {
+      const token = getToken();
       const response = await fetch(`${API_URL}/reports/start-generation`, {
         method: 'POST',
         headers: {
@@ -164,6 +173,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         throw new Error('Tiempo de espera agotado consultando el estado del módulo. Vuelve a intentarlo.');
       }
 
+      const token = getToken();
       const response = await fetch(`${API_URL}/reports/module-status/${sessionIdToUse}/${moduleId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -171,6 +181,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       });
 
       if (!response.ok) {
+        // Si es un error 401, el token expiró
+        if (response.status === 401) {
+          throw new Error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente y vuelve a intentar.');
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || `Error consultando estado: HTTP ${response.status}`);
       }
@@ -203,6 +217,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       console.log(`[WIZARD] Encolando módulo: ${moduleId} con sesión: ${sessionIdToUse}`);
 
       // Encolar job (respuesta rápida, sin Pending infinito)
+      const token = getToken();
       const queueResponse = await fetch(`${API_URL}/reports/queue-module`, {
         method: 'POST',
         headers: {
@@ -216,6 +231,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       });
 
       if (!queueResponse.ok) {
+        // Si es un error 401, el token expiró
+        if (queueResponse.status === 401) {
+          throw new Error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente y vuelve a intentar.');
+        }
         const errorData = await queueResponse.json().catch(() => ({}));
         const errorMessage = errorData.detail || `Error encolando módulo: HTTP ${queueResponse.status}`;
         throw new Error(errorMessage);
@@ -243,6 +262,17 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
       
       setError(errorMessage);
+      
+      // Si el error es de autenticación, detener la generación automática
+      if (errorMessage.includes('sesión ha expirado') || errorMessage.includes('No estás autenticado')) {
+        setIsAutoGenerating(false);
+        // Opcional: cerrar el wizard después de un delay para que el usuario vea el mensaje
+        setTimeout(() => {
+          if (onClose) {
+            onClose();
+          }
+        }, 5000);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -278,6 +308,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     if (!sessionId) return;
     
     try {
+      const token = getToken();
       const response = await fetch(`${API_URL}/reports/generation-status/${sessionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -288,9 +319,15 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const data = await response.json();
         setStatus(data);
         setCurrentModuleIndex(data.current_module_index);
+      } else if (response.status === 401) {
+        // Token expirado, no hacer nada para evitar loops
+        console.warn('[WIZARD] Token expirado al refrescar estado');
       }
-    } catch (err) {
-      console.error('Error refrescando estado:', err);
+    } catch (err: any) {
+      // Ignorar errores de token expirado en refreshStatus
+      if (!err.message?.includes('No estás autenticado')) {
+        console.error('Error refrescando estado:', err);
+      }
     }
   };
 
@@ -301,6 +338,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     setError(null);
     
     try {
+      const token = getToken();
       const response = await fetch(`${API_URL}/reports/generation-full-report/${sessionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`

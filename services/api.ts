@@ -35,7 +35,23 @@ export const api = {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formData
     });
-    if (!res.ok) throw new Error('Error de autenticación');
+    
+    if (!res.ok) {
+      // Intentar obtener el mensaje de error del servidor
+      let errorMessage = 'Error de autenticación';
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch {
+        // Si no se puede parsear el JSON, usar el mensaje por defecto
+        if (res.status === 401) {
+          errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
+        } else if (res.status >= 500) {
+          errorMessage = 'Error del servidor. Por favor intenta más tarde.';
+        }
+      }
+      throw new Error(errorMessage);
+    }
     return res.json();
   },
 

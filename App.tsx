@@ -249,7 +249,12 @@ const App: React.FC = () => {
           const updatedUser = { ...user, subscription_tier: sub.tier };
           setCurrentUser(updatedUser);
           localStorage.setItem('fraktal_user', JSON.stringify(updatedUser));
-        }).catch(console.error);
+        }).catch(err => {
+          // Silenciar errores 401 durante la carga inicial si el token expiró
+          if (err.message !== 'Unauthorized') {
+            console.error('Error obteniendo suscripción:', err);
+          }
+        });
       }
       setMode(AppMode.INPUT);
       loadChartsFromApi();
@@ -284,18 +289,28 @@ const App: React.FC = () => {
             console.log(`✅ Prompt especializado cargado: ${techniqueType}`);
             return;
           }
-        } catch (e) {
-          console.warn(`⚠️ No se pudo cargar prompt especializado para ${techniqueType}, usando prompt por defecto:`, e);
+        } catch (e: any) {
+          // Silenciar errores 401 durante la carga inicial
+          if (e?.message && !e.message.includes('Unauthorized')) {
+            console.warn(`⚠️ No se pudo cargar prompt especializado para ${techniqueType}, usando prompt por defecto:`, e);
+          }
         }
       }
 
       // Si no hay técnica o falló la carga, usar el prompt por defecto
-      const promptData = await api.getSystemPrompt();
-      if (promptData && promptData.content) {
-        setSystemInstruction(promptData.content);
+      try {
+        const promptData = await api.getSystemPrompt();
+        if (promptData && promptData.content) {
+          setSystemInstruction(promptData.content);
+        }
+      } catch (e: any) {
+        // Silenciar errores 401 durante la carga inicial
+        if (e?.message && !e.message.includes('Unauthorized')) {
+          console.warn("Usando prompt por defecto (Offline o Error DB)", e);
+        }
       }
     } catch (e) {
-      console.warn("Usando prompt por defecto (Offline o Error DB)", e);
+      // Error general silenciado
     }
   };
 
@@ -312,8 +327,11 @@ const App: React.FC = () => {
         const res = await api.login(authForm.username, authForm.password);
         finishLogin(res);
       }
-    } catch (err) {
-      setErrorMsg('Error en credenciales o conexión.');
+    } catch (err: any) {
+      // Mostrar el mensaje de error específico si está disponible
+      const errorMessage = err?.message || 'Error en credenciales o conexión.';
+      setErrorMsg(errorMessage);
+      console.error('Error de autenticación:', err);
     } finally {
       setIsAuthLoading(false);
     }
