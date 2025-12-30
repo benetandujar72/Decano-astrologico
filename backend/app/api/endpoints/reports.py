@@ -128,6 +128,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             await _push_module_step(session_id, module_id, step, True, meta=meta)
 
         # Ejecutar con timeout alto (la clave es NO mantener HTTP abierto)
+        # Aumentado a 40 minutos para módulos complejos que pueden tardar más
         content, is_last, usage_metadata = await asyncio.wait_for(
             full_report_service.generate_single_module(
                 session["carta_data"],
@@ -136,7 +137,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                 previous_modules,
                 progress_cb=progress_cb,
             ),
-            timeout=60 * 20,  # 20 minutos por módulo como job
+            timeout=60 * 40,  # 40 minutos por módulo como job (aumentado de 20)
         )
 
         # Guardar módulo generado
@@ -207,7 +208,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
     except asyncio.TimeoutError:
         await _set_module_run_fields(session_id, module_id, {
             "status": "error",
-            "error": "Timeout generando módulo (job)",
+            "error": "Timeout generando módulo (job). El módulo tardó más de 40 minutos. Puedes intentar regenerarlo.",
             "updated_at": datetime.utcnow().isoformat(),
         })
         await _push_module_step(session_id, module_id, "timeout", False)
@@ -512,10 +513,20 @@ async def queue_module(
         return {"session_id": request.session_id, "module_id": request.module_id, "status": "done", "length": length}
 
     # Evitar duplicar jobs si ya está en running/queued
+    # Pero permitir reintento si está en error (especialmente después de timeout)
     module_runs = session.get("module_runs", {}) or {}
     current_run = module_runs.get(request.module_id, {}) if isinstance(module_runs, dict) else {}
-    if current_run.get("status") in {"queued", "running"}:
-        return {"session_id": request.session_id, "module_id": request.module_id, "status": current_run.get("status", "queued")}
+    current_status = current_run.get("status")
+    if current_status in {"queued", "running"}:
+        return {"session_id": request.session_id, "module_id": request.module_id, "status": current_status}
+    # Si está en error, permitir reintento limpiando el estado anterior
+    if current_status == "error":
+        # Limpiar el estado de error para permitir reintento
+        await _set_module_run_fields(request.session_id, request.module_id, {
+            "status": None,
+            "error": None,
+            "updated_at": datetime.utcnow().isoformat(),
+        })
 
     # Marcar como queued y lanzar tarea
     await _set_module_run_fields(request.session_id, request.module_id, {

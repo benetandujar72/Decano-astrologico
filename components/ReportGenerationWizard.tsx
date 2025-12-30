@@ -157,7 +157,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
   const pollModuleUntilDone = async (sessionIdToUse: string, moduleId: string) => {
     const start = Date.now();
-    const maxWaitMs = 60 * 30 * 1000; // 30 minutos por módulo como polling (el job sigue en server)
+    const maxWaitMs = 60 * 45 * 1000; // 45 minutos por módulo como polling (aumentado de 30 para dar más margen al job de 40 min)
 
     while (true) {
       if (Date.now() - start > maxWaitMs) {
@@ -182,7 +182,12 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
 
       if (data.status === 'error') {
-        throw new Error(data.error || 'Error generando el módulo en el servidor');
+        const errorMsg = data.error || 'Error generando el módulo en el servidor';
+        // Si es un timeout, permitir reintento con mensaje más claro
+        if (errorMsg.includes('Timeout') || errorMsg.includes('timeout')) {
+          throw new Error(`${errorMsg} Puedes intentar regenerar este módulo.`);
+        }
+        throw new Error(errorMsg);
       }
 
       await sleep(2500);
