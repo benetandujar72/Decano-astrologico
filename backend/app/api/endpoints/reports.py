@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 import sys
 import asyncio
+import uuid
 
 load_dotenv()
 
@@ -65,6 +66,11 @@ class ReportRequest(BaseModel):
 
 class StartReportGenerationRequest(BaseModel):
     """Inicia una sesión de generación de informe paso a paso"""
+    carta_data: dict = Field(..., description="Datos completos de la carta astral")
+    nombre: str = Field(default="", description="Nombre del consultante")
+
+class QueueFullReportRequest(BaseModel):
+    """Inicia y encola la generación completa del informe (todos los módulos)"""
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
 
@@ -136,6 +142,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                 module_id,
                 previous_modules,
                 progress_cb=progress_cb,
+                chart_facts=session.get("chart_facts"),
             ),
             timeout=60 * 40,  # 40 minutos por módulo como job (aumentado de 20)
         )
@@ -219,6 +226,94 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             "updated_at": datetime.utcnow().isoformat(),
         })
         await _push_module_step(session_id, module_id, "exception", False, note=f"{type(e).__name__}: {str(e)}")
+
+
+async def _run_full_report_job(session_id: str, user_id: str, job_id: str) -> None:
+    """
+    Job batch asíncrono: genera TODOS los módulos en orden, con checkpoints en Mongo.
+    Reutiliza la misma lógica de `_run_module_job` para mantener rigor, validaciones y trazabilidad.
+    """
+    try:
+        # Marcar batch como running
+        await report_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {
+                "batch_job": {
+                    "job_id": job_id,
+                    "status": "running",
+                    "started_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat(),
+                    "error": None,
+                },
+                "updated_at": datetime.utcnow().isoformat(),
+            }}
+        )
+
+        sections = full_report_service._get_sections_definition()
+
+        for section in sections:
+            module_id = section["id"]
+
+            # Releer sesión para ver progreso real
+            session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+            if not session:
+                return
+            if str(session.get("user_id")) != user_id:
+                return
+
+            # Si ya está generado, saltar
+            generated_modules = session.get("generated_modules", {}) or {}
+            if module_id in generated_modules:
+                continue
+
+            # Lanzar y esperar el job del módulo (secuencial)
+            await _run_module_job(session_id, module_id, user_id)
+
+            # Si falló, cortar el batch
+            session_after = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+            if not session_after:
+                return
+            run_info = (session_after.get("module_runs", {}) or {}).get(module_id, {}) or {}
+            if run_info.get("status") == "error":
+                err = run_info.get("error") or "Error desconocido"
+                await report_sessions_collection.update_one(
+                    {"_id": ObjectId(session_id)},
+                    {"$set": {
+                        "status": "error",
+                        "updated_at": datetime.utcnow().isoformat(),
+                        "batch_job.status": "error",
+                        "batch_job.error": err,
+                        "batch_job.updated_at": datetime.utcnow().isoformat(),
+                    }}
+                )
+                return
+
+        # Si llegamos aquí, todo OK (el último módulo ya habrá marcado completed)
+        await report_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {
+                "batch_job.status": "done",
+                "batch_job.done_at": datetime.utcnow().isoformat(),
+                "batch_job.updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+            }}
+        )
+
+    except Exception as e:
+        # Nunca dejar el batch sin marcar (observabilidad)
+        try:
+            await report_sessions_collection.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {
+                    "status": "error",
+                    "updated_at": datetime.utcnow().isoformat(),
+                    "batch_job.status": "error",
+                    "batch_job.error": f"{type(e).__name__}: {str(e)}",
+                    "batch_job.updated_at": datetime.utcnow().isoformat(),
+                }}
+            )
+        except Exception:
+            pass
 
 
 @router.post("/generate")
@@ -455,6 +550,8 @@ async def start_report_generation(
         "user_id": user_id,
         "user_name": user_name,
         "carta_data": request.carta_data,
+        # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
+        "chart_facts": full_report_service.build_chart_facts(request.carta_data),
         "generated_modules": {},
         "module_runs": {},
         "current_module_index": 0,
@@ -471,6 +568,59 @@ async def start_report_generation(
         "total_modules": len(modules_list),
         "modules": modules_list,
         "current_module": modules_list[0] if modules_list else None
+    }
+
+
+@router.post("/queue-full-report")
+async def queue_full_report(
+    request: QueueFullReportRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Inicia una sesión y encola la generación COMPLETA del informe (todos los módulos) en background.
+    Devuelve rápido `session_id` + `job_id` para que el frontend haga polling de estado.
+    """
+    user_id = str(current_user.get("_id"))
+    user_name = request.nombre or current_user.get('full_name') or current_user.get('username') or "Consultante"
+
+    sections = full_report_service._get_sections_definition()
+    modules_list = [{"id": s["id"], "title": s["title"], "expected_min_chars": s["expected_min_chars"]} for s in sections]
+
+    job_id = str(uuid.uuid4())
+
+    session_data = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "carta_data": request.carta_data,
+        # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
+        "chart_facts": full_report_service.build_chart_facts(request.carta_data),
+        "generated_modules": {},
+        "module_runs": {},
+        "current_module_index": 0,
+        "status": "in_progress",
+        "batch_job": {
+            "job_id": job_id,
+            "status": "queued",
+            "queued_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "error": None,
+        },
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    result = await report_sessions_collection.insert_one(session_data)
+    session_id = str(result.inserted_id)
+
+    # Lanzar batch job
+    asyncio.create_task(_run_full_report_job(session_id, user_id, job_id))
+
+    return {
+        "session_id": session_id,
+        "job_id": job_id,
+        "total_modules": len(modules_list),
+        "modules": modules_list,
+        "status": "queued",
     }
 
 @router.post("/queue-module")
@@ -644,7 +794,8 @@ async def generate_module(
                     session["carta_data"],
                     session["user_name"],
                     request.module_id,
-                    previous_modules
+                    previous_modules,
+                    chart_facts=session.get("chart_facts"),
                 ),
                 timeout=600.0  # 10 minutos máximo por módulo
             )

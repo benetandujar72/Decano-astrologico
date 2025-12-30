@@ -19,7 +19,9 @@ router = APIRouter()
 # Configuración de seguridad
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Aumentado para procesos largos (generación de informes 30 páginas puede tardar > 30 min)
+# Si se quiere más seguridad, implementar refresh token en lugar de ampliar el access token.
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "240"))
 
 # Usar bcrypt_sha256 para evitar el límite de 72 bytes de bcrypt.
 # Mantener bcrypt en la lista para verificar hashes antiguos.

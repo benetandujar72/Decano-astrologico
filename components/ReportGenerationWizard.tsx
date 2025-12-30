@@ -116,7 +116,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reports/start-generation`, {
+      // Modo "un clic": encolar generación completa en backend (batch job)
+      const url = autoGenerateAll ? `${API_URL}/reports/queue-full-report` : `${API_URL}/reports/start-generation`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,8 +151,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       // Generar automáticamente el primer módulo usando el sessionId directamente
       if (data.session_id && data.modules && data.modules.length > 0) {
         if (autoGenerateAll) {
-          // Modo automático: generar todos los módulos sin confirmación
-          await generateAllModulesAutomatically(data.session_id, data.modules);
+          // Modo "un clic": el backend genera todo en background; aquí solo hacemos polling y al final descargamos
+          await startAutoGenerationPolling(data.session_id, data.modules);
         } else {
           // Modo paso a paso: generar solo el primero
           await generateModuleWithSession(data.session_id, data.modules[0].id);
@@ -319,6 +321,11 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const data = await response.json();
         setStatus(data);
         setCurrentModuleIndex(data.current_module_index);
+        // Progreso: contar módulos generados
+        if (Array.isArray(data.modules)) {
+          const generated = data.modules.filter((m: any) => m && m.is_generated).length;
+          setGeneratedModulesCount(generated);
+        }
       } else if (response.status === 401) {
         // Token expirado, no hacer nada para evitar loops
         console.warn('[WIZARD] Token expirado al refrescar estado');
@@ -327,6 +334,84 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       // Ignorar errores de token expirado en refreshStatus
       if (!err.message?.includes('No estás autenticado')) {
         console.error('Error refrescando estado:', err);
+      }
+    }
+  };
+
+  const startAutoGenerationPolling = async (sessionIdToUse: string, modulesList: Module[]) => {
+    setIsAutoGenerating(true);
+    setError(null);
+    setGeneratedModulesCount(0);
+
+    // Calcular tiempo total estimado (solo UX)
+    const totalEstimatedTime = modulesList.reduce((total, module) => {
+      return total + (TIME_ESTIMATES[module.id] || 240);
+    }, 0);
+    remainingRef.current = totalEstimatedTime;
+    setEstimatedTimeRemaining(totalEstimatedTime);
+
+    // Timer estable
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    timerRef.current = window.setInterval(() => {
+      remainingRef.current = Math.max(0, remainingRef.current - 1);
+      setEstimatedTimeRemaining(remainingRef.current);
+    }, 1000);
+
+    // Poll de estado hasta completion/error
+    const start = Date.now();
+    const maxWaitMs = 60 * 180 * 1000; // 3h defensivo para batch completo
+
+    try {
+      while (true) {
+        if (Date.now() - start > maxWaitMs) {
+          throw new Error('Tiempo de espera agotado generando el informe completo. Inténtalo de nuevo.');
+        }
+
+        // refrescar estado
+        await refreshStatus();
+
+        // leer status actual desde storage local (puede ir con un tick de retraso)
+        // hacemos una consulta directa para decisión (evita depender de state async)
+        const token = getToken();
+        const res = await fetch(`${API_URL}/reports/generation-status/${sessionIdToUse}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente y vuelve a intentar.');
+          }
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Error consultando estado: HTTP ${res.status}`);
+        }
+        const data = await res.json();
+
+        if (data.status === 'error') {
+          throw new Error('Error generando el informe en el servidor. Revisa el panel y reintenta.');
+        }
+
+        if (data.status === 'completed' || data.has_full_report) {
+          // Descargar informe completo y cerrar wizard
+          await getFullReport();
+          setIsAutoGenerating(false);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          return;
+        }
+
+        await sleep(3000);
+      }
+    } catch (err: any) {
+      console.error('[WIZARD] Error en auto-generación:', err);
+      setError(err.message || 'Error generando el informe completo');
+      setIsAutoGenerating(false);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     }
   };

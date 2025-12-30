@@ -31,6 +31,9 @@ class DocumentationService:
 
         self.index: Dict[str, str] = {} # Filename -> extracted text
         self.is_loaded = False
+        # Cache simple de contextos por módulo/tópico para evitar recomputar en cada request
+        # Key: (kind, key, max_chars) -> context str
+        self._context_cache: Dict[tuple, str] = {}
         print(f"📚 DocumentationService inicializado con ruta: {self.docs_path}")
 
     def load_documentation(self, force_reload: bool = False):
@@ -39,6 +42,8 @@ class DocumentationService:
         """
         if self.is_loaded and not force_reload:
             return
+        # Si recargamos, invalidar caches
+        self._context_cache = {}
 
         if not os.path.exists(self.docs_path):
             print(f"⚠️ Aviso: Directorio de documentación no encontrado en {self.docs_path}")
@@ -87,6 +92,11 @@ class DocumentationService:
         """
         if not self.is_loaded:
             self.load_documentation()
+
+        cache_key = ("topic", (topic or "").lower(), int(max_chars))
+        cached = self._context_cache.get(cache_key)
+        if cached:
+            return cached
 
         context = ""
         
@@ -194,7 +204,9 @@ class DocumentationService:
                 relevant_text = doc_content[:remaining_chars]
             
             context += f"--- DOCUMENTO: {filename} ---\n{relevant_text[:remaining_chars]}\n\n"
-                
+        
+        # Guardar en cache
+        self._context_cache[cache_key] = context
         return context
 
     def get_context_for_module(self, module_id: str, max_chars: int = 10000) -> str:
@@ -217,7 +229,13 @@ class DocumentationService:
         }
         
         topic = module_to_topic.get(module_id, "general")
-        return self.get_context_for_topic(topic, max_chars)
+        cache_key = ("module", module_id, int(max_chars))
+        cached = self._context_cache.get(cache_key)
+        if cached:
+            return cached
+        ctx = self.get_context_for_topic(topic, max_chars)
+        self._context_cache[cache_key] = ctx
+        return ctx
 
     def get_all_context_summary(self, max_per_doc: int = 2000) -> str:
         """Retorna un resumen de todos los documentos disponibles."""

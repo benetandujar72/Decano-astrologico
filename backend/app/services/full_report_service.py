@@ -2,6 +2,7 @@
 import os
 import asyncio
 import re
+import json
 from typing import Dict, List, Optional, Callable, Awaitable
 from app.services.documentation_service import documentation_service
 from app.services.ai_expert_service import get_ai_expert_service
@@ -105,6 +106,132 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         
         return True, ""
 
+    def build_chart_facts(self, chart_data: Dict) -> Dict:
+        """
+        Construye un set compacto de 'facts' a partir de carta_data para reducir tokens de prompt.
+        Diseñado para ser robusto ante variaciones de shape (usa .get y fallbacks).
+        """
+        if not isinstance(chart_data, dict):
+            return {"raw_type": str(type(chart_data))}
+
+        datos_entrada = chart_data.get("datos_entrada") or {}
+        planetas = chart_data.get("planetas") or chart_data.get("planets") or {}
+        casas = chart_data.get("casas") or chart_data.get("houses") or []
+        angulos = chart_data.get("angulos") or chart_data.get("angles") or {}
+        aspectos = chart_data.get("aspectos") or chart_data.get("aspects") or []
+
+        # Reducir planetas a campos típicos
+        planetas_compact: Dict[str, Dict] = {}
+        if isinstance(planetas, dict):
+            for nombre, pos in planetas.items():
+                if not isinstance(pos, dict):
+                    planetas_compact[str(nombre)] = {"raw": str(pos)[:120]}
+                    continue
+                planetas_compact[str(nombre)] = {
+                    "signo": pos.get("signo") or pos.get("zodiac_sign") or "",
+                    "casa": pos.get("casa") or pos.get("house") or "",
+                    "grado": pos.get("grado") or pos.get("degree") or pos.get("lon") or "",
+                    "retrogrado": pos.get("retrogrado") or pos.get("retro") or False,
+                    "texto": pos.get("texto") or "",
+                }
+
+        # Reducir casas a (numero, signo, regente) si existen
+        casas_compact: List[Dict] = []
+        if isinstance(casas, list):
+            for c in casas:
+                if not isinstance(c, dict):
+                    continue
+                casas_compact.append({
+                    "casa": c.get("casa") or c.get("numero") or c.get("house") or "",
+                    "signo": c.get("signo") or c.get("zodiac_sign") or "",
+                    "grado": c.get("grado") or c.get("degree") or c.get("lon") or "",
+                    "regente": c.get("regente") or "",
+                })
+
+        # Reducir ángulos típicos (ascendente, medio_cielo, etc.)
+        angulos_compact: Dict[str, Dict] = {}
+        if isinstance(angulos, dict):
+            for k in ["ascendente", "medio_cielo", "descendente", "fondo_cielo", "parte_fortuna"]:
+                v = angulos.get(k)
+                if isinstance(v, dict):
+                    angulos_compact[k] = {
+                        "signo": v.get("signo") or "",
+                        "grado": v.get("grado") or v.get("lon") or "",
+                        "texto": v.get("texto") or "",
+                    }
+
+        # Aspectos: mantener solo elementos más útiles si es lista de dicts
+        aspectos_compact: List[Dict] = []
+        if isinstance(aspectos, list):
+            for a in aspectos[:200]:  # cap defensivo
+                if not isinstance(a, dict):
+                    continue
+                aspectos_compact.append({
+                    "p1": a.get("planeta1") or a.get("p1") or a.get("from") or "",
+                    "p2": a.get("planeta2") or a.get("p2") or a.get("to") or "",
+                    "tipo": a.get("tipo") or a.get("aspect") or "",
+                    "orbe": a.get("orbe") or a.get("orb") or "",
+                })
+
+        return {
+            "datos_entrada": datos_entrada,
+            "planetas": planetas_compact,
+            "casas": casas_compact,
+            "angulos": angulos_compact,
+            "aspectos": aspectos_compact,
+        }
+
+    def _facts_for_module(self, chart_facts: Dict, module_id: str) -> Dict:
+        """
+        Devuelve un subconjunto de facts relevante por módulo para recortar tokens.
+        """
+        datos = chart_facts.get("datos_entrada", {})
+        planetas = chart_facts.get("planetas", {}) or {}
+        casas = chart_facts.get("casas", []) or []
+        angulos = chart_facts.get("angulos", {}) or {}
+        aspectos = chart_facts.get("aspectos", []) or []
+
+        def pick_planets(names: List[str]) -> Dict:
+            out = {}
+            for n in names:
+                if n in planetas:
+                    out[n] = planetas[n]
+            return out
+
+        if module_id == "modulo_1":
+            # Para balance/modalidades no hay garantía de campos; dar planetas + ángulos básicos
+            return {"datos_entrada": datos, "angulos": angulos, "planetas": planetas}
+        if module_id == "modulo_2_fundamentos":
+            return {"datos_entrada": datos, "angulos": angulos, "planetas": pick_planets(["Sol", "Luna", "Ascendente"])}
+        if module_id == "modulo_2_personales":
+            return {"datos_entrada": datos, "planetas": pick_planets(["Mercurio", "Venus", "Marte"])}
+        if module_id == "modulo_2_sociales":
+            return {"datos_entrada": datos, "planetas": pick_planets(["Júpiter", "Jupiter", "Saturno"])}
+        if module_id == "modulo_2_transpersonales":
+            return {"datos_entrada": datos, "planetas": pick_planets(["Urano", "Neptuno", "Plutón", "Pluton"])}
+        if module_id == "modulo_2_nodos":
+            return {"datos_entrada": datos, "planetas": pick_planets(["Nodo Norte", "Nodo Sur", "Nodo_Norte", "Nodo_Sur"]), "aspectos": aspectos}
+        if module_id == "modulo_2_aspectos":
+            return {"datos_entrada": datos, "planetas": planetas, "aspectos": aspectos}
+        if module_id == "modulo_2_ejes":
+            return {"datos_entrada": datos, "planetas": planetas, "casas": casas, "angulos": angulos}
+        if module_id in {"modulo_2_sintesis", "modulo_3_recomendaciones"}:
+            return {"datos_entrada": datos, "planetas": planetas, "casas": casas, "angulos": angulos, "aspectos": aspectos}
+
+        return chart_facts
+
+    def _format_facts_for_prompt(self, facts: Dict, max_chars: int = 12000) -> str:
+        """
+        Convierte facts a JSON compacto con límite defensivo.
+        """
+        try:
+            txt = json.dumps(facts, ensure_ascii=False, separators=(",", ":"), default=str)
+        except Exception:
+            txt = str(facts)
+        if len(txt) > max_chars:
+            return txt[:max_chars] + "\n\n[TRUNCADO: facts excedían el máximo permitido]"
+        return txt
+
     async def generate_single_module(
         self, 
         chart_data: Dict, 
@@ -112,6 +239,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         module_id: str,
         previous_modules: List[str] = None,
         progress_cb: Optional[Callable[[str, Optional[Dict]], Awaitable[None]]] = None,
+        chart_facts: Optional[Dict] = None,
     ) -> tuple[str, bool, Dict]:
         """
         Genera un único módulo del informe.
@@ -155,6 +283,11 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         await _progress("context_fetch_start", {"max_chars": max_context_chars})
         context = self.doc_service.get_context_for_module(section['id'], max_chars=max_context_chars)
         await _progress("context_fetch_done", {"context_chars": len(context)})
+
+        # Facts compactos (reduce tokens y latencia manteniendo rigor)
+        effective_facts = chart_facts if isinstance(chart_facts, dict) and chart_facts else self.build_chart_facts(chart_data)
+        module_facts = self._facts_for_module(effective_facts, module_id)
+        facts_text = self._format_facts_for_prompt(module_facts, max_chars=12000 if section['requires_template'] else 8000)
         
         # Construir prompt
         base_prompt = f"""
@@ -168,7 +301,7 @@ CONTEXTO DE DOCUMENTACIÓN (Base de Conocimiento Carutti):
 {context}
 
 DATOS DE LA CARTA:
-{str(chart_data)}
+{facts_text}
 
 DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD (CRÍTICO PARA 30 PÁGINAS):
 - PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA
@@ -214,7 +347,29 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
             print(f"[MÓDULO {module_index + 1}/{len(sections)}] Generando contenido (intento {attempt + 1}/{max_retries + 1})...")
             await _progress("ai_attempt_start", {"attempt": attempt + 1, "max_attempts": max_retries + 1})
             try:
-                response = await self.ai_service.get_chat_response(base_prompt, [])
+                # Primer intento: prompt completo (docs + facts + reglas)
+                # Reintentos: preferir "continuation" para evitar repetir todo el prompt (más rápido y barato)
+                if attempt == 0:
+                    attempt_prompt = base_prompt
+                else:
+                    attempt_prompt = f"""
+CONTINÚA Y EXPANDE la salida anterior SIN reescribir desde cero.
+
+OBJETIVO: cumplir estrictamente con los criterios de validación y la extensión mínima.
+- Mantén el mismo tono y rigor.
+- Añade profundidad ensayística (mecánica, psicología, vivencia, proyección, evolución).
+- Completa explícitamente lo que falte (ej.: ejes faltantes, Polo A/B, o 'Pregunta para reflexionar').
+- NO elimines contenido previo: solo amplía y completa.
+
+SALIDA ANTERIOR (para expandir):
+{response}
+
+REGLAS CRÍTICAS:
+- EXTENSIÓN MÍNIMA OBLIGATORIA: {section['expected_min_chars']} caracteres.
+- Debe incluir OBLIGATORIAMENTE al final: \"Pregunta para reflexionar: ...\"
+- Usa lenguaje de posibilidad: \"tiende a\", \"puede\", \"frecuentemente\".
+"""
+                response = await self.ai_service.get_chat_response(attempt_prompt, [])
                 
                 # Obtener metadata de tokens
                 last_metadata = self.ai_service.get_last_usage_metadata()
@@ -241,7 +396,7 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
                     await _progress("validation_failed", {"reason": error_msg, "response_chars": len(response), "expected_min_chars": section["expected_min_chars"]})
                     if attempt < max_retries:
                         print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto ({len(response)} chars, esperado: {section['expected_min_chars']}). Reintentando...")
-                        base_prompt += f"\n\n⚠️ ADVERTENCIA CRÍTICA: El contenido anterior fue demasiado corto. DEBES generar AL MENOS {section['expected_min_chars']} caracteres. EXPÁNDE cada concepto con múltiples párrafos. NO RESUMAS."
+                        # En reintento no inflamos el base_prompt; la instrucción de continuación ya fuerza expansión.
                     else:
                         print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto después de {max_retries + 1} intentos. Usando contenido generado.")
             except Exception as e:
