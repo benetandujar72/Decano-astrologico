@@ -166,6 +166,47 @@ async def docs_fs_check(
     }
 
 
+@router.get("/docs/fs-ls")
+async def docs_fs_ls(
+    path: str = Query("/app", description="Ruta a listar dentro del contenedor (por defecto /app)"),
+    admin: dict = Depends(require_admin),
+):
+    """
+    Diagnóstico sin shell: lista entradas (archivos/carpetas) de una ruta del contenedor.
+    Solo admin.
+    """
+    norm = (path or "").strip() or "/app"
+    # Permitimos /app y también /opt/render/project/src para casos donde Render no copia a /app
+    allowed_prefixes = ("/app", "/opt/render/project/src")
+    if not norm.startswith(allowed_prefixes):
+        raise HTTPException(status_code=400, detail="Ruta no permitida. Usa /app o /opt/render/project/src")
+
+    exists = os.path.exists(norm)
+    is_dir = os.path.isdir(norm)
+    entries = []
+    if exists and is_dir:
+        try:
+            for name in sorted(os.listdir(norm))[:200]:
+                full = os.path.join(norm, name)
+                entries.append(
+                    {
+                        "name": name,
+                        "is_dir": os.path.isdir(full),
+                        "is_file": os.path.isfile(full),
+                    }
+                )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error listando ruta: {type(e).__name__}: {str(e)}")
+
+    return {
+        "path": norm,
+        "exists": exists,
+        "is_dir": is_dir,
+        "entries": entries,
+        "cwd": os.getcwd(),
+    }
+
+
 # ==================== GESTIÓN DE USUARIOS ====================
 
 @router.get("/users")
