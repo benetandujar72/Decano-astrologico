@@ -34,9 +34,14 @@ class DocumentationService:
             # Asumiendo que estamos en app/services, subir dos niveles a backend, luego uno a Decano...
             # Ajustar según estructura real: backend/app/services -> backend/ -> Decano.../documentacion
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            # Subir un nivel más para salir de backend si folder está en root
-            root_dir = os.path.dirname(base_dir) 
-            self.docs_path = os.getenv("DOCS_PATH", os.path.join(root_dir, "documentacion"))
+            # En contenedor normalmente base_dir=/app; en dev, a veces hay que subir un nivel.
+            env_docs = os.getenv("DOCS_PATH")
+            if env_docs:
+                self.docs_path = env_docs
+            else:
+                candidate_1 = os.path.join(base_dir, "documentacion")  # /app/documentacion (container)
+                candidate_2 = os.path.join(os.path.dirname(base_dir), "documentacion")  # repo root/documentacion (dev)
+                self.docs_path = candidate_1 if os.path.exists(candidate_1) else candidate_2
 
         self.index: Dict[str, str] = {} # Filename -> extracted text
         self.is_loaded = False

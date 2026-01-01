@@ -10,7 +10,7 @@ COPY requirements.txt .
 # Instalar dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código
+# Copiar código (incluye backend/documentacion)
 COPY . .
 
 # Exponer puerto

@@ -6,6 +6,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta
 from typing import List, Optional
 import os
+import uuid
+import asyncio
 from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user, get_password_hash
 from app.models.subscription import Invoice, Quote, SubscriptionTier
@@ -36,6 +38,7 @@ invoices_collection = db.invoices
 quotes_collection = db.quotes
 demo_sessions_collection = db.demo_sessions
 ai_usage_collection = db.ai_usage_records
+doc_ingest_jobs_collection = db.documentation_ingest_jobs
 
 
 def require_admin(current_user: dict = Depends(get_current_user)):
@@ -46,6 +49,90 @@ def require_admin(current_user: dict = Depends(get_current_user)):
             detail="Se requieren permisos de administrador"
         )
     return current_user
+
+
+# ==================== DOCUMENTACIÓN (INGESTA A BD) ====================
+
+class DocsIngestRequest(BaseModel):
+    version: Optional[str] = None  # si no se indica, se usa DOCS_VERSION o una versión auto
+    docs_path: Optional[str] = None  # si no se indica, se usa DOCS_PATH o el default del script
+    db_name: str = "fraktal"
+    chunk_size: int = 1400
+    overlap: int = 250
+
+
+@router.post("/docs/ingest")
+async def ingest_docs_to_db(
+    request: DocsIngestRequest,
+    admin: dict = Depends(require_admin),
+):
+    """
+    Lanza una ingesta de PDFs -> MongoDB SIN necesidad de Shell en Render.
+    Se ejecuta en background y devuelve job_id para polling.
+    """
+    mongo_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI")
+    if not mongo_url:
+        raise HTTPException(status_code=500, detail="Falta MONGODB_URI/MONGODB_URL en el servidor")
+
+    job_id = str(uuid.uuid4())
+    version = (request.version or os.getenv("DOCS_VERSION") or f"prod_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}").strip()
+    docs_path = (request.docs_path or os.getenv("DOCS_PATH") or "").strip() or None
+
+    job_doc = {
+        "job_id": job_id,
+        "status": "queued",
+        "version": version,
+        "docs_path": docs_path,
+        "db_name": request.db_name,
+        "chunk_size": request.chunk_size,
+        "overlap": request.overlap,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+        "created_by": admin.get("username") or admin.get("email"),
+        "error": None,
+        "result": None,
+    }
+    await doc_ingest_jobs_collection.insert_one(job_doc)
+
+    async def _run() -> None:
+        await doc_ingest_jobs_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "running", "updated_at": datetime.utcnow().isoformat()}},
+        )
+        try:
+            from app.scripts.ingest_documentation import run_ingest
+
+            # Ejecutar en thread para no bloquear el event loop
+            result = await asyncio.to_thread(
+                run_ingest,
+                mongo_url=mongo_url,
+                db_name=request.db_name,
+                docs_path=docs_path or os.getenv("DOCS_PATH") or "/app/documentacion",
+                version=version,
+                chunk_size=request.chunk_size,
+                overlap=request.overlap,
+            )
+            await doc_ingest_jobs_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": "done", "result": result, "updated_at": datetime.utcnow().isoformat(), "done_at": datetime.utcnow().isoformat()}},
+            )
+        except Exception as e:
+            await doc_ingest_jobs_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": "error", "error": f"{type(e).__name__}: {str(e)}", "updated_at": datetime.utcnow().isoformat()}},
+            )
+
+    asyncio.create_task(_run())
+
+    return {"job_id": job_id, "status": "queued", "version": version}
+
+
+@router.get("/docs/ingest-status/{job_id}")
+async def get_docs_ingest_status(job_id: str, admin: dict = Depends(require_admin)):
+    job = await doc_ingest_jobs_collection.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+    return job
 
 
 # ==================== GESTIÓN DE USUARIOS ====================

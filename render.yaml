@@ -9,6 +9,7 @@ services:
     region: oregon # o usa 'frankfurt' para Europa
     plan: free # Cambia a 'starter' si necesitas más recursos
     branch: main # Rama de GitHub a deployar
+    # Backend vive en /backend (dockerContext=backend). La documentación está dentro de backend/documentacion.
     rootDir: backend # Directorio del backend
     dockerfilePath: ./Dockerfile
     dockerContext: ./

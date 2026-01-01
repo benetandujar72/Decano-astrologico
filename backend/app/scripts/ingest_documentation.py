@@ -121,61 +121,43 @@ def build_context_for_topic(index: Dict[str, str], topic: str, max_chars: int) -
     return ctx
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--docs-path", default=None, help="Ruta al directorio con PDFs (default: DOCS_PATH o ../documentacion)")
-    parser.add_argument("--db", default="fraktal", help="Nombre de base de datos Mongo (default: fraktal)")
-    parser.add_argument("--version", default=None, help="Versión de docs (default: DOCS_VERSION o hash combinado)")
-    parser.add_argument("--chunk-size", type=int, default=1400)
-    parser.add_argument("--overlap", type=int, default=250)
-    args = parser.parse_args()
-
-    mongo_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI")
-    if not mongo_url:
-        raise SystemExit("Falta MONGODB_URL/MONGODB_URI en el entorno.")
-
+def run_ingest(
+    *,
+    mongo_url: str,
+    db_name: str,
+    docs_path: str,
+    version: str,
+    chunk_size: int = 1400,
+    overlap: int = 250,
+) -> Dict[str, Any]:
+    """
+    Ejecuta la ingesta programáticamente (usable desde endpoints admin sin Shell).
+    Retorna un resumen con conteos.
+    """
     mongodb_options: Dict[str, Any] = {"serverSelectionTimeoutMS": 5000, "connectTimeoutMS": 10000}
     if "mongodb+srv://" in mongo_url or "mongodb.net" in mongo_url:
         mongodb_options.update({"tls": True, "tlsAllowInvalidCertificates": True})
 
     client = MongoClient(mongo_url, **mongodb_options)
-    db = client[args.db]
+    db = client[db_name]
     col_sources = db.documentation_sources
     col_chunks = db.documentation_chunks
     col_module_contexts = db.documentation_module_contexts
 
-    # Resolver docs_path
-    if args.docs_path:
-        docs_path = args.docs_path
-    else:
-        docs_path = os.getenv("DOCS_PATH")
-        if not docs_path:
-            # backend/app/scripts -> backend/app -> backend -> root
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            backend_dir = os.path.dirname(base_dir)
-            root_dir = os.path.dirname(backend_dir)
-            docs_path = os.path.join(root_dir, "documentacion")
-
     pdf_files = sorted(glob.glob(os.path.join(docs_path, "*.pdf")))
     if not pdf_files:
-        raise SystemExit(f"No se encontraron PDFs en {docs_path}")
+        raise RuntimeError(f"No se encontraron PDFs en {docs_path}")
 
-    # Calcular versión por defecto como hash combinado de hashes de archivo
-    per_file_hashes = [(os.path.basename(p), sha256_file(p)) for p in pdf_files]
-    combined = hashlib.sha256(("|".join([f"{n}:{h}" for n, h in per_file_hashes])).encode("utf-8")).hexdigest()[:16]
-    version = args.version or os.getenv("DOCS_VERSION") or f"docs_{combined}"
-
-    print(f"[INGEST] docs_path={docs_path}")
-    print(f"[INGEST] version={version}")
-    print(f"[INGEST] PDFs={len(pdf_files)}")
-
-    # 1) Ingesta de sources + chunks
     index: Dict[str, str] = {}
+    total_chunks = 0
+    total_chars = 0
+
     for path in pdf_files:
         filename = os.path.basename(path)
         file_hash = sha256_file(path)
         text, pages = extract_text_from_pdf(path)
         index[filename] = text
+        total_chars += len(text)
 
         now = datetime.utcnow().isoformat()
         src_doc = {
@@ -188,9 +170,8 @@ def main() -> None:
         }
         col_sources.update_one({"filename": filename, "version": version}, {"$set": src_doc}, upsert=True)
 
-        # regenerar chunks de ese source/version
         col_chunks.delete_many({"filename": filename, "version": version})
-        chunks = chunk_text(text, chunk_size=args.chunk_size, overlap=args.overlap)
+        chunks = chunk_text(text, chunk_size=chunk_size, overlap=overlap)
         if chunks:
             bulk = []
             for i, ch in enumerate(chunks):
@@ -205,10 +186,8 @@ def main() -> None:
                     }
                 )
             col_chunks.insert_many(bulk)
+            total_chunks += len(chunks)
 
-        print(f"[INGEST] ✅ {filename}: pages={pages}, chars={len(text)}, chunks={len(chunks)}")
-
-    # 2) Precomputar contextos por módulo
     module_to_topic = {
         "modulo_1": "general",
         "modulo_2_fundamentos": "fundamentos",
@@ -240,9 +219,78 @@ def main() -> None:
                 {"$set": doc},
                 upsert=True,
             )
-        print(f"[INGEST] 🧩 Contextos guardados para {module_id} (topic={topic})")
+
+    return {
+        "version": version,
+        "docs_path": docs_path,
+        "pdf_count": len(pdf_files),
+        "total_chars": total_chars,
+        "total_chunks": total_chunks,
+        "modules": list(module_to_topic.keys()),
+        "sizes": sizes,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--docs-path", default=None, help="Ruta al directorio con PDFs (default: DOCS_PATH o ../documentacion)")
+    parser.add_argument("--db", default="fraktal", help="Nombre de base de datos Mongo (default: fraktal)")
+    parser.add_argument("--version", default=None, help="Versión de docs (default: DOCS_VERSION o hash combinado)")
+    parser.add_argument("--chunk-size", type=int, default=1400)
+    parser.add_argument("--overlap", type=int, default=250)
+    args = parser.parse_args()
+
+    mongo_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI")
+    if not mongo_url:
+        raise SystemExit("Falta MONGODB_URL/MONGODB_URI en el entorno.")
+
+    mongodb_options: Dict[str, Any] = {"serverSelectionTimeoutMS": 5000, "connectTimeoutMS": 10000}
+    if "mongodb+srv://" in mongo_url or "mongodb.net" in mongo_url:
+        mongodb_options.update({"tls": True, "tlsAllowInvalidCertificates": True})
+
+    client = MongoClient(mongo_url, **mongodb_options)
+    db = client[args.db]
+    col_sources = db.documentation_sources
+    col_chunks = db.documentation_chunks
+    col_module_contexts = db.documentation_module_contexts
+
+    # Resolver docs_path (container-friendly)
+    if args.docs_path:
+        docs_path = args.docs_path
+    else:
+        docs_path = os.getenv("DOCS_PATH")
+        if not docs_path:
+            # app/scripts -> app -> /app (cuando se copia backend/ a /app)
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            app_dir = os.path.dirname(base_dir)  # /app
+            candidate_1 = os.path.join(app_dir, "documentacion")  # /app/documentacion (container)
+            candidate_2 = os.path.join(os.path.dirname(app_dir), "documentacion")  # repo root/documentacion (dev)
+            docs_path = candidate_1 if os.path.exists(candidate_1) else candidate_2
+
+    pdf_files = sorted(glob.glob(os.path.join(docs_path, "*.pdf")))
+    if not pdf_files:
+        raise SystemExit(f"No se encontraron PDFs en {docs_path}")
+
+    # Calcular versión por defecto como hash combinado de hashes de archivo
+    per_file_hashes = [(os.path.basename(p), sha256_file(p)) for p in pdf_files]
+    combined = hashlib.sha256(("|".join([f"{n}:{h}" for n, h in per_file_hashes])).encode("utf-8")).hexdigest()[:16]
+    version = args.version or os.getenv("DOCS_VERSION") or f"docs_{combined}"
+
+    print(f"[INGEST] docs_path={docs_path}")
+    print(f"[INGEST] version={version}")
+    print(f"[INGEST] PDFs={len(pdf_files)}")
+
+    summary = run_ingest(
+        mongo_url=mongo_url,
+        db_name=args.db,
+        docs_path=docs_path,
+        version=version,
+        chunk_size=args.chunk_size,
+        overlap=args.overlap,
+    )
 
     print("[INGEST] ✅ Terminado.")
+    print(f"[INGEST] Resumen: pdfs={summary['pdf_count']}, chunks={summary['total_chunks']}, chars={summary['total_chars']}")
     print(f"[INGEST] Sugerencia: exporta DOCS_VERSION={version} en el backend para que use esta cache.")
 
 
