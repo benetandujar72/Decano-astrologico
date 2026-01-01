@@ -8,6 +8,7 @@ from typing import List, Optional
 import os
 import uuid
 import asyncio
+import glob
 from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user, get_password_hash
 from app.models.subscription import Invoice, Quote, SubscriptionTier
@@ -133,6 +134,36 @@ async def get_docs_ingest_status(job_id: str, admin: dict = Depends(require_admi
     if not job:
         raise HTTPException(status_code=404, detail="Job no encontrado")
     return job
+
+
+@router.get("/docs/fs-check")
+async def docs_fs_check(
+    path: str = Query("/app/documentacion", description="Ruta a comprobar dentro del contenedor (recomendado: /app/documentacion)"),
+    admin: dict = Depends(require_admin),
+):
+    """
+    Diagnóstico sin shell: comprueba si existe una carpeta y cuántos PDFs contiene.
+    Solo admin.
+    """
+    # Hardening básico: solo permitir inspección bajo /app para evitar traversal arbitrario
+    norm = (path or "").strip() or "/app/documentacion"
+    if not norm.startswith("/app"):
+        raise HTTPException(status_code=400, detail="Ruta no permitida. Usa una ruta que empiece por /app")
+
+    exists = os.path.exists(norm)
+    is_dir = os.path.isdir(norm)
+    pdfs = sorted(glob.glob(os.path.join(norm, "*.pdf"))) if exists and is_dir else []
+
+    # Muestra acotada para no devolver payload enorme
+    sample = [os.path.basename(p) for p in pdfs[:25]]
+
+    return {
+        "path": norm,
+        "exists": exists,
+        "is_dir": is_dir,
+        "pdf_count": len(pdfs),
+        "pdf_sample": sample,
+    }
 
 
 # ==================== GESTIÓN DE USUARIOS ====================
