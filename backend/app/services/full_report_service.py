@@ -258,12 +258,15 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
                     # Nunca romper generación por fallo de tracking
                     pass
         
-        # Asegurar documentación cargada
-        if not self.doc_service.is_loaded:
-            await _progress("docs_load_start")
-            # Evitar bloquear el event loop con lectura/parseo de PDFs
-            await asyncio.to_thread(self.doc_service.load_documentation)
-            await _progress("docs_load_done")
+        # Asegurar documentación disponible:
+        # - Preferir cache persistente en Mongo (sin leer PDFs)
+        # - Fallback legacy: cargar PDFs solo si no hay cache precomputada
+        if not self.doc_service.has_cached_context_for_module(module_id, 10000 if section.get("requires_template") else 8000):
+            if not self.doc_service.is_loaded:
+                await _progress("docs_load_start")
+                # Evitar bloquear el event loop con lectura/parseo de PDFs
+                await asyncio.to_thread(self.doc_service.load_documentation)
+                await _progress("docs_load_done")
         
         # Obtener la sección correspondiente
         sections = self._get_sections_definition()
@@ -514,11 +517,12 @@ REGLAS CRÍTICAS:
         print(f"🚀 [INICIO] Generación de informe completo para: {user_name}")
         print(f"📋 Siguiendo estrictamente CORE CARUTTI v5.3 (REORDENADO & HOMOGÉNEO)")
         
-        # 1. Asegurar documentación cargada
-        if not self.doc_service.is_loaded:
-            print("📚 [PASO 0/10] Cargando documentación por primera vez...")
-            self.doc_service.load_documentation()
-            print("✅ [PASO 0/10] Documentación cargada")
+        # 1. Asegurar documentación cargada (fallback). Si hay cache en Mongo, evitamos releer PDFs.
+        if not self.doc_service.has_cached_context_for_module("modulo_1", 8000):
+            if not self.doc_service.is_loaded:
+                print("📚 [PASO 0/10] Cargando documentación por primera vez (fallback)...")
+                self.doc_service.load_documentation()
+                print("✅ [PASO 0/10] Documentación cargada")
 
         # 2. Obtener secciones usando el método centralizado
         sections = self._get_sections_definition()

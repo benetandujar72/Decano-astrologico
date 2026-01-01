@@ -41,6 +41,7 @@ class ReportRequest(BaseModel):
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     format: str = Field(..., description="Formato del informe: pdf, docx, markdown, html", example="pdf")
     analysis_text: Optional[str] = Field(None, description="Texto del análisis psico-astrológico")
+    report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
     nombre: str = Field(default="", description="Nombre del consultante (para portada)")
     
     class Config:
@@ -373,9 +374,13 @@ async def generate_report_endpoint(
         final_analysis_text = request.analysis_text
         if not final_analysis_text:
             try:
-                print("[REPORTS] 🤖 Texto de análisis no provisto. Iniciando generación automática FULL (25+ págs)...", file=sys.stderr)
+                report_mode = (request.report_mode or "full").lower().strip()
+                if report_mode not in {"full", "light"}:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
+
+                print(f"[REPORTS] 🤖 Texto de análisis no provisto. Iniciando generación automática ({report_mode})...", file=sys.stderr)
                 user_name = request.nombre or current_user.get('full_name') or current_user.get('username') or "Consultante"
-                final_analysis_text = await full_report_service.generate_full_report(request.carta_data, user_name)
+                final_analysis_text = await full_report_service.generate_full_report(request.carta_data, user_name, report_mode=report_mode)
                 print(f"[REPORTS] ✅ Generación automática completada. Longitud: {len(final_analysis_text)} caracteres.", file=sys.stderr)
             except Exception as e:
                 print(f"[REPORTS] ❌ Error en generación automática: {e}", file=sys.stderr)
@@ -923,6 +928,8 @@ async def get_generation_status(
     
     sections = full_report_service._get_sections_definition()
     generated_modules = session.get("generated_modules", {})
+    batch_job = session.get("batch_job") or {}
+    module_runs = session.get("module_runs") or {}
     
     modules_status = []
     for i, s in enumerate(sections):
@@ -934,14 +941,44 @@ async def get_generation_status(
             "is_generated": is_generated,
             "length": module_data.get('length', 0) if isinstance(module_data, dict) else (len(module_data) if isinstance(module_data, str) else 0)
         })
-    
+
+    # Resumen de ejecuciones por módulo (para depurar sin volcar todo el trace)
+    module_runs_summary = {}
+    try:
+        for mid in [s["id"] for s in sections]:
+            run = (module_runs.get(mid) or {}) if isinstance(module_runs, dict) else {}
+            if not isinstance(run, dict):
+                continue
+            module_runs_summary[mid] = {
+                "status": run.get("status"),
+                "error": run.get("error"),
+                "updated_at": run.get("updated_at"),
+            }
+    except Exception:
+        module_runs_summary = {}
+
+    # Error “principal” para UX (si existe)
+    top_error = None
+    if isinstance(batch_job, dict) and batch_job.get("status") == "error":
+        top_error = batch_job.get("error")
+    if not top_error and session.get("status") == "error":
+        top_error = session.get("error") or session.get("detail")
+
     return {
         "session_id": session_id,
         "status": session.get("status", "in_progress"),
+        "error": top_error,
         "current_module_index": session.get("current_module_index", 0),
         "total_modules": len(sections),
         "modules": modules_status,
-        "has_full_report": "full_report" in session and session.get("full_report")
+        "has_full_report": "full_report" in session and session.get("full_report"),
+        "batch_job": {
+            "job_id": batch_job.get("job_id") if isinstance(batch_job, dict) else None,
+            "status": batch_job.get("status") if isinstance(batch_job, dict) else None,
+            "error": batch_job.get("error") if isinstance(batch_job, dict) else None,
+            "updated_at": batch_job.get("updated_at") if isinstance(batch_job, dict) else None,
+        } if batch_job else None,
+        "module_runs_summary": module_runs_summary,
     }
 
 
