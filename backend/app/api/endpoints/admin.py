@@ -254,6 +254,31 @@ async def docs_db_stats(
     }
 
 
+@router.get("/docs/retrieval-test")
+async def docs_retrieval_test(
+    module_id: str = Query("modulo_2_fundamentos", description="Module id (e.g. modulo_2_aspectos)"),
+    max_chars: int = Query(8000, ge=1000, le=20000),
+    admin: dict = Depends(require_admin),
+):
+    """
+    Prueba rápida (sin PDFs): construye contexto para un módulo usando el modo de documentación actual.
+    Devuelve solo métricas y un preview, NO el contexto completo.
+    """
+    from app.services.documentation_service import documentation_service
+
+    ctx = documentation_service.get_context_for_module(module_id, max_chars=int(max_chars))
+    preview = ctx[:1200]
+    return {
+        "module_id": module_id,
+        "docs_version": documentation_service.docs_version,
+        "docs_retrieval_mode": os.getenv("DOCS_RETRIEVAL_MODE", ""),
+        "atlas_vector_index": os.getenv("ATLAS_VECTOR_INDEX", ""),
+        "atlas_vector_path": os.getenv("ATLAS_VECTOR_PATH", ""),
+        "context_chars": len(ctx),
+        "preview": preview,
+    }
+
+
 # ==================== GESTIÓN DE USUARIOS ====================
 
 @router.get("/users")
