@@ -14,6 +14,7 @@ import argparse
 import glob
 import hashlib
 import os
+import multiprocessing as mp
 from datetime import datetime
 from typing import Dict, List, Tuple, Any, Optional
 
@@ -40,6 +41,44 @@ def extract_text_from_pdf(file_path: str) -> Tuple[str, int]:
             if page_text:
                 text += page_text + "\n"
     return text, pages
+
+
+def _extract_pdf_worker(file_path: str, out_q) -> None:
+    try:
+        text, pages = extract_text_from_pdf(file_path)
+        out_q.put({"ok": True, "text": text, "pages": pages})
+    except Exception as e:
+        out_q.put({"ok": False, "error": f"{type(e).__name__}: {str(e)}"})
+
+
+def extract_text_from_pdf_with_timeout(file_path: str, timeout_s: int) -> Tuple[str, int]:
+    """
+    Aisla la extracción en un proceso separado para evitar cuelgues (PDFs corruptos/encriptados).
+    Si excede timeout, se aborta y se lanza error.
+    """
+    timeout_s = int(timeout_s or 0)
+    if timeout_s <= 0:
+        return extract_text_from_pdf(file_path)
+
+    # En Linux podemos usar fork (más rápido). En Windows usamos spawn.
+    method = "fork" if os.name != "nt" else "spawn"
+    ctx = mp.get_context(method)
+    q = ctx.Queue(maxsize=1)
+    p = ctx.Process(target=_extract_pdf_worker, args=(file_path, q), daemon=True)
+    p.start()
+    p.join(timeout_s)
+    if p.is_alive():
+        p.terminate()
+        p.join(5)
+        raise RuntimeError(f"Timeout extrayendo PDF ({timeout_s}s): {os.path.basename(file_path)}")
+
+    if q.empty():
+        raise RuntimeError(f"No se obtuvo resultado al extraer PDF: {os.path.basename(file_path)}")
+
+    res = q.get()
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error") or "Error desconocido extrayendo PDF")
+    return res.get("text", "") or "", int(res.get("pages") or 0)
 
 
 def chunk_text(text: str, chunk_size: int = 1400, overlap: int = 250) -> List[str]:
@@ -132,6 +171,8 @@ def run_ingest(
     job_id: Optional[str] = None,
     start_index: int = 0,
     max_files: Optional[int] = None,
+    timeout_s: int = 120,
+    continue_on_error: bool = True,
 ) -> Dict[str, Any]:
     """
     Ejecuta la ingesta programáticamente (usable desde endpoints admin sin Shell).
@@ -184,6 +225,8 @@ def run_ingest(
                 "total_pdfs": len(pdf_files),
                 "start_index": start_index,
                 "max_files": max_files,
+                "timeout_s": int(timeout_s or 0),
+                "continue_on_error": bool(continue_on_error),
             }
         }
     )
@@ -191,6 +234,7 @@ def run_ingest(
     index: Dict[str, str] = {}
     total_chunks = 0
     total_chars = 0
+    failures: List[Dict[str, Any]] = []
 
     for i, path in enumerate(pdf_files):
         filename = os.path.basename(path)
@@ -205,7 +249,22 @@ def run_ingest(
             }
         )
         file_hash = sha256_file(path)
-        text, pages = extract_text_from_pdf(path)
+        try:
+            text, pages = extract_text_from_pdf_with_timeout(path, timeout_s=timeout_s)
+        except Exception as e:
+            failures.append({"filename": filename, "error": f"{type(e).__name__}: {str(e)}"})
+            _job_update(
+                {
+                    "progress": {
+                        "stage": "pdf_failed",
+                        "current_pdf": filename,
+                        "error": f"{type(e).__name__}: {str(e)}",
+                    }
+                }
+            )
+            if continue_on_error:
+                continue
+            raise
         index[filename] = text
         total_chars += len(text)
 
@@ -291,6 +350,7 @@ def run_ingest(
         "total_chunks": total_chunks,
         "modules": list(module_to_topic.keys()),
         "sizes": sizes,
+        "failures": failures,
     }
 
 

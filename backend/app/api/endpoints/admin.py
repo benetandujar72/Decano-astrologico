@@ -65,6 +65,8 @@ class DocsIngestRequest(BaseModel):
     overlap: int = 250
     start_index: int = 0
     max_files: Optional[int] = None
+    timeout_s: int = 120
+    continue_on_error: bool = True
 
 
 @router.post("/docs/ingest")
@@ -94,6 +96,8 @@ async def ingest_docs_to_db(
         "overlap": request.overlap,
         "start_index": request.start_index,
         "max_files": request.max_files,
+        "timeout_s": request.timeout_s,
+        "continue_on_error": request.continue_on_error,
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
         "created_by": admin.get("username") or admin.get("email"),
@@ -122,6 +126,8 @@ async def ingest_docs_to_db(
                 job_id=job_id,
                 start_index=request.start_index,
                 max_files=request.max_files,
+                timeout_s=request.timeout_s,
+                continue_on_error=request.continue_on_error,
             )
             await doc_ingest_jobs_collection.update_one(
                 {"job_id": job_id},
