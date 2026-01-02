@@ -15,7 +15,7 @@ import glob
 import hashlib
 import os
 from datetime import datetime
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 
 import PyPDF2
 from pymongo import MongoClient
