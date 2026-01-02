@@ -148,10 +148,14 @@ async def docs_fs_check(
     Diagnóstico sin shell: comprueba si existe una carpeta y cuántos PDFs contiene.
     Solo admin.
     """
-    # Hardening básico: solo permitir inspección bajo /app para evitar traversal arbitrario
+    # Hardening básico: solo permitir inspección bajo rutas conocidas para evitar traversal arbitrario
     norm = (path or "").strip() or "/app/documentacion"
-    if not norm.startswith("/app"):
-        raise HTTPException(status_code=400, detail="Ruta no permitida. Usa una ruta que empiece por /app")
+    allowed_prefixes = ("/app", "/opt/render/project/src")
+    if not norm.startswith(allowed_prefixes):
+        raise HTTPException(
+            status_code=400,
+            detail="Ruta no permitida. Usa una ruta que empiece por /app o /opt/render/project/src",
+        )
 
     exists = os.path.exists(norm)
     is_dir = os.path.isdir(norm)
