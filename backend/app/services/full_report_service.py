@@ -284,7 +284,8 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         # Obtener contexto de documentación
         max_context_chars = 10000 if section['requires_template'] else 8000
         await _progress("context_fetch_start", {"max_chars": max_context_chars})
-        context = self.doc_service.get_context_for_module(section['id'], max_chars=max_context_chars)
+        # Evitar bloquear el event loop: get_context_for_module usa pymongo (sync) y/o puede hacer trabajo no-trivial.
+        context = await asyncio.to_thread(self.doc_service.get_context_for_module, section['id'], max_context_chars)
         await _progress("context_fetch_done", {"context_chars": len(context)})
 
         # Facts compactos (reduce tokens y latencia manteniendo rigor)
@@ -539,7 +540,7 @@ REGLAS CRÍTICAS:
                 # Aumentar SIGNIFICATIVAMENTE el contexto para asegurar exhaustividad (30 páginas)
                 max_context_chars = 10000 if section['requires_template'] else 8000
                 # Usar get_context_for_module para búsqueda más específica
-                context = self.doc_service.get_context_for_module(section['id'], max_chars=max_context_chars)
+                context = await asyncio.to_thread(self.doc_service.get_context_for_module, section['id'], max_context_chars)
                 
                 print(f"[PASO {idx}/{total_sections}] Contexto de documentación obtenido: {len(context)} caracteres")
                 

@@ -14,6 +14,9 @@ try:
 except Exception:
     MongoClient = None  # type: ignore
 
+from app.services.docs_schema import MODULE_TO_TOPIC
+from app.services.docs_retrieval_service import DocsRetrievalService
+
 class DocumentationService:
     """
     Servicio para gestionar la documentación astrológica en formato PDF.
@@ -58,6 +61,7 @@ class DocumentationService:
         self._col_sources = None
         self._col_chunks = None
         self._col_module_contexts = None
+        self._retrieval: Optional[DocsRetrievalService] = None
         self._init_mongo()
 
         print(f"📚 DocumentationService inicializado con ruta: {self.docs_path}")
@@ -85,6 +89,11 @@ class DocumentationService:
             self._col_chunks = self._mongo_db.documentation_chunks
             self._col_module_contexts = self._mongo_db.documentation_module_contexts
             self.mongo_enabled = True
+
+            # Retrieval service (Atlas Vector Search) is optional and controlled by env var.
+            if os.getenv("DOCS_RETRIEVAL_MODE", "").lower() in {"atlas_vector", "vector", "atlas"}:
+                if self._col_chunks is not None:
+                    self._retrieval = DocsRetrievalService(chunks_collection=self._col_chunks)
         except Exception as e:
             # No romper la app si no hay BD; caerá a modo PDFs
             print(f"⚠️ MongoDB no disponible para DocumentationService: {e}", file=sys.stderr)
@@ -322,25 +331,25 @@ class DocumentationService:
         Obtiene contexto específico para un módulo del informe.
         Mapea módulos a temas específicos para búsqueda más precisa.
         """
-        # Mapeo de módulos a temas
-        module_to_topic = {
-            "modulo_1": "general",
-            "modulo_2_fundamentos": "fundamentos",
-            "modulo_2_personales": "personales",
-            "modulo_2_sociales": "sociales",
-            "modulo_2_transpersonales": "transpersonales",
-            "modulo_2_nodos": "nodos",
-            "modulo_2_aspectos": "aspectos",
-            "modulo_2_ejes": "ejes",
-            "modulo_2_sintesis": "general",
-            "modulo_3_recomendaciones": "evolucion"
-        }
-        
-        topic = module_to_topic.get(module_id, "general")
+        topic = MODULE_TO_TOPIC.get(module_id, "general")
         cache_key = ("module", module_id, int(max_chars))
         cached = self._context_cache.get(cache_key)
         if cached:
             return cached
+
+        # Intento 0: Atlas Vector Search (si está activado y hay dataset de chunks en Atlas).
+        if self.mongo_enabled and self._retrieval and self.docs_version:
+            try:
+                ctx, meta = self._retrieval.retrieve_context_for_module(
+                    module_id,
+                    version=self.docs_version,
+                    max_chars=int(max_chars),
+                )
+                if ctx:
+                    self._context_cache[cache_key] = ctx
+                    return ctx
+            except Exception as e:
+                print(f"⚠️ Error retrieval Atlas (module {module_id}): {e}", file=sys.stderr)
 
         # Intento 1: contexto precomputado en BD (rápido, sin leer PDFs)
         cached_ctx = self._get_cached_module_context(module_id, max_chars)
