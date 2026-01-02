@@ -11,7 +11,7 @@ import asyncio
 import glob
 from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user, get_password_hash
-from app.models.subscription import Invoice, Quote, SubscriptionTier
+from app.models.subscription import Invoice, Quote, SubscriptionTier, UserSubscription
 from app.models.ai_usage_tracking import AIActionType
 from app.services.ai_usage_tracker import get_usage_stats, get_usage_history
 from pydantic import BaseModel
@@ -63,6 +63,8 @@ class DocsIngestRequest(BaseModel):
     db_name: str = "fraktal"
     chunk_size: int = 1400
     overlap: int = 250
+    start_index: int = 0
+    max_files: Optional[int] = None
 
 
 @router.post("/docs/ingest")
@@ -90,6 +92,8 @@ async def ingest_docs_to_db(
         "db_name": request.db_name,
         "chunk_size": request.chunk_size,
         "overlap": request.overlap,
+        "start_index": request.start_index,
+        "max_files": request.max_files,
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
         "created_by": admin.get("username") or admin.get("email"),
@@ -115,6 +119,9 @@ async def ingest_docs_to_db(
                 version=version,
                 chunk_size=request.chunk_size,
                 overlap=request.overlap,
+                job_id=job_id,
+                start_index=request.start_index,
+                max_files=request.max_files,
             )
             await doc_ingest_jobs_collection.update_one(
                 {"job_id": job_id},

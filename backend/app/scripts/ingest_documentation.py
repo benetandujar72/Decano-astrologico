@@ -129,6 +129,9 @@ def run_ingest(
     version: str,
     chunk_size: int = 1400,
     overlap: int = 250,
+    job_id: Optional[str] = None,
+    start_index: int = 0,
+    max_files: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Ejecuta la ingesta programáticamente (usable desde endpoints admin sin Shell).
@@ -143,17 +146,64 @@ def run_ingest(
     col_sources = db.documentation_sources
     col_chunks = db.documentation_chunks
     col_module_contexts = db.documentation_module_contexts
+    col_jobs = db.documentation_ingest_jobs
 
     pdf_files = sorted(glob.glob(os.path.join(docs_path, "*.pdf")))
     if not pdf_files:
         raise RuntimeError(f"No se encontraron PDFs en {docs_path}")
 
+    # Batch control
+    start_index = max(0, int(start_index or 0))
+    if start_index >= len(pdf_files):
+        raise RuntimeError(f"start_index fuera de rango: {start_index} (pdfs={len(pdf_files)})")
+    if max_files is not None:
+        max_files = int(max_files)
+        if max_files <= 0:
+            raise RuntimeError("max_files debe ser > 0")
+        pdf_files = pdf_files[start_index : start_index + max_files]
+    else:
+        pdf_files = pdf_files[start_index:]
+
+    def _job_update(payload: Dict[str, Any]) -> None:
+        if not job_id:
+            return
+        try:
+            payload = dict(payload)
+            payload["updated_at"] = datetime.utcnow().isoformat()
+            col_jobs.update_one({"job_id": job_id}, {"$set": payload})
+        except Exception:
+            # no romper la ingesta por fallos de logging/progreso
+            pass
+
+    _job_update(
+        {
+            "progress": {
+                "stage": "starting",
+                "docs_path": docs_path,
+                "version": version,
+                "total_pdfs": len(pdf_files),
+                "start_index": start_index,
+                "max_files": max_files,
+            }
+        }
+    )
+
     index: Dict[str, str] = {}
     total_chunks = 0
     total_chars = 0
 
-    for path in pdf_files:
+    for i, path in enumerate(pdf_files):
         filename = os.path.basename(path)
+        _job_update(
+            {
+                "progress": {
+                    "stage": "extracting_pdf",
+                    "current_pdf": filename,
+                    "current_pdf_index": i,
+                    "current_pdf_path": path,
+                }
+            }
+        )
         file_hash = sha256_file(path)
         text, pages = extract_text_from_pdf(path)
         index[filename] = text
@@ -188,6 +238,18 @@ def run_ingest(
             col_chunks.insert_many(bulk)
             total_chunks += len(chunks)
 
+        _job_update(
+            {
+                "progress": {
+                    "stage": "pdf_ingested",
+                    "current_pdf": filename,
+                    "pages": pages,
+                    "chars": len(text),
+                    "chunks": len(chunks),
+                }
+            }
+        )
+
     module_to_topic = {
         "modulo_1": "general",
         "modulo_2_fundamentos": "fundamentos",
@@ -203,6 +265,7 @@ def run_ingest(
 
     sizes = [8000, 10000]
     built_at = datetime.utcnow().isoformat()
+    _job_update({"progress": {"stage": "building_module_contexts", "modules": len(module_to_topic), "sizes": sizes}})
     for module_id, topic in module_to_topic.items():
         for max_chars in sizes:
             ctx = build_context_for_topic(index=index, topic=topic, max_chars=max_chars)
