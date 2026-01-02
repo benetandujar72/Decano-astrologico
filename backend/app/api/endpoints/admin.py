@@ -40,6 +40,9 @@ quotes_collection = db.quotes
 demo_sessions_collection = db.demo_sessions
 ai_usage_collection = db.ai_usage_records
 doc_ingest_jobs_collection = db.documentation_ingest_jobs
+doc_sources_collection = db.documentation_sources
+doc_chunks_collection = db.documentation_chunks
+doc_module_contexts_collection = db.documentation_module_contexts
 
 
 def require_admin(current_user: dict = Depends(get_current_user)):
@@ -204,6 +207,33 @@ async def docs_fs_ls(
         "is_dir": is_dir,
         "entries": entries,
         "cwd": os.getcwd(),
+    }
+
+
+@router.get("/docs/db-stats")
+async def docs_db_stats(
+    version: str = Query(..., description="Versión de documentación (DOCS_VERSION), ej: prod_v1"),
+    admin: dict = Depends(require_admin),
+):
+    """
+    Diagnóstico sin shell: devuelve conteos en Mongo para una versión de documentación.
+    Si esto es > 0, la ingesta ya está en BD aunque el job aparezca 'running'.
+    """
+    ver = (version or "").strip()
+    if not ver:
+        raise HTTPException(status_code=400, detail="version es requerida")
+
+    sources = await doc_sources_collection.count_documents({"version": ver})
+    chunks = await doc_chunks_collection.count_documents({"version": ver})
+    module_contexts = await doc_module_contexts_collection.count_documents({"version": ver})
+
+    return {
+        "version": ver,
+        "counts": {
+            "documentation_sources": sources,
+            "documentation_chunks": chunks,
+            "documentation_module_contexts": module_contexts,
+        },
     }
 
 
