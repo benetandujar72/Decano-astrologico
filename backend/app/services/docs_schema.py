@@ -40,8 +40,9 @@ MODULE_TO_TOPIC: Dict[str, str] = {
 }
 
 
-# Short semantic queries per module. These are used with Vectorize at query-time
-# to fetch the most relevant chunks for the module from Atlas Vector Search.
+# Short semantic queries per module.
+# In Atlas M0 (no Vectorize), we precompute embeddings for these queries offline and store them
+# in `documentation_query_vectors`, then the backend uses numeric `queryVector`.
 MODULE_TO_QUERY: Dict[str, str] = {
     "modulo_1": "mandala astrologico, signos, polaridades, modalidades, enfoque psicologico y arquetipos (Carutti)",
     "modulo_2_fundamentos": "sol luna ascendente, luminares, ascendentes, fundamentos de interpretacion psicologica",

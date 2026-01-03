@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pymongo import MongoClient
 
-from app.services.docs_schema import DOC_TOPICS, module_topic_and_query
+from app.services.docs_schema import DOC_TOPICS, MODULE_TO_QUERY, module_topic_and_query
 
 
 def _sha256_file(path: str) -> str:
@@ -148,8 +148,13 @@ def main() -> None:
     parser.add_argument("--db", default="fraktal", help="DB name in MongoDB Atlas.")
     parser.add_argument("--chunks-collection", default="documentation_chunks", help="Collection for chunks.")
     parser.add_argument("--sources-collection", default="documentation_sources", help="Collection for sources.")
+    parser.add_argument("--query-vectors-collection", default="documentation_query_vectors", help="Collection for module query vectors.")
     parser.add_argument("--chunk-size", type=int, default=1400)
     parser.add_argument("--overlap", type=int, default=250)
+    parser.add_argument("--embed-model", default="sentence-transformers/all-mpnet-base-v2", help="SentenceTransformer model id.")
+    parser.add_argument("--embed-device", default="auto", help="auto|cpu|cuda")
+    parser.add_argument("--embed-batch-size", type=int, default=64)
+    parser.add_argument("--no-embeddings", action="store_true", help="No generar embeddings (solo chunks).")
     args = parser.parse_args()
 
     mongo_url = os.getenv("MONGODB_URI") or os.getenv("MONGODB_URL")
@@ -168,6 +173,7 @@ def main() -> None:
     db = client[args.db]
     col_chunks = db[args.chunks_collection]
     col_sources = db[args.sources_collection]
+    col_qv = db[args.query_vectors_collection]
 
     version = args.version.strip()
     ingested_at = datetime.utcnow().isoformat()
@@ -175,6 +181,46 @@ def main() -> None:
     # Clean previous run for same version (idempotent)
     col_chunks.delete_many({"version": version})
     col_sources.delete_many({"version": version})
+    col_qv.delete_many({"version": version})
+
+    model = None
+    if not args.no_embeddings:
+        try:
+            from sentence_transformers import SentenceTransformer  # type: ignore
+        except Exception as e:
+            raise SystemExit(
+                "Falta dependencia para embeddings. Instala: pip install sentence-transformers torch"
+            ) from e
+
+        device = (args.embed_device or "auto").lower().strip()
+        if device == "auto":
+            try:
+                import torch  # type: ignore
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            except Exception:
+                device = "cpu"
+
+        model = SentenceTransformer(args.embed_model, device=device)
+
+        # Precompute query vectors per module (small + stable)
+        qv_docs: List[Dict[str, Any]] = []
+        for mid in sorted(MODULE_TO_QUERY.keys()):
+            topic, qtext = module_topic_and_query(mid)
+            vec = model.encode([qtext], normalize_embeddings=True)[0]
+            qv_docs.append(
+                {
+                    "version": version,
+                    "module_id": mid,
+                    "topic": topic,
+                    "query_text": qtext,
+                    "embedding": [float(x) for x in vec.tolist()],
+                    "ingested_at": ingested_at,
+                }
+            )
+        if qv_docs:
+            col_qv.insert_many(qv_docs)
+        print(f"[OK] query_vectors: modules={len(qv_docs)} model={args.embed_model}")
 
     total_chunks = 0
     for filename in pdfs:
@@ -204,7 +250,9 @@ def main() -> None:
         )
 
         docs: List[Dict[str, Any]] = []
+        texts: List[str] = []
         for idx, (ps, pe, text) in enumerate(chunks):
+            texts.append(text)
             docs.append(
                 {
                     "version": version,
@@ -220,13 +268,27 @@ def main() -> None:
                     "ingested_at": ingested_at,
                 }
             )
+
+        # Attach embeddings to chunks (offline)
+        if model is not None and docs:
+            vecs = model.encode(
+                texts,
+                batch_size=int(args.embed_batch_size),
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+            for i in range(len(docs)):
+                docs[i]["embedding"] = [float(x) for x in vecs[i].tolist()]
         if docs:
             col_chunks.insert_many(docs)
             total_chunks += len(docs)
         print(f"[OK] {filename}: pages={page_count}, chunks={len(docs)}, topic={topic}")
 
     print(f"[DONE] version={version} pdfs={len(pdfs)} total_chunks={total_chunks}")
-    print("Next: create Atlas Vector Search index (Vectorize) on documentation_chunks.text and set DOCS_VERSION.")
+    if model is None:
+        print("Next: re-run with embeddings (sentence-transformers) before creating Vector Search index.")
+    else:
+        print("Next: create Atlas Vector Search index on documentation_chunks.embedding and set DOCS_VERSION.")
 
 
 if __name__ == "__main__":

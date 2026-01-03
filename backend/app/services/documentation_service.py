@@ -61,6 +61,7 @@ class DocumentationService:
         self._col_sources = None
         self._col_chunks = None
         self._col_module_contexts = None
+        self._col_query_vectors = None
         self._retrieval: Optional[DocsRetrievalService] = None
         self._init_mongo()
 
@@ -88,12 +89,16 @@ class DocumentationService:
             self._col_sources = self._mongo_db.documentation_sources
             self._col_chunks = self._mongo_db.documentation_chunks
             self._col_module_contexts = self._mongo_db.documentation_module_contexts
+            self._col_query_vectors = self._mongo_db.documentation_query_vectors
             self.mongo_enabled = True
 
             # Retrieval service (Atlas Vector Search) is optional and controlled by env var.
             if os.getenv("DOCS_RETRIEVAL_MODE", "").lower() in {"atlas_vector", "vector", "atlas"}:
                 if self._col_chunks is not None:
-                    self._retrieval = DocsRetrievalService(chunks_collection=self._col_chunks)
+                    self._retrieval = DocsRetrievalService(
+                        chunks_collection=self._col_chunks,
+                        query_vectors_collection=self._col_query_vectors,
+                    )
         except Exception as e:
             # No romper la app si no hay BD; caerá a modo PDFs
             print(f"⚠️ MongoDB no disponible para DocumentationService: {e}", file=sys.stderr)

@@ -15,14 +15,15 @@ class DocsRetrievalService:
     """
     Retrieve relevant documentation chunks from MongoDB Atlas.
 
-    Primary mode: Atlas Vector Search with Vectorize (query-time vectorization).
+    Primary mode: Atlas Vector Search using numeric query vectors (no Vectorize required).
     Fallback mode: keyword scan within (version, topic).
     """
 
-    def __init__(self, *, chunks_collection: Collection):
+    def __init__(self, *, chunks_collection: Collection, query_vectors_collection: Optional[Collection] = None):
         if chunks_collection is None:
             raise RuntimeError("DocsRetrievalService requires a valid pymongo Collection")
         self.col = chunks_collection
+        self.query_vectors_col = query_vectors_collection
         self.vector_index = os.getenv("ATLAS_VECTOR_INDEX", "docs_chunks_vector")
         self.vector_path = os.getenv("ATLAS_VECTOR_PATH", "embedding")
         # Allow switching pipeline type if needed
@@ -40,27 +41,59 @@ class DocsRetrievalService:
         topic, query = module_topic_and_query(module_id)
         filter_q: Dict[str, Any] = {"version": version, "topic": topic}
 
-        # Try vector search first
-        try:
-            chunks = self._vector_search(query=query, filter_q=filter_q, limit=limit, num_candidates=num_candidates)
-            ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
-            meta.update({"mode": "atlas_vector", "topic": topic, "version": version})
-            return ctx, meta
-        except Exception as e:
-            print(f"[DocsRetrieval] ⚠️ vector search failed: {type(e).__name__}: {e}", file=sys.stderr)
+        qvec = self._get_module_query_vector(module_id=module_id, version=version)
+        if qvec is not None:
+            try:
+                chunks = self._vector_search(
+                    query_vector=qvec,
+                    filter_q=filter_q,
+                    limit=limit,
+                    num_candidates=num_candidates,
+                )
+                ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+                meta.update({"mode": "atlas_vector", "topic": topic, "version": version})
+                return ctx, meta
+            except Exception as e:
+                print(f"[DocsRetrieval] ⚠️ vector search failed: {type(e).__name__}: {e}", file=sys.stderr)
 
         # Fallback: keyword scan within the filtered set
         chunks = self._keyword_fallback(query=query, filter_q=filter_q, limit=limit)
         ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
-        meta.update({"mode": "keyword_fallback", "topic": topic, "version": version})
+        meta.update({"mode": "keyword_fallback", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
         return ctx, meta
 
-    def _vector_search(self, *, query: str, filter_q: Dict[str, Any], limit: int, num_candidates: int) -> List[Dict[str, Any]]:
+    def _get_module_query_vector(self, *, module_id: str, version: str) -> Optional[List[float]]:
+        """
+        Load a precomputed query vector from MongoDB.
+        Collection schema (recommended): documentation_query_vectors
+          { version, module_id, topic, query_text, embedding:[float] }
+        """
+        if not self.query_vectors_col:
+            return None
+        try:
+            doc = self.query_vectors_col.find_one(
+                {"version": version, "module_id": module_id},
+                projection={"_id": 0, "embedding": 1},
+            )
+            vec = (doc or {}).get("embedding")
+            if isinstance(vec, list) and vec and isinstance(vec[0], (int, float)):
+                return [float(x) for x in vec]
+        except Exception:
+            return None
+        return None
+
+    def _vector_search(
+        self,
+        *,
+        query_vector: List[float],
+        filter_q: Dict[str, Any],
+        limit: int,
+        num_candidates: int,
+    ) -> List[Dict[str, Any]]:
         """
         Uses Atlas Vector Search. Expected index: `ATLAS_VECTOR_INDEX`.
 
-        Implementation uses `$vectorSearch` stage with query-time vectorization.
-        Atlas supports query-time vectorization via `$vectorize` when Vectorize is enabled.
+        Implementation uses `$vectorSearch` stage with numeric query vectors.
         """
         pipeline: List[Dict[str, Any]] = []
 
@@ -70,8 +103,7 @@ class DocsRetrievalService:
                 {
                     "$vectorSearch": {
                         "index": self.vector_index,
-                        # Atlas Vectorize computes vectors from text at query-time
-                        "queryVector": {"$vectorize": query},
+                        "queryVector": query_vector,
                         "path": self.vector_path,
                         "numCandidates": int(num_candidates),
                         "limit": int(limit),
@@ -100,7 +132,7 @@ class DocsRetrievalService:
                     "$search": {
                         "index": self.vector_index,
                         "knnBeta": {
-                            "vector": {"$vectorize": query},
+                            "vector": query_vector,
                             "path": self.vector_path,
                             "k": int(limit),
                             "filter": {
