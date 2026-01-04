@@ -14,6 +14,7 @@ db = client.fraktal
 subscriptions_collection = db.user_subscriptions
 legacy_subscriptions_collection = db.subscriptions
 charts_collection = db.charts
+users_collection = db.users
 
 
 async def get_user_subscription_tier(user_id: str) -> SubscriptionTier:
@@ -26,6 +27,17 @@ async def get_user_subscription_tier(user_id: str) -> SubscriptionTier:
         # Compatibilidad: algunas instalaciones antiguas usaban `subscriptions`
         subscription = await legacy_subscriptions_collection.find_one({"user_id": user_id})
     if not subscription:
+        # Si es admin y no tiene documento de suscripción, tratar como ENTERPRISE
+        # (evita bloquear features/cuotas a admins por falta de registro en user_subscriptions).
+        try:
+            from bson import ObjectId  # type: ignore
+
+            q = {"_id": ObjectId(user_id)} if ObjectId.is_valid(user_id) else {"_id": user_id}
+            user = await users_collection.find_one(q, projection={"role": 1})
+            if user and user.get("role") == "admin":
+                return SubscriptionTier.ENTERPRISE
+        except Exception:
+            pass
         return SubscriptionTier.FREE
     
     tier_str = subscription.get("tier", "free")
