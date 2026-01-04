@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 import sys
 import asyncio
 import uuid
+import re
 
 load_dotenv()
 
@@ -34,6 +35,22 @@ db = client.fraktal
 report_sessions_collection = db.report_generation_sessions
 
 router = APIRouter()
+
+def _clean_generated_text(txt: str) -> str:
+    """
+    Limpia texto generado por la IA para uso en informe:
+    - elimina bloques de \"CONFIRMACIÓN REQUERIDA\"
+    - evita que un módulo contenga otro (\"## MÓDULO X\") por concatenación accidental
+    """
+    if not txt:
+        return ""
+    m = re.search(r"confirmaci[oó]n requerida\s*:", txt, flags=re.IGNORECASE)
+    if m:
+        txt = txt[: m.start()].rstrip()
+    m2 = re.search(r"\n##\s*m[óo]dulo\s+\d", txt, flags=re.IGNORECASE)
+    if m2:
+        txt = txt[: m2.start()].rstrip()
+    return txt.strip()
 
 
 class ReportRequest(BaseModel):
@@ -152,7 +169,8 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             timeout=60 * 40,  # 40 minutos por módulo como job (aumentado de 20)
         )
 
-        # Guardar módulo generado
+        # Guardar módulo generado (limpio para PDF/UI)
+        content = _clean_generated_text(str(content))
         generated_modules = session.get("generated_modules", {})
         generated_modules[module_id] = {
             "content": content,
@@ -173,10 +191,10 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                 if s["id"] in generated_modules:
                     module_data = generated_modules[s["id"]]
                     if isinstance(module_data, dict) and "content" in module_data:
-                        all_content.append(f"## {s['title']}\n\n{module_data['content']}\n\n---\n\n")
+                        all_content.append(f"## {s['title']}\n\n{_clean_generated_text(str(module_data['content']))}\n\n---\n\n")
                     elif isinstance(module_data, str):
-                        all_content.append(f"## {s['title']}\n\n{module_data}\n\n---\n\n")
-            update_data["full_report"] = "\n".join(all_content)
+                        all_content.append(f"## {s['title']}\n\n{_clean_generated_text(str(module_data))}\n\n---\n\n")
+            update_data["full_report"] = _clean_generated_text("\n".join(all_content))
             update_data["full_report_length"] = len(update_data["full_report"])
 
         await report_sessions_collection.update_one(
@@ -940,10 +958,12 @@ async def get_generation_status(
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     
-    if str(session.get("user_id")) != user_id:
+    is_admin = (current_user.get("role") == "admin")
+    if (not is_admin) and str(session.get("user_id")) != user_id:
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
-    
-    sections = full_report_service._get_sections_definition()
+
+    report_mode = (session.get("report_mode") or "full").lower().strip()
+    sections = full_report_service._get_sections_definition(report_mode=report_mode)
     generated_modules = session.get("generated_modules", {})
     batch_job = session.get("batch_job") or {}
     module_runs = session.get("module_runs") or {}
@@ -966,10 +986,21 @@ async def get_generation_status(
             run = (module_runs.get(mid) or {}) if isinstance(module_runs, dict) else {}
             if not isinstance(run, dict):
                 continue
+            # último step (si existe) para UI
+            last_step = None
+            try:
+                steps = run.get("steps") or []
+                if isinstance(steps, list) and steps:
+                    last = steps[-1] if isinstance(steps[-1], dict) else None
+                    if last and isinstance(last.get("step"), str):
+                        last_step = last.get("step")
+            except Exception:
+                last_step = None
             module_runs_summary[mid] = {
                 "status": run.get("status"),
                 "error": run.get("error"),
                 "updated_at": run.get("updated_at"),
+                "last_step": last_step,
             }
     except Exception:
         module_runs_summary = {}
@@ -981,11 +1012,22 @@ async def get_generation_status(
     if not top_error and session.get("status") == "error":
         top_error = session.get("error") or session.get("detail")
 
+    # módulo actual para UI
+    current_module_index = int(session.get("current_module_index", 0) or 0)
+    current_module_id = None
+    current_module_title = None
+    if 0 <= current_module_index < len(sections):
+        current_module_id = sections[current_module_index]["id"]
+        current_module_title = sections[current_module_index]["title"]
+
     return {
         "session_id": session_id,
         "status": session.get("status", "in_progress"),
         "error": top_error,
-        "current_module_index": session.get("current_module_index", 0),
+        "report_mode": report_mode,
+        "current_module_index": current_module_index,
+        "current_module_id": current_module_id,
+        "current_module_title": current_module_title,
         "total_modules": len(sections),
         "modules": modules_status,
         "has_full_report": "full_report" in session and session.get("full_report"),
@@ -1015,14 +1057,29 @@ async def get_full_report_from_session(
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     
-    if str(session.get("user_id")) != user_id:
+    is_admin = (current_user.get("role") == "admin")
+    if (not is_admin) and str(session.get("user_id")) != user_id:
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+
+    def _clean_module_text(txt: str) -> str:
+        if not txt:
+            return ""
+        # Cortar al primer "CONFIRMACIÓN REQUERIDA" (evita prompts interactivos y concatenaciones)
+        m = re.search(r"confirmaci[oó]n requerida\\s*:", txt, flags=re.IGNORECASE)
+        if m:
+            txt = txt[: m.start()].rstrip()
+        # Evitar que un módulo incluya accidentalmente otro (p.ej. '## MÓDULO 3')
+        m2 = re.search(r"\\n##\\s*m[óo]dulo\\s+\\d", txt, flags=re.IGNORECASE)
+        if m2:
+            txt = txt[: m2.start()].rstrip()
+        return txt.strip()
     
     # Si ya está en la sesión, retornarlo
     if "full_report" in session and session["full_report"]:
+        cleaned = _clean_module_text(str(session["full_report"]))
         return {
-            "full_report": session["full_report"],
-            "total_length": len(session["full_report"]),
+            "full_report": cleaned,
+            "total_length": len(cleaned),
             "status": session.get("status", "completed")
         }
     
@@ -1031,18 +1088,20 @@ async def get_full_report_from_session(
     if not generated_modules:
         raise HTTPException(status_code=400, detail="No hay módulos generados aún")
     
-    sections = full_report_service._get_sections_definition()
+    report_mode = (session.get("report_mode") or "full").lower().strip()
+    sections = full_report_service._get_sections_definition(report_mode=report_mode)
     all_content = []
     
     for s in sections:
         if s['id'] in generated_modules:
             module_data = generated_modules[s['id']]
             if isinstance(module_data, dict) and 'content' in module_data:
-                all_content.append(f"## {s['title']}\n\n{module_data['content']}\n\n---\n\n")
+                all_content.append(f"## {s['title']}\n\n{_clean_module_text(str(module_data['content']))}\n\n---\n\n")
             elif isinstance(module_data, str):
-                all_content.append(f"## {s['title']}\n\n{module_data}\n\n---\n\n")
+                all_content.append(f"## {s['title']}\n\n{_clean_module_text(str(module_data))}\n\n---\n\n")
     
     full_report = "\n".join(all_content)
+    full_report = _clean_module_text(full_report)
     
     # Guardar en sesión
     await report_sessions_collection.update_one(
@@ -1059,4 +1118,96 @@ async def get_full_report_from_session(
         "total_length": len(full_report),
         "status": "completed"
     }
+
+
+@router.get("/download-pdf/{session_id}")
+async def download_pdf_from_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Genera y descarga el PDF final de una sesión (on-demand) usando `full_report` o ensamblando módulos.
+    Permisos: dueño o admin.
+    """
+    user_id = str(current_user.get("_id"))
+    is_admin = (current_user.get("role") == "admin")
+
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if (not is_admin) and str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+
+    def _safe_slug(s: str) -> str:
+        s = (s or "").strip().lower()
+        s = re.sub(r"\\s+", "_", s)
+        s = re.sub(r"[^a-z0-9_\\-]+", "", s)
+        return s.strip("_") or "informe"
+
+    def _birth_stamp(carta: Dict[str, Any]) -> str:
+        datos = (carta or {}).get("datos_entrada") or {}
+        fecha = str(datos.get("fecha") or datos.get("fecha_local") or "").strip()
+        hora = str(datos.get("hora") or datos.get("hora_local") or "").strip()
+        # Fecha: YYYY-MM-DD o DD/MM/YYYY -> DDMMYYYY
+        ddmmyyyy = ""
+        if re.match(r"^\\d{4}-\\d{2}-\\d{2}$", fecha):
+            y, m, d = fecha.split("-")
+            ddmmyyyy = f"{d}{m}{y}"
+        elif re.match(r"^\\d{2}/\\d{2}/\\d{4}$", fecha):
+            d, m, y = fecha.split("/")
+            ddmmyyyy = f"{d}{m}{y}"
+        # Hora: HH:MM -> HHMM
+        hhmm = re.sub(r"[^0-9]", "", hora)[:4]
+        return f"{ddmmyyyy}{hhmm}" if ddmmyyyy or hhmm else datetime.utcnow().strftime("%Y%m%d%H%M")
+
+    def _clean_module_text(txt: str) -> str:
+        if not txt:
+            return ""
+        m = re.search(r"confirmaci[oó]n requerida\\s*:", txt, flags=re.IGNORECASE)
+        if m:
+            txt = txt[: m.start()].rstrip()
+        m2 = re.search(r"\\n##\\s*m[óo]dulo\\s+\\d", txt, flags=re.IGNORECASE)
+        if m2:
+            txt = txt[: m2.start()].rstrip()
+        return txt.strip()
+
+    carta_data = session.get("carta_data") or {}
+    user_name = session.get("user_name") or current_user.get("username") or "usuario"
+
+    full_report = session.get("full_report")
+    if not full_report:
+        generated_modules = session.get("generated_modules", {}) or {}
+        if not generated_modules:
+            raise HTTPException(status_code=400, detail="No hay módulos generados aún")
+        report_mode = (session.get("report_mode") or "full").lower().strip()
+        sections = full_report_service._get_sections_definition(report_mode=report_mode)
+        parts = []
+        for s in sections:
+            if s["id"] in generated_modules:
+                md = generated_modules[s["id"]]
+                content = md.get("content") if isinstance(md, dict) else str(md)
+                parts.append(f"## {s['title']}\\n\\n{_clean_module_text(str(content))}\\n\\n---\\n\\n")
+        full_report = _clean_module_text("\\n".join(parts))
+    else:
+        full_report = _clean_module_text(str(full_report))
+
+    # Generar PDF con el generador existente
+    try:
+        pdf_buffer = generate_report(carta_data, "pdf", analysis_text=str(full_report), nombre=str(user_name))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando PDF: {type(e).__name__}: {str(e)}")
+
+    try:
+        from io import BytesIO
+        if isinstance(pdf_buffer, BytesIO):
+            pdf_buffer.seek(0)
+    except Exception:
+        pass
+
+    filename = f\"{_safe_slug(str(user_name))}_{_birth_stamp(carta_data)}.pdf\"
+    headers = {\"Content-Disposition\": f\"attachment; filename=\\\"{filename}\\\"\"}
+    return StreamingResponse(pdf_buffer, media_type=\"application/pdf\", headers=headers)
 
