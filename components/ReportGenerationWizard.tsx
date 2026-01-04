@@ -13,6 +13,7 @@ interface ReportGenerationWizardProps {
   nombre: string;
   onComplete: (fullReport: string) => void;
   onClose: () => void;
+  onSessionComplete?: (sessionId: string) => void; // Para flujo automático (cerrar wizard y delegar descarga)
   autoGenerateAll?: boolean; // Nueva opción para generar todos automáticamente
 }
 
@@ -56,6 +57,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   nombre,
   onComplete,
   onClose,
+  onSessionComplete,
   autoGenerateAll = false
 }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -468,16 +470,21 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         }
 
         if (data.status === 'completed' || data.has_full_report) {
-          // Terminado: dejar wizard abierto con acciones (descarga PDF / export)
+          // Terminado: cerrar wizard y delegar al contenedor (App) el enlace de descarga / navegación
           setIsAutoGenerating(false);
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
-          // Mejor UX: refrescar y descargar PDF (on-demand) automáticamente una vez
+          // Refrescar estado final y notificar
           setSessionId(sessionIdToUse);
           await refreshStatus();
-          await downloadPdf(sessionIdToUse);
+          try {
+            onSessionComplete?.(sessionIdToUse);
+          } catch (e) {
+            console.warn('[WIZARD] onSessionComplete falló:', e);
+          }
+          onClose();
           return;
         }
 

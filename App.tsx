@@ -132,6 +132,8 @@ const App: React.FC = () => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [showReportWizard, setShowReportWizard] = useState(false);
   const [generatedFullReport, setGeneratedFullReport] = useState<string | null>(null);
+  const [reportReadySessionId, setReportReadySessionId] = useState<string | null>(null);
+  const [isDownloadingSessionPdf, setIsDownloadingSessionPdf] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const [userInput, setUserInput] = useState<UserInput>({
@@ -1088,6 +1090,36 @@ ${analysisText}
     setActiveModal('export');
   };
 
+  const downloadSessionPdf = async (sessionId: string) => {
+    setIsDownloadingSessionPdf(true);
+    try {
+      const token = getValidToken();
+      if (!token) throw new Error('Necesitas iniciar sesión para descargar el PDF.');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/reports/download-pdf/${sessionId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Error descargando PDF (HTTP ${res.status})`);
+      }
+      const disposition = res.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || `informe_${sessionId}.pdf`;
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloadingSessionPdf(false);
+    }
+  };
+
   // --- Modal Content Renderers ---
   const LegendContent = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1852,6 +1884,49 @@ ${analysisText}
           <ExportSelector onExport={downloadReport} isLoading={isExporting} />
         </GenericModal>
 
+        <GenericModal
+          isOpen={activeModal === 'report_ready'}
+          onClose={() => { setActiveModal(null); setReportReadySessionId(null); }}
+          title="Informe listo"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-300 text-sm">
+              El informe exhaustivo se ha generado correctamente. Puedes descargar el PDF o volver a la pantalla principal.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={async () => {
+                  if (!reportReadySessionId) return;
+                  try {
+                    await downloadSessionPdf(reportReadySessionId);
+                  } catch (e: any) {
+                    alert(e?.message || 'Error descargando PDF');
+                  }
+                }}
+                disabled={!reportReadySessionId || isDownloadingSessionPdf}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-60"
+              >
+                {isDownloadingSessionPdf ? 'Descargando…' : 'Descargar PDF'}
+              </button>
+              <button
+                onClick={() => {
+                  setActiveModal(null);
+                  setReportReadySessionId(null);
+                  setMode(AppMode.INPUT);
+                }}
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-colors"
+              >
+                Volver a inicio
+              </button>
+            </div>
+            {reportReadySessionId && (
+              <p className="text-gray-500 text-xs">
+                Session: <span className="font-mono">{reportReadySessionId}</span>
+              </p>
+            )}
+          </div>
+        </GenericModal>
+
         {/* Wizard de Generación Paso a Paso */}
         {showReportWizard && analysisResult && (
           <ReportGenerationWizard
@@ -1861,6 +1936,11 @@ ${analysisText}
             onClose={() => {
               setShowReportWizard(false);
               setGeneratedFullReport(null);
+            }}
+            onSessionComplete={(sid) => {
+              setReportReadySessionId(sid);
+              setShowReportWizard(false);
+              setActiveModal('report_ready');
             }}
             autoGenerateAll={true}
           />
