@@ -39,13 +39,21 @@ class ChartGenerate(BaseModel):
     is_demo: Optional[bool] = False
 
 @router.get("/")
-async def get_charts(current_user: dict = Depends(get_current_user)) -> List[dict]:
+async def get_charts(
+    include_deleted: bool = False,
+    current_user: dict = Depends(get_current_user),
+) -> List[dict]:
     """Obtiene todas las cartas del usuario actual"""
     user_id = current_user.get("_id")
     if isinstance(user_id, ObjectId):
         user_id = str(user_id)
     
-    cursor = charts_collection.find({"user_id": user_id})
+    is_admin = (current_user.get("role") == "admin")
+    q: dict = {"user_id": user_id}
+    if not (include_deleted and is_admin):
+        q["deleted_at"] = {"$exists": False}
+
+    cursor = charts_collection.find(q)
     charts = []
     async for chart in cursor:
         chart["id"] = str(chart["_id"])
@@ -57,7 +65,10 @@ async def get_charts(current_user: dict = Depends(get_current_user)) -> List[dic
 
 
 @router.get("/my-charts")
-async def get_my_charts(current_user: dict = Depends(get_current_user)) -> dict:
+async def get_my_charts(
+    include_deleted: bool = False,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     """Compat: devuelve las cartas del usuario en el formato usado por el perfil.
 
     El frontend histórico llama a `/charts/my-charts` y espera `{ charts: [...] }`.
@@ -68,7 +79,11 @@ async def get_my_charts(current_user: dict = Depends(get_current_user)) -> dict:
     else:
         user_id = str(user_id)
 
-    cursor = charts_collection.find({"user_id": user_id}).sort("timestamp", -1)
+    is_admin = (current_user.get("role") == "admin")
+    q: dict = {"user_id": user_id}
+    if not (include_deleted and is_admin):
+        q["deleted_at"] = {"$exists": False}
+    cursor = charts_collection.find(q).sort("timestamp", -1)
     result = []
     async for chart in cursor:
         ts = chart.get("timestamp")
@@ -122,12 +137,13 @@ async def delete_chart(
     chart_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Elimina una carta"""
+    """Borrado lógico (soft delete) de una carta"""
     user_id = current_user.get("_id")
     if isinstance(user_id, ObjectId):
         user_id = str(user_id)
+    is_admin = (current_user.get("role") == "admin")
 
-    # Verificar que la carta pertenece al usuario
+    # Verificar que la carta existe
     chart = await charts_collection.find_one({"_id": ObjectId(chart_id)})
     if not chart:
         raise HTTPException(
@@ -135,14 +151,21 @@ async def delete_chart(
             detail="Chart not found"
         )
 
-    if str(chart.get("user_id")) != user_id:
+    if (not is_admin) and str(chart.get("user_id")) != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this chart"
         )
 
-    await charts_collection.delete_one({"_id": ObjectId(chart_id)})
-    return {"message": "Chart deleted successfully"}
+    # Soft delete: marcar como borrada (no eliminar el doc)
+    await charts_collection.update_one(
+        {"_id": ObjectId(chart_id)},
+        {"$set": {
+            "deleted_at": datetime.utcnow().isoformat(),
+            "deleted_by": user_id,
+        }}
+    )
+    return {"message": "Chart deleted successfully", "chart_id": chart_id}
 
 @router.post("/generate")
 async def generate_chart(chart_data: ChartGenerate):

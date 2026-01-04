@@ -68,8 +68,8 @@ async def check_chart_limit(user_id: str) -> tuple[bool, int, int]:
     if plan.max_charts == -1:
         return (True, 0, -1)
     
-    # Contar cartas del usuario
-    count = await charts_collection.count_documents({"user_id": user_id})
+    # Contar cartas del usuario (excluye borradas lógicas)
+    count = await charts_collection.count_documents({"user_id": user_id, "deleted_at": {"$exists": False}})
     
     can_create = count < plan.max_charts
     return (can_create, count, plan.max_charts)

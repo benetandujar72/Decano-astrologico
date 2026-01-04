@@ -576,7 +576,8 @@ async def get_user_charts(
     user_id_str = str(user["_id"])
     
     # Obtener cartas
-    charts_cursor = db.charts.find({"user_id": user_id_str}).sort("timestamp", -1)
+    # Excluir borradas por defecto (soft delete)
+    charts_cursor = db.charts.find({"user_id": user_id_str, "deleted_at": {"$exists": False}}).sort("timestamp", -1)
     charts = await charts_cursor.to_list(length=100)
     
     for chart in charts:
