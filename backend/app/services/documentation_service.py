@@ -344,6 +344,9 @@ class DocumentationService:
         if cached:
             return cached
 
+        retrieval_mode = (os.getenv("DOCS_RETRIEVAL_MODE", "") or "").lower().strip()
+        force_no_pdfs = retrieval_mode in {"atlas_vector", "vector", "atlas"}
+
         # Intento 0: Atlas Vector Search (si está activado y hay dataset de chunks en Atlas).
         if self.mongo_enabled and self._retrieval and self.docs_version:
             try:
@@ -357,6 +360,14 @@ class DocumentationService:
                     return ctx
             except Exception as e:
                 print(f"⚠️ Error retrieval Atlas (module {module_id}): {e}", file=sys.stderr)
+                if force_no_pdfs:
+                    raise RuntimeError(f"Fallo en Atlas Vector Search y PDFs deshabilitados (module {module_id}). Error: {type(e).__name__}: {e}")
+        elif force_no_pdfs:
+            # Si el despliegue exige Atlas pero no está inicializado, fallar rápido con mensaje útil.
+            raise RuntimeError(
+                "DOCS_RETRIEVAL_MODE=atlas_vector pero el servicio de retrieval no está inicializado. "
+                "Verifica en Render: MONGODB_URI, DOCS_VERSION, ATLAS_VECTOR_INDEX, ATLAS_VECTOR_PATH."
+            )
 
         # Intento 1: contexto precomputado en BD (rápido, sin leer PDFs)
         cached_ctx = self._get_cached_module_context(module_id, max_chars)
@@ -365,6 +376,11 @@ class DocumentationService:
             return cached_ctx
 
         # Fallback: construir desde PDFs (modo legacy)
+        if force_no_pdfs:
+            raise RuntimeError(
+                f"PDFs deshabilitados por DOCS_RETRIEVAL_MODE={retrieval_mode}. "
+                f"No hay contexto en BD para module {module_id} (version={self.docs_version})."
+            )
         if not self.is_loaded:
             self.load_documentation()
 
