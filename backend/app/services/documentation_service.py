@@ -380,6 +380,45 @@ class DocumentationService:
                 "Verifica en Render: MONGODB_URI, DOCS_VERSION, ATLAS_VECTOR_INDEX, ATLAS_VECTOR_PATH."
             )
 
+        # Intento 0.5 (BD directa): si Atlas/Vector Search no devolvió contexto, intentar leer chunks directamente
+        # desde MongoDB (sin PDFs) para evitar bloqueos por filtros/topic/índice.
+        if force_no_pdfs and self.mongo_enabled and (self._col_chunks is not None) and self.docs_version:
+            try:
+                # Primero intentar por topic+version, luego relajar a version-only.
+                proj = {"_id": 0, "text": 1, "source_file": 1, "doc_id": 1, "page_start": 1, "page_end": 1, "topic": 1}
+                chunks = list(self._col_chunks.find({"version": self.docs_version, "topic": topic}, proj).limit(10))
+                if not chunks:
+                    chunks = list(self._col_chunks.find({"version": self.docs_version}, proj).limit(10))
+                if chunks:
+                    used = 0
+                    parts = []
+                    for ch in chunks:
+                        text = (ch.get("text") or "").strip()
+                        if not text:
+                            continue
+                        header = f"--- {ch.get('source_file','doc')} p.{ch.get('page_start','?')}-{ch.get('page_end','?')} ---\n"
+                        block = header + text + "\n\n"
+                        if used + len(block) > int(max_chars):
+                            rem = int(max_chars) - used
+                            if rem > 200:
+                                parts.append(block[:rem])
+                            break
+                        parts.append(block)
+                        used += len(block)
+                    ctx = "".join(parts)
+                    if ctx.strip():
+                        try:
+                            print(
+                                f"[DOCS] module={module_id} source=db_direct_fallback version={self.docs_version} topic={topic} chars={len(ctx)}",
+                                file=sys.stderr,
+                            )
+                        except Exception:
+                            pass
+                        self._context_cache[cache_key] = ctx
+                        return ctx
+            except Exception as e:
+                print(f"⚠️ Error fallback BD directa (module {module_id}): {type(e).__name__}: {e}", file=sys.stderr)
+
         # Intento 1: contexto precomputado en BD (rápido, sin leer PDFs)
         cached_ctx = self._get_cached_module_context(module_id, max_chars)
         if cached_ctx:
