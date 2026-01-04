@@ -36,20 +36,22 @@ report_sessions_collection = db.report_generation_sessions
 
 router = APIRouter()
 
-def _clean_generated_text(txt: str) -> str:
+def _clean_generated_text(txt: str, *, keep_module_headings: bool = True) -> str:
     """
     Limpia texto generado por la IA para uso en informe:
     - elimina bloques de \"CONFIRMACIÓN REQUERIDA\"
-    - evita que un módulo contenga otro (\"## MÓDULO X\") por concatenación accidental
+    - opcionalmente evita que un módulo contenga otro (\"## MÓDULO X\") por concatenación accidental
+      (NO debe usarse al ensamblar el informe completo, o se truncará en el MÓDULO 1).
     """
     if not txt:
         return ""
     m = re.search(r"confirmaci[oó]n requerida\s*:", txt, flags=re.IGNORECASE)
     if m:
         txt = txt[: m.start()].rstrip()
-    m2 = re.search(r"\n##\s*m[óo]dulo\s+\d", txt, flags=re.IGNORECASE)
-    if m2:
-        txt = txt[: m2.start()].rstrip()
+    if not keep_module_headings:
+        m2 = re.search(r"\n##\s*m[óo]dulo\s+\d", txt, flags=re.IGNORECASE)
+        if m2:
+            txt = txt[: m2.start()].rstrip()
     return txt.strip()
 
 
@@ -178,7 +180,8 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
         )
 
         # Guardar módulo generado (limpio para PDF/UI)
-        content = _clean_generated_text(str(content))
+        # Aquí sí queremos evitar concatenaciones accidentales de otros módulos.
+        content = _clean_generated_text(str(content), keep_module_headings=False)
         generated_modules = session.get("generated_modules", {})
         generated_modules[module_id] = {
             "content": content,
@@ -202,7 +205,8 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                         all_content.append(f"## {s['title']}\n\n{_clean_generated_text(str(module_data['content']))}\n\n---\n\n")
                     elif isinstance(module_data, str):
                         all_content.append(f"## {s['title']}\n\n{_clean_generated_text(str(module_data))}\n\n---\n\n")
-            update_data["full_report"] = _clean_generated_text("\n".join(all_content))
+            # En el informe completo NO debemos truncar por encabezados de módulo
+            update_data["full_report"] = _clean_generated_text("\n".join(all_content), keep_module_headings=True)
             update_data["full_report_length"] = len(update_data["full_report"])
 
         await report_sessions_collection.update_one(
@@ -1055,7 +1059,7 @@ async def get_generation_status(
         "current_module_title": current_module_title,
         "total_modules": len(sections),
         "modules": modules_status,
-        "has_full_report": "full_report" in session and session.get("full_report"),
+        "has_full_report": bool(session.get("full_report")),
         "batch_job": {
             "job_id": batch_job.get("job_id") if isinstance(batch_job, dict) else None,
             "status": batch_job.get("status") if isinstance(batch_job, dict) else None,

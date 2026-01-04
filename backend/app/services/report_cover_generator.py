@@ -277,6 +277,7 @@ def add_cover_to_pdf(pdf_buffer: BytesIO, cover_image: BytesIO) -> BytesIO:
         from PyPDF2 import PdfMerger, PdfReader
         from reportlab.pdfgen import canvas as pdf_canvas
         from reportlab.lib.pagesizes import A4
+        from reportlab.lib.utils import ImageReader
         
         # Crear PDF de portada
         cover_pdf_buffer = BytesIO()
@@ -284,8 +285,9 @@ def add_cover_to_pdf(pdf_buffer: BytesIO, cover_image: BytesIO) -> BytesIO:
         
         # Añadir imagen de portada
         cover_image.seek(0)
+        img = ImageReader(cover_image)
         c.drawImage(
-            cover_image,
+            img,
             0, 0,
             width=A4[0],
             height=A4[1],
