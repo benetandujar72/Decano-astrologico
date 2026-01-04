@@ -147,6 +147,14 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             "error": None,
         })
         await _push_module_step(session_id, module_id, "job_started", True)
+        # Guardar el índice del módulo que se está ejecutando (para UI en tiempo real)
+        try:
+            await report_sessions_collection.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {"current_module_index": module_index, "updated_at": datetime.utcnow().isoformat()}},
+            )
+        except Exception:
+            pass
 
         previous_modules = list(session.get("generated_modules", {}).keys())
 
@@ -1013,7 +1021,24 @@ async def get_generation_status(
         top_error = session.get("error") or session.get("detail")
 
     # módulo actual para UI
+    # Índice reportado por la sesión (puede quedar desfasado si algún write falla)
     current_module_index = int(session.get("current_module_index", 0) or 0)
+
+    # Derivar índice real a partir de módulos generados (más fiable para UI)
+    try:
+        generated_ids = set((session.get("generated_modules", {}) or {}).keys())
+        derived_index = 0
+        for i, s in enumerate(sections):
+            if s["id"] not in generated_ids:
+                derived_index = i
+                break
+        else:
+            derived_index = len(sections)
+        # Si el derivado es mayor que el guardado, preferir el derivado
+        if derived_index > current_module_index:
+            current_module_index = derived_index
+    except Exception:
+        pass
     current_module_id = None
     current_module_title = None
     if 0 <= current_module_index < len(sections):
