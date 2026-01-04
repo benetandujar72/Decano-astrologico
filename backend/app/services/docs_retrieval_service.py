@@ -68,7 +68,8 @@ class DocsRetrievalService:
         Collection schema (recommended): documentation_query_vectors
           { version, module_id, topic, query_text, embedding:[float] }
         """
-        if not self.query_vectors_col:
+        # IMPORTANT: PyMongo Collection does not implement truthiness (`bool(collection)` raises).
+        if self.query_vectors_col is None:
             return None
         try:
             doc = self.query_vectors_col.find_one(
