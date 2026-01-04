@@ -112,7 +112,8 @@ class DocumentationService:
 
     def has_cached_context_for_module(self, module_id: str, max_chars: int) -> bool:
         """Devuelve True si hay contexto precomputado en BD (según docs_version)."""
-        if not self.mongo_enabled or not self._col_module_contexts:
+        # IMPORTANT: PyMongo Collection does not implement truthiness (`bool(collection)` raises).
+        if (not self.mongo_enabled) or (self._col_module_contexts is None):
             return False
         try:
             q = {"module_id": module_id, "max_chars": int(max_chars), "version": self.docs_version}
@@ -127,7 +128,8 @@ class DocumentationService:
 
     def _get_cached_module_context(self, module_id: str, max_chars: int) -> Optional[str]:
         """Obtiene contexto del módulo desde Mongo (si existe)."""
-        if not self.mongo_enabled or not self._col_module_contexts:
+        # IMPORTANT: PyMongo Collection does not implement truthiness (`bool(collection)` raises).
+        if (not self.mongo_enabled) or (self._col_module_contexts is None):
             return None
         try:
             q = {"module_id": module_id, "max_chars": int(max_chars), "version": self.docs_version}
@@ -207,7 +209,7 @@ class DocumentationService:
             return cached
 
         # Intento 1: leer contexto de BD si existe por topic (compatibilidad: algunos despliegues guardan topic)
-        if self.mongo_enabled and self._col_module_contexts:
+        if self.mongo_enabled and (self._col_module_contexts is not None):
             try:
                 q = {"topic": (topic or "").lower(), "max_chars": int(max_chars), "version": self.docs_version}
                 doc = self._col_module_contexts.find_one(q, projection={"context_text": 1})
