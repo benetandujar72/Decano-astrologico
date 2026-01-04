@@ -356,6 +356,17 @@ class DocumentationService:
                     max_chars=int(max_chars),
                 )
                 if ctx:
+                    try:
+                        import sys as _sys
+
+                        print(
+                            f"[DOCS] module={module_id} source={meta.get('mode')} "
+                            f"version={self.docs_version} topic={meta.get('topic')} "
+                            f"chars={meta.get('context_chars')} chunks={meta.get('chunks')}",
+                            file=_sys.stderr,
+                        )
+                    except Exception:
+                        pass
                     self._context_cache[cache_key] = ctx
                     return ctx
             except Exception as e:
@@ -372,6 +383,13 @@ class DocumentationService:
         # Intento 1: contexto precomputado en BD (rápido, sin leer PDFs)
         cached_ctx = self._get_cached_module_context(module_id, max_chars)
         if cached_ctx:
+            try:
+                print(
+                    f"[DOCS] module={module_id} source=precomputed version={self.docs_version} topic={topic} chars={len(cached_ctx)}",
+                    file=sys.stderr,
+                )
+            except Exception:
+                pass
             self._context_cache[cache_key] = cached_ctx
             return cached_ctx
 
