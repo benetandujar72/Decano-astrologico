@@ -637,7 +637,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const currentModule = modules[currentModuleIndex];
   const isLastModule = currentModuleIndex === modules.length - 1;
   const isCompleted = !!(status && (status.status === 'completed' || status.has_full_report || status.batch_job?.status === 'done'));
-  const progress = modules.length > 0 ? ((currentModuleIndex + 1) / modules.length) * 100 : 0;
+  const activeIndex = typeof status?.current_module_index === 'number' ? status.current_module_index : currentModuleIndex;
+  const progress = modules.length > 0 ? (Math.min(generatedModulesCount, modules.length) / modules.length) * 100 : 0;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -660,13 +661,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           </button>
         </div>
 
-        {/* Progress Bar */}
+        {/* Barra + Botones de módulos (simplificado) */}
         <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-300">
-              {isAutoGenerating 
-                ? `Generando automáticamente: Módulo ${generatedModulesCount + 1} de ${modules.length}`
-                : `Módulo ${currentModuleIndex + 1} de ${modules.length}`
+              {isCompleted
+                ? 'Informe completo'
+                : `Progreso: ${generatedModulesCount} de ${modules.length} módulos`
               }
             </span>
             <div className="flex items-center gap-3">
@@ -678,35 +679,36 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
               <span className="text-sm text-gray-300">{Math.round(progress)}%</span>
             </div>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-700 rounded-full h-2 mb-3">
             <div
               className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
-        </div>
 
-        {/* Module List */}
-        <div className="px-6 py-4 bg-gray-800/30 border-b border-gray-700 max-h-32 overflow-y-auto">
-          <div className="flex flex-wrap gap-2">
+          {/* Botonera de módulos */}
+          <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
             {modules.map((module, idx) => {
               const isGenerated = status?.modules.find(m => m.id === module.id)?.is_generated || false;
-              const isCurrent = idx === currentModuleIndex;
-              
+              const isCurrent = idx === activeIndex;
+
+              const base = 'px-3 py-2 rounded-lg text-xs font-semibold transition-all border';
+              const cls = isCurrent
+                ? `${base} bg-purple-600 text-white border-purple-300/30 shadow-[0_0_12px_rgba(168,85,247,0.35)]`
+                : isGenerated
+                ? `${base} bg-gray-700/40 text-gray-400 border-gray-600/40 opacity-70 cursor-not-allowed`
+                : `${base} bg-gray-700 text-gray-200 border-gray-600/60`;
+
               return (
-                <div
+                <button
                   key={module.id}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    isCurrent
-                      ? 'bg-purple-500 text-white'
-                      : isGenerated
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                      : 'bg-gray-700 text-gray-400'
-                  }`}
+                  type="button"
+                  className={cls}
+                  disabled={true}
+                  title={module.title}
                 >
-                  {idx + 1}. {module.title.split(':')[0]}
-                  {isGenerated && <CheckCircle className="inline ml-1 w-3 h-3" />}
-                </div>
+                  {idx + 1}. {module.title}
+                </button>
               );
             })}
           </div>
@@ -714,12 +716,12 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Panel de eventos/progreso (clave para entender qué está pasando) */}
+          {/* (Opcional) Eventos: mantenemos pero más discreto */}
           {!!events.length && (
-            <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4 mb-4">
-              <div className="text-xs text-gray-300 font-semibold mb-2">Progreso (eventos recientes)</div>
-              <ul className="text-xs text-gray-400 space-y-1">
-                {events.map((e, i) => (
+            <div className="bg-gray-800/30 border border-gray-700 rounded-lg p-3 mb-4">
+              <div className="text-[11px] text-gray-400 mb-2">Eventos</div>
+              <ul className="text-[11px] text-gray-500 space-y-1">
+                {events.slice(0, 6).map((e, i) => (
                   <li key={i}>- {e}</li>
                 ))}
               </ul>
@@ -901,21 +903,21 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         {/* Footer para modo automático */}
         {isAutoGenerating && (
           <div className="p-6 border-t border-gray-700 bg-gray-800/50">
-            <div className="flex items-center justify-center gap-4">
-              <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-              <div className="text-center">
-                <p className="text-white font-semibold">
-                  Generando automáticamente todos los módulos...
-                </p>
-                <p className="text-gray-400 text-sm mt-1">
-                  {generatedModulesCount} de {modules.length} módulos completados
-                </p>
-                {estimatedTimeRemaining !== null && (
-                  <p className="text-purple-400 text-sm mt-2 font-semibold">
-                    ⏱️ Tiempo restante estimado: {formatTimeRemaining(estimatedTimeRemaining)}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                <div>
+                  <p className="text-white font-semibold text-sm">Generando informe…</p>
+                  <p className="text-gray-400 text-xs">
+                    {status?.current_module_title ? `Módulo actual: ${status.current_module_title}` : `Módulo ${activeIndex + 1} de ${modules.length}`}
                   </p>
-                )}
+                </div>
               </div>
+              {estimatedTimeRemaining !== null && (
+                <p className="text-purple-300 text-sm font-semibold">
+                  ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
+                </p>
+              )}
             </div>
           </div>
         )}
