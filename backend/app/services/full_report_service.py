@@ -19,11 +19,37 @@ class FullReportService:
         self.doc_service = documentation_service
         self.ai_service = get_ai_expert_service()
 
-    def _generate_ejes_template_prompt(self) -> str:
+    def _generate_ejes_template_prompt(self, *, report_mode: str = "full") -> str:
         """
         Genera el prompt específico para MÓDULO 2-VII (Ejes de Vida)
         con formato rígido obligatorio.
         """
+        report_mode = (report_mode or "full").lower().strip()
+        if report_mode not in {"full", "light"}:
+            report_mode = "full"
+
+        if report_mode == "light":
+            return """
+⚠️ FORMATO RÍGIDO OBLIGATORIO PARA EJES DE VIDA (MODO LIGHT 6–8 PÁGINAS):
+
+Debes usar esta plantilla estructural para cada uno de los 6 ejes, pero con síntesis (sin redundancia):
+
+PLANTILLA POR EJE (5 PARTES OBLIGATORIAS - MÍNIMO ~450 CARACTERES POR EJE):
+
+1. **Título del Eje y Signos**
+2. **Dinámica Psicológica del Eje** (introducción breve pero clara)
+3. **Polo A (Casa X):** signo + planetas (si hay) / si está vacía: signo + regente
+4. **Polo B (Casa Y):** idem
+5. **Síntesis del Eje:** tensión y resolución
+
+LISTA DE EJES A CUBRIR (6 EJES OBLIGATORIOS):
+- Eje I – VII (Encuentro)
+- Eje II – VIII (Posesión/Fusión)
+- Eje III – IX (Pensamiento/Sentido)
+- Eje IV – X (Individuación)
+- Eje V – XI (Creatividad/Red)
+- Eje VI – XII (Orden/Caos)
+"""
         return """
 ⚠️ FORMATO RÍGIDO OBLIGATORIO PARA EJES DE VIDA (OBJETIVO: 30 PÁGINAS):
 
@@ -237,6 +263,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         chart_data: Dict, 
         user_name: str, 
         module_id: str,
+        report_mode: str = "full",
         previous_modules: List[str] = None,
         progress_cb: Optional[Callable[[str, Optional[Dict]], Awaitable[None]]] = None,
         chart_facts: Optional[Dict] = None,
@@ -257,6 +284,16 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
                 except Exception:
                     # Nunca romper generación por fallo de tracking
                     pass
+
+        report_mode = (report_mode or "full").lower().strip()
+        if report_mode not in {"full", "light"}:
+            report_mode = "full"
+
+        # Obtener la sección correspondiente (antes de cualquier uso de `section`)
+        sections = self._get_sections_definition(report_mode=report_mode)
+        section = next((s for s in sections if s['id'] == module_id), None)
+        if not section:
+            raise ValueError(f"Módulo {module_id} no encontrado")
         
         # Asegurar documentación disponible:
         # - Preferir cache persistente en Mongo (sin leer PDFs)
@@ -267,13 +304,6 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
                 # Evitar bloquear el event loop con lectura/parseo de PDFs
                 await asyncio.to_thread(self.doc_service.load_documentation)
                 await _progress("docs_load_done")
-        
-        # Obtener la sección correspondiente
-        sections = self._get_sections_definition()
-        section = next((s for s in sections if s['id'] == module_id), None)
-        
-        if not section:
-            raise ValueError(f"Módulo {module_id} no encontrado")
         
         module_index = next((i for i, s in enumerate(sections) if s['id'] == module_id), -1)
         is_last = (module_index == len(sections) - 1)
@@ -294,6 +324,15 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         facts_text = self._format_facts_for_prompt(module_facts, max_chars=12000 if section['requires_template'] else 8000)
         
         # Construir prompt
+        mode_directive = ""
+        if report_mode == "light":
+            mode_directive = """
+MODO LIGHT (6–8 PÁGINAS):
+- Sé conciso y evita redundancias.
+- Mantén la estructura y rigor, pero sintetiza (prioriza lo más relevante).
+- Objetivo global: 6–8 páginas totales, sin perder fidelidad.
+"""
+
         base_prompt = f"""
 PROTOCOLO DE INGESTA DE DOCUMENTACIÓN (DEEP SCAN & SÍNTESIS):
 - Lee TODA la documentación provista antes de escribir
@@ -307,9 +346,12 @@ CONTEXTO DE DOCUMENTACIÓN (Base de Conocimiento Carutti):
 DATOS DE LA CARTA:
 {facts_text}
 
-DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD (CRÍTICO PARA 30 PÁGINAS):
-- PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA
-- Todos los informes deben tener el mismo "peso" y densidad (30 páginas mínimo)
+{mode_directive}
+
+DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD:
+- Objetivo: {"exhaustivo (~30 páginas)" if report_mode=="full" else "ligero (6–8 páginas)"}
+- {"PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA" if report_mode=="full" else "Evita alargar artificialmente: sintetiza con precisión"}
+- {"Todos los informes deben tener el mismo \"peso\" y densidad (30 páginas mínimo)" if report_mode=="full" else "Mantén consistencia y claridad en todas las secciones"}
 - PROFUNDIDAD ENSAYÍSTICA: Desarrolla mecánica, psicología, vivencia, proyección y evolución con MÁXIMO DETALLE
 - Si puedes escribir 4 párrafos, escribe 8. Si puedes escribir 8, escribe 12
 - DESARROLLA CADA PUNTO con múltiples párrafos densos (mínimo 3-4 párrafos por concepto principal)
@@ -323,11 +365,11 @@ INSTRUCCIÓN DE COMANDO:
         
         # Si requiere plantilla (MÓDULO 2-VII), agregar instrucciones específicas
         if section['requires_template']:
-            base_prompt += self._generate_ejes_template_prompt()
+            base_prompt += self._generate_ejes_template_prompt(report_mode=report_mode)
         
         # Agregar instrucciones finales
         base_prompt += f"""
-REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
+REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: {"30 PÁGINAS" if report_mode=="full" else "6–8 PÁGINAS"}):
 - MANTÉN el tono "Ghost Writer Académico" y el rigor del System Prompt
 - NO uses introducciones ni meta-comunicación
 - Empieza DIRECTAMENTE con el título del módulo
@@ -337,7 +379,7 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: 30 PÁGINAS):
 - Profundiza en mecánica, psicología, vivencia, proyección y evolución para CADA elemento
 - Al final, incluye OBLIGATORIAMENTE: "Pregunta para reflexionar: [pregunta profunda, abierta y psicológica]"
 - Usa lenguaje de posibilidad: "tiende a", "puede", "frecuentemente" (evita "es", "siempre", "nunca")
-- RECUERDA: El objetivo es generar un informe de 30 páginas. Esta sección debe ser exhaustiva y detallada.
+- RECUERDA: El objetivo es generar un informe {"exhaustivo (~30 páginas)" if report_mode=="full" else "ligero (6–8 páginas)"}.
 """
         
         # Generar con reintentos
@@ -425,9 +467,13 @@ REGLAS CRÍTICAS:
         
         return response, is_last, total_usage_metadata
 
-    def _get_sections_definition(self) -> List[Dict]:
-        """Retorna la definición de todas las secciones"""
-        return [
+    def _get_sections_definition(self, *, report_mode: str = "full") -> List[Dict]:
+        """Retorna la definición de todas las secciones (full/exhaustivo o light/ligero)."""
+        report_mode = (report_mode or "full").lower().strip()
+        if report_mode not in {"full", "light"}:
+            report_mode = "full"
+
+        sections = [
             {
                 "id": "modulo_1",
                 "title": "MÓDULO 1: ESTRUCTURA ENERGÉTICA BASE (DIAGNÓSTICO)",
@@ -510,7 +556,19 @@ REGLAS CRÍTICAS:
             }
         ]
 
-    async def generate_full_report(self, chart_data: Dict, user_name: str) -> str:
+        if report_mode == "light":
+            # Reduce thresholds to target ~6–8 pages total.
+            for s in sections:
+                base = int(s.get("expected_min_chars") or 2000)
+                s["expected_min_chars"] = max(1200, int(base * 0.35))
+                s["prompt"] = (
+                    "MODO LIGHT: sintetiza manteniendo rigor y estructura. "
+                    "Evita redundancias y prioriza lo más relevante.\n\n" + str(s.get("prompt") or "")
+                )
+
+        return sections
+
+    async def generate_full_report(self, chart_data: Dict, user_name: str, *, report_mode: str = "full") -> str:
         """
         Orquesta la generación del informe completo siguiendo estrictamente
         el prompt CORE CARUTTI v5.3 con confirmación paso a paso.
@@ -526,7 +584,7 @@ REGLAS CRÍTICAS:
                 print("✅ [PASO 0/10] Documentación cargada")
 
         # 2. Obtener secciones usando el método centralizado
-        sections = self._get_sections_definition()
+        sections = self._get_sections_definition(report_mode=report_mode)
 
         full_report_content = []
         total_sections = len(sections)
@@ -574,7 +632,7 @@ INSTRUCCIÓN DE COMANDO:
                 
                 # Si requiere plantilla (MÓDULO 2-VII), agregar instrucciones específicas
                 if section['requires_template']:
-                    base_prompt += self._generate_ejes_template_prompt()
+                    base_prompt += self._generate_ejes_template_prompt(report_mode=report_mode)
                 
                 # Agregar instrucciones finales con énfasis en exhaustividad
                 base_prompt += f"""

@@ -69,11 +69,13 @@ class StartReportGenerationRequest(BaseModel):
     """Inicia una sesión de generación de informe paso a paso"""
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
+    report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
 
 class QueueFullReportRequest(BaseModel):
     """Inicia y encola la generación completa del informe (todos los módulos)"""
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
+    report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
 
 
 class GenerateModuleRequest(BaseModel):
@@ -114,7 +116,8 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
         if str(session.get("user_id")) != user_id:
             return
 
-        sections = full_report_service._get_sections_definition()
+        report_mode = (session.get("report_mode") or "full").lower().strip()
+        sections = full_report_service._get_sections_definition(report_mode=report_mode)
         module_index = next((i for i, s in enumerate(sections) if s["id"] == module_id), -1)
         if module_index == -1:
             await _set_module_run_fields(session_id, module_id, {"status": "error", "error": "Módulo no encontrado"})
@@ -141,6 +144,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                 session["carta_data"],
                 session["user_name"],
                 module_id,
+                report_mode,
                 previous_modules,
                 progress_cb=progress_cb,
                 chart_facts=session.get("chart_facts"),
@@ -250,7 +254,10 @@ async def _run_full_report_job(session_id: str, user_id: str, job_id: str) -> No
             }}
         )
 
-        sections = full_report_service._get_sections_definition()
+        # Fijar el modo del informe a nivel de sesión (default: full/exhaustivo)
+        session0 = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+        report_mode = ((session0 or {}).get("report_mode") or "full").lower().strip()
+        sections = full_report_service._get_sections_definition(report_mode=report_mode)
 
         for section in sections:
             module_id = section["id"]
@@ -538,9 +545,12 @@ async def start_report_generation(
     """
     user_id = str(current_user.get("_id"))
     user_name = request.nombre or current_user.get('full_name') or current_user.get('username') or "Consultante"
+    report_mode = (request.report_mode or "full").lower().strip()
+    if report_mode not in {"full", "light"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
     
     # Obtener lista de módulos
-    sections = full_report_service._get_sections_definition()
+    sections = full_report_service._get_sections_definition(report_mode=report_mode)
     modules_list = [
         {
             "id": s["id"],
@@ -555,6 +565,7 @@ async def start_report_generation(
         "user_id": user_id,
         "user_name": user_name,
         "carta_data": request.carta_data,
+        "report_mode": report_mode,
         # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
         "chart_facts": full_report_service.build_chart_facts(request.carta_data),
         "generated_modules": {},
@@ -588,7 +599,11 @@ async def queue_full_report(
     user_id = str(current_user.get("_id"))
     user_name = request.nombre or current_user.get('full_name') or current_user.get('username') or "Consultante"
 
-    sections = full_report_service._get_sections_definition()
+    report_mode = (request.report_mode or "full").lower().strip()
+    if report_mode not in {"full", "light"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
+
+    sections = full_report_service._get_sections_definition(report_mode=report_mode)
     modules_list = [{"id": s["id"], "title": s["title"], "expected_min_chars": s["expected_min_chars"]} for s in sections]
 
     job_id = str(uuid.uuid4())
@@ -597,6 +612,7 @@ async def queue_full_report(
         "user_id": user_id,
         "user_name": user_name,
         "carta_data": request.carta_data,
+        "report_mode": report_mode,
         # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
         "chart_facts": full_report_service.build_chart_facts(request.carta_data),
         "generated_modules": {},
@@ -648,7 +664,8 @@ async def queue_module(
     if str(session.get("user_id")) != user_id:
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
 
-    sections = full_report_service._get_sections_definition()
+    report_mode = ((session.get("report_mode") or "full") if isinstance(session, dict) else "full").lower().strip()
+    sections = full_report_service._get_sections_definition(report_mode=report_mode)
     module_index = next((i for i, s in enumerate(sections) if s["id"] == request.module_id), -1)
     if module_index == -1:
         raise HTTPException(status_code=400, detail=f"Módulo {request.module_id} no encontrado")
