@@ -266,17 +266,35 @@ async def docs_retrieval_test(
     """
     from app.services.documentation_service import documentation_service
 
-    ctx = documentation_service.get_context_for_module(module_id, max_chars=int(max_chars))
-    preview = ctx[:1200]
-    return {
-        "module_id": module_id,
-        "docs_version": documentation_service.docs_version,
-        "docs_retrieval_mode": os.getenv("DOCS_RETRIEVAL_MODE", ""),
-        "atlas_vector_index": os.getenv("ATLAS_VECTOR_INDEX", ""),
-        "atlas_vector_path": os.getenv("ATLAS_VECTOR_PATH", ""),
-        "context_chars": len(ctx),
-        "preview": preview,
-    }
+    try:
+        ctx = documentation_service.get_context_for_module(module_id, max_chars=int(max_chars))
+        preview = ctx[:1200]
+        return {
+            "ok": True,
+            "module_id": module_id,
+            "docs_version": documentation_service.docs_version,
+            "docs_retrieval_mode": os.getenv("DOCS_RETRIEVAL_MODE", ""),
+            "atlas_vector_index": os.getenv("ATLAS_VECTOR_INDEX", ""),
+            "atlas_vector_path": os.getenv("ATLAS_VECTOR_PATH", ""),
+            "atlas_vector_stage": os.getenv("ATLAS_VECTOR_STAGE", ""),
+            "context_chars": len(ctx),
+            "preview": preview,
+        }
+    except Exception as e:
+        # Devolver error real (admin-only) para depuración sin shell
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "ok": False,
+                "error_type": type(e).__name__,
+                "error": str(e),
+                "docs_version": getattr(documentation_service, "docs_version", None),
+                "docs_retrieval_mode": os.getenv("DOCS_RETRIEVAL_MODE", ""),
+                "atlas_vector_index": os.getenv("ATLAS_VECTOR_INDEX", ""),
+                "atlas_vector_path": os.getenv("ATLAS_VECTOR_PATH", ""),
+                "atlas_vector_stage": os.getenv("ATLAS_VECTOR_STAGE", ""),
+            },
+        )
 
 
 # ==================== GESTIÓN DE USUARIOS ====================
