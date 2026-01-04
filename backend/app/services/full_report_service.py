@@ -333,6 +333,18 @@ MODO LIGHT (6–8 PÁGINAS):
 - Objetivo global: 6–8 páginas totales, sin perder fidelidad.
 """
 
+        objective_line = "exhaustivo (~30 páginas)" if report_mode == "full" else "ligero (6–8 páginas)"
+        summarize_line = (
+            "PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA"
+            if report_mode == "full"
+            else "Evita alargar artificialmente: sintetiza con precisión"
+        )
+        weight_line = (
+            'Todos los informes deben tener el mismo "peso" y densidad (30 páginas mínimo)'
+            if report_mode == "full"
+            else "Mantén consistencia y claridad en todas las secciones"
+        )
+
         base_prompt = f"""
 PROTOCOLO DE INGESTA DE DOCUMENTACIÓN (DEEP SCAN & SÍNTESIS):
 - Lee TODA la documentación provista antes de escribir
@@ -349,9 +361,9 @@ DATOS DE LA CARTA:
 {mode_directive}
 
 DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD:
-- Objetivo: {"exhaustivo (~30 páginas)" if report_mode=="full" else "ligero (6–8 páginas)"}
-- {"PROHIBIDO RESUMIR: Objetivo exhaustividad MÁXIMA ABSOLUTA" if report_mode=="full" else "Evita alargar artificialmente: sintetiza con precisión"}
-- {"Todos los informes deben tener el mismo \"peso\" y densidad (30 páginas mínimo)" if report_mode=="full" else "Mantén consistencia y claridad en todas las secciones"}
+- Objetivo: {objective_line}
+- {summarize_line}
+- {weight_line}
 - PROFUNDIDAD ENSAYÍSTICA: Desarrolla mecánica, psicología, vivencia, proyección y evolución con MÁXIMO DETALLE
 - Si puedes escribir 4 párrafos, escribe 8. Si puedes escribir 8, escribe 12
 - DESARROLLA CADA PUNTO con múltiples párrafos densos (mínimo 3-4 párrafos por concepto principal)
