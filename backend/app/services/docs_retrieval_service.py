@@ -39,26 +39,47 @@ class DocsRetrievalService:
         num_candidates: int = 120,
     ) -> Tuple[str, Dict[str, Any]]:
         topic, query = module_topic_and_query(module_id)
-        filter_q: Dict[str, Any] = {"version": version, "topic": topic}
+        # Prefer topic-filtered retrieval, but be resilient: if topic tagging is imperfect,
+        # we relax to version-only to avoid empty context (critical for production reliability).
+        filter_q_topic: Dict[str, Any] = {"version": version, "topic": topic}
+        filter_q_version: Dict[str, Any] = {"version": version}
 
         qvec = self._get_module_query_vector(module_id=module_id, version=version)
         if qvec is not None:
             try:
                 chunks = self._vector_search(
                     query_vector=qvec,
-                    filter_q=filter_q,
+                    filter_q=filter_q_topic,
                     limit=limit,
                     num_candidates=num_candidates,
                 )
                 ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+                if not ctx.strip():
+                    # Retry without topic filter
+                    chunks = self._vector_search(
+                        query_vector=qvec,
+                        filter_q=filter_q_version,
+                        limit=limit,
+                        num_candidates=num_candidates,
+                    )
+                    ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+                    meta.update({"mode": "atlas_vector_relaxed", "topic": topic, "version": version})
+                    return ctx, meta
+
                 meta.update({"mode": "atlas_vector", "topic": topic, "version": version})
                 return ctx, meta
             except Exception as e:
                 print(f"[DocsRetrieval] ⚠️ vector search failed: {type(e).__name__}: {e}", file=sys.stderr)
 
         # Fallback: keyword scan within the filtered set
-        chunks = self._keyword_fallback(query=query, filter_q=filter_q, limit=limit)
+        chunks = self._keyword_fallback(query=query, filter_q=filter_q_topic, limit=limit)
         ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+        if not ctx.strip():
+            chunks = self._keyword_fallback(query=query, filter_q=filter_q_version, limit=limit)
+            ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+            meta.update({"mode": "keyword_fallback_relaxed", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
+            return ctx, meta
+
         meta.update({"mode": "keyword_fallback", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
         return ctx, meta
 
@@ -183,7 +204,15 @@ class DocsRetrievalService:
             {**filter_q, "text": {"$regex": regex}},
             {"_id": 0, "text": 1, "source_file": 1, "doc_id": 1, "page_start": 1, "page_end": 1, "topic": 1},
         ).limit(int(limit))
-        return list(cursor)
+        results = list(cursor)
+        if results:
+            return results
+        # If keyword regex finds nothing, still return something from this filter to avoid empty context.
+        cursor2 = self.col.find(
+            filter_q,
+            {"_id": 0, "text": 1, "source_file": 1, "doc_id": 1, "page_start": 1, "page_end": 1, "topic": 1},
+        ).limit(int(limit))
+        return list(cursor2)
 
     @staticmethod
     def _assemble_context(*, chunks: List[Dict[str, Any]], max_chars: int) -> Tuple[str, Dict[str, Any]]:
