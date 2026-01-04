@@ -1240,3 +1240,108 @@ async def download_pdf_from_session(
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
 
+
+@router.get("/my-sessions")
+async def list_my_report_sessions(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user),
+):
+    """Lista sesiones de informe del usuario (guardadas en report_generation_sessions)."""
+    user_id = str(current_user.get("_id"))
+    limit = max(1, min(int(limit or 50), 200))
+    cursor = report_sessions_collection.find(
+        {"user_id": user_id, "deleted_at": {"$exists": False}},
+        projection={
+            "user_id": 1,
+            "user_name": 1,
+            "status": 1,
+            "report_mode": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "full_report_length": 1,
+            "batch_job": 1,
+        },
+    ).sort("created_at", -1).limit(limit)
+    out = []
+    async for s in cursor:
+        out.append(
+            {
+                "session_id": str(s.get("_id")),
+                "user_name": s.get("user_name") or "",
+                "status": s.get("status") or "",
+                "report_mode": s.get("report_mode") or "full",
+                "created_at": s.get("created_at") or "",
+                "updated_at": s.get("updated_at") or "",
+                "full_report_length": int(s.get("full_report_length") or 0),
+                "batch_status": (s.get("batch_job") or {}).get("status") if isinstance(s.get("batch_job"), dict) else None,
+            }
+        )
+    return {"sessions": out, "total": len(out)}
+
+
+@router.get("/admin/sessions")
+async def list_all_report_sessions(
+    limit: int = 100,
+    include_deleted: bool = False,
+    current_user: dict = Depends(get_current_user),
+):
+    """Admin: lista sesiones de informe de todos los usuarios."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Se requieren permisos de administrador")
+    limit = max(1, min(int(limit or 100), 500))
+    q: Dict[str, Any] = {}
+    if not include_deleted:
+        q["deleted_at"] = {"$exists": False}
+    cursor = report_sessions_collection.find(
+        q,
+        projection={
+            "user_id": 1,
+            "user_name": 1,
+            "status": 1,
+            "report_mode": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "full_report_length": 1,
+            "batch_job": 1,
+        },
+    ).sort("created_at", -1).limit(limit)
+    out = []
+    async for s in cursor:
+        out.append(
+            {
+                "session_id": str(s.get("_id")),
+                "user_id": str(s.get("user_id") or ""),
+                "user_name": s.get("user_name") or "",
+                "status": s.get("status") or "",
+                "report_mode": s.get("report_mode") or "full",
+                "created_at": s.get("created_at") or "",
+                "updated_at": s.get("updated_at") or "",
+                "full_report_length": int(s.get("full_report_length") or 0),
+                "batch_status": (s.get("batch_job") or {}).get("status") if isinstance(s.get("batch_job"), dict) else None,
+            }
+        )
+    return {"sessions": out, "total": len(out)}
+
+
+@router.delete("/session/{session_id}")
+async def soft_delete_report_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Soft delete de una sesión de informe (dueño o admin)."""
+    user_id = str(current_user.get("_id"))
+    is_admin = (current_user.get("role") == "admin")
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if (not is_admin) and str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+    await report_sessions_collection.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {"deleted_at": datetime.utcnow().isoformat(), "deleted_by": user_id}},
+    )
+    return {"deleted": True, "session_id": session_id}
+

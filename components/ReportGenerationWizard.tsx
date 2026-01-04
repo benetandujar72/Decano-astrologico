@@ -328,12 +328,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }
   };
 
-  const refreshStatus = async () => {
-    if (!sessionId) return;
+  const refreshStatus = async (sid?: string) => {
+    const sidToUse = sid || sessionId;
+    if (!sidToUse) return;
     
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reports/generation-status/${sessionId}`, {
+      const response = await fetch(`${API_URL}/reports/generation-status/${sidToUse}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -418,6 +419,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     setGeneratedModulesCount(0);
     setDownloadedPdf(false);
     setEvents([]);
+    // asegurar que refreshStatus tenga sessionId aunque el state tarde en asentarse
+    setSessionId(sessionIdToUse);
 
     // Calcular tiempo total estimado (solo UX)
     const totalEstimatedTime = modulesList.reduce((total, module) => {
@@ -447,7 +450,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         }
 
         // refrescar estado
-        await refreshStatus();
+        await refreshStatus(sessionIdToUse);
 
         // leer status actual desde storage local (puede ir con un tick de retraso)
         // hacemos una consulta directa para decisión (evita depender de state async)
@@ -477,8 +480,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
             timerRef.current = null;
           }
           // Refrescar estado final y notificar
-          setSessionId(sessionIdToUse);
-          await refreshStatus();
+          await refreshStatus(sessionIdToUse);
           try {
             onSessionComplete?.(sessionIdToUse);
           } catch (e) {

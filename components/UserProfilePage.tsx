@@ -65,6 +65,17 @@ interface DemoSession {
   pdf_generated?: boolean;
 }
 
+interface ReportSession {
+  session_id: string;
+  user_name: string;
+  status: string;
+  report_mode: string;
+  created_at: string;
+  updated_at: string;
+  full_report_length: number;
+  batch_status?: string | null;
+}
+
 interface DemoMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -72,13 +83,15 @@ interface DemoMessage {
 }
 
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'bookings' | 'messages' | 'settings' | 'demos'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'subscription' | 'billing' | 'charts' | 'reports' | 'bookings' | 'messages' | 'settings' | 'demos'>('overview');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [charts, setCharts] = useState<Chart[]>([]);
   const [demoSessions, setDemoSessions] = useState<DemoSession[]>([]);
+  const [reportSessions, setReportSessions] = useState<ReportSession[]>([]);
+  const [downloadingReportSessionId, setDownloadingReportSessionId] = useState<string | null>(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [chatModalTitle, setChatModalTitle] = useState('Histórico de chat');
   const [chatMessages, setChatMessages] = useState<DemoMessage[]>([]);
@@ -152,6 +165,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
         setDemoSessions(demosData || []);
       }
 
+      // Obtener informes (sesiones) guardados
+      const reportsResponse = await fetch(`${API_URL}/reports/my-sessions?limit=100`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (reportsResponse.ok) {
+        const reportsData = await reportsResponse.json();
+        setReportSessions(reportsData.sessions || []);
+      }
+
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -174,11 +196,41 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
     }
   };
 
+  const handleDownloadReportPdf = async (session: ReportSession) => {
+    try {
+      setDownloadingReportSessionId(session.session_id);
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/reports/download-pdf/${session.session_id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Error descargando PDF');
+      const disposition = res.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || `informe_${session.session_id}.pdf`;
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.error('Error descargando informe:', e);
+      alert(e?.message || 'Error descargando informe');
+    } finally {
+      setDownloadingReportSessionId(null);
+    }
+  };
+
   const tabs = [
     { id: 'overview', name: 'Resumen', icon: User },
     { id: 'subscription', name: 'Suscripción', icon: Crown },
     { id: 'bookings', name: 'Mis Servicios', icon: Calendar },
     { id: 'charts', name: 'Mis Cartas', icon: FileText },
+    { id: 'reports', name: 'Mis Informes', icon: Sparkles },
     { id: 'demos', name: 'Demos & PDFs', icon: History },
     { id: 'billing', name: 'Facturación', icon: CreditCard },
     { id: 'messages', name: 'Mensajes', icon: MessageCircle },
@@ -538,6 +590,63 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                           disabled={deletingChartId === chart.chart_id}
                         >
                           <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'reports' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Mis Informes</h2>
+
+              {reportSessions.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p>No has generado informes aún</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {reportSessions.map((s) => (
+                    <div key={s.session_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all border border-white/5 hover:border-purple-500/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 bg-purple-500/20 rounded-lg">
+                          <Sparkles className="w-6 h-6 text-purple-400" />
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${
+                          (s.status === 'completed') ? 'bg-green-500/10 text-green-300 border-green-500/20' :
+                          (s.status === 'error') ? 'bg-red-500/10 text-red-300 border-red-500/20' :
+                          'bg-gray-500/10 text-gray-300 border-gray-500/20'
+                        }`}>
+                          {(s.status || 'in_progress').toUpperCase()}
+                        </span>
+                      </div>
+
+                      <h3 className="text-white font-bold mb-1">
+                        Informe {s.report_mode === 'light' ? 'Ligero' : 'Exhaustivo'}
+                      </h3>
+                      <p className="text-xs text-gray-400 mb-3">
+                        {s.created_at ? new Date(s.created_at).toLocaleString('es-ES') : ''}
+                      </p>
+
+                      <div className="text-xs text-gray-400 space-y-1">
+                        <p>ID: <span className="font-mono">{s.session_id.substring(0, 8)}...</span></p>
+                        <p>Longitud: {Number(s.full_report_length || 0).toLocaleString()} chars</p>
+                      </div>
+
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadReportPdf(s)}
+                          disabled={downloadingReportSessionId === s.session_id || s.status !== 'completed'}
+                          className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                          title={s.status !== 'completed' ? 'El informe aún no está completado' : 'Descargar PDF'}
+                        >
+                          <Download className="w-4 h-4" />
+                          {downloadingReportSessionId === s.session_id ? 'Descargando…' : 'Descargar PDF'}
                         </button>
                       </div>
                     </div>
