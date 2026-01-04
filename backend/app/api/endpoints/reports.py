@@ -1207,7 +1207,7 @@ async def download_pdf_from_session(
     except Exception:
         pass
 
-    filename = f\"{_safe_slug(str(user_name))}_{_birth_stamp(carta_data)}.pdf\"
-    headers = {\"Content-Disposition\": f\"attachment; filename=\\\"{filename}\\\"\"}
-    return StreamingResponse(pdf_buffer, media_type=\"application/pdf\", headers=headers)
+    filename = f"{_safe_slug(str(user_name))}_{_birth_stamp(carta_data)}.pdf"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
 
