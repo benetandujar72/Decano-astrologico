@@ -25,7 +25,10 @@ interface Module {
 interface GenerationStatus {
   session_id: string;
   status: string;
+  error?: string | null;
   current_module_index: number;
+  current_module_id?: string | null;
+  current_module_title?: string | null;
   total_modules: number;
   modules: Array<{
     id: string;
@@ -34,6 +37,18 @@ interface GenerationStatus {
     length: number;
   }>;
   has_full_report: boolean;
+  batch_job?: {
+    job_id?: string | null;
+    status?: string | null;
+    error?: string | null;
+    updated_at?: string | null;
+  } | null;
+  module_runs_summary?: Record<string, {
+    status?: string | null;
+    error?: string | null;
+    updated_at?: string | null;
+    last_step?: string | null;
+  }>;
 }
 
 const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
@@ -54,9 +69,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
   const [generatedModulesCount, setGeneratedModulesCount] = useState(0);
+  const [events, setEvents] = useState<string[]>([]);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [downloadedPdf, setDownloadedPdf] = useState(false);
 
   const remainingRef = useRef<number>(0);
   const timerRef = useRef<number | null>(null);
+  const lastEventRef = useRef<{ moduleId?: string | null; step?: string | null }>({ moduleId: null, step: null });
   
   // Estimación de tiempo por módulo (en segundos)
   const TIME_ESTIMATES: Record<string, number> = {
@@ -126,7 +145,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         },
         body: JSON.stringify({
           carta_data: cartaData,
-          nombre: nombre
+          nombre: nombre,
+          report_mode: "full"
         })
       });
 
@@ -321,6 +341,21 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const data = await response.json();
         setStatus(data);
         setCurrentModuleIndex(data.current_module_index);
+
+        // Eventos UX: cambio de módulo / paso
+        const moduleId = data.current_module_id || null;
+        const step = (data.module_runs_summary && moduleId && data.module_runs_summary[moduleId]?.last_step) ? data.module_runs_summary[moduleId]?.last_step : null;
+        const prev = lastEventRef.current;
+        if (moduleId && moduleId !== prev.moduleId) {
+          const title = data.current_module_title || moduleId;
+          setEvents((prevEvents) => [`Cambio de módulo: ${title}`, ...prevEvents].slice(0, 12));
+          lastEventRef.current = { moduleId, step: null };
+        }
+        if (step && step !== prev.step) {
+          setEvents((prevEvents) => [`Paso: ${step}`, ...prevEvents].slice(0, 12));
+          lastEventRef.current = { moduleId, step };
+        }
+
         // Progreso: contar módulos generados
         if (Array.isArray(data.modules)) {
           const generated = data.modules.filter((m: any) => m && m.is_generated).length;
@@ -338,10 +373,49 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }
   };
 
+  const downloadPdf = async (sid?: string) => {
+    const sidToUse = sid || sessionId;
+    if (!sidToUse) return;
+
+    setIsDownloadingPdf(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const response = await fetch(`${API_URL}/reports/download-pdf/${sidToUse}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Error descargando PDF: HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || `informe_${sidToUse}.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setDownloadedPdf(true);
+    } catch (err: any) {
+      console.error('[WIZARD] Error descargando PDF:', err);
+      setError(err.message || 'Error descargando PDF');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const startAutoGenerationPolling = async (sessionIdToUse: string, modulesList: Module[]) => {
     setIsAutoGenerating(true);
     setError(null);
     setGeneratedModulesCount(0);
+    setDownloadedPdf(false);
+    setEvents([]);
 
     // Calcular tiempo total estimado (solo UX)
     const totalEstimatedTime = modulesList.reduce((total, module) => {
@@ -389,17 +463,21 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const data = await res.json();
 
         if (data.status === 'error') {
-          throw new Error('Error generando el informe en el servidor. Revisa el panel y reintenta.');
+          const msg = data.error || data?.batch_job?.error || 'Error generando el informe en el servidor. Revisa el panel y reintenta.';
+          throw new Error(msg);
         }
 
         if (data.status === 'completed' || data.has_full_report) {
-          // Descargar informe completo y cerrar wizard
-          await getFullReport();
+          // Terminado: dejar wizard abierto con acciones (descarga PDF / export)
           setIsAutoGenerating(false);
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
+          // Mejor UX: refrescar y descargar PDF (on-demand) automáticamente una vez
+          setSessionId(sessionIdToUse);
+          await refreshStatus();
+          await downloadPdf(sessionIdToUse);
           return;
         }
 
@@ -558,6 +636,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
   const currentModule = modules[currentModuleIndex];
   const isLastModule = currentModuleIndex === modules.length - 1;
+  const isCompleted = !!(status && (status.status === 'completed' || status.has_full_report || status.batch_job?.status === 'done'));
   const progress = modules.length > 0 ? ((currentModuleIndex + 1) / modules.length) * 100 : 0;
 
   return (
@@ -635,6 +714,50 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Panel de eventos/progreso (clave para entender qué está pasando) */}
+          {!!events.length && (
+            <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4 mb-4">
+              <div className="text-xs text-gray-300 font-semibold mb-2">Progreso (eventos recientes)</div>
+              <ul className="text-xs text-gray-400 space-y-1">
+                {events.map((e, i) => (
+                  <li key={i}>- {e}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isCompleted && (
+            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-semibold">Informe completo generado</span>
+              </div>
+              <p className="text-green-200 mt-2 text-sm">
+                Ya puedes descargar el PDF final o abrir el exportador.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  onClick={() => downloadPdf()}
+                  disabled={isDownloadingPdf}
+                  className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2 disabled:opacity-60"
+                >
+                  {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  Descargar PDF
+                </button>
+                <button
+                  onClick={async () => { await getFullReport(); }}
+                  className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                >
+                  Abrir exportador
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                {downloadedPdf && (
+                  <span className="text-xs text-green-300 self-center">PDF descargado.</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {isLoading && (
             <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
@@ -673,6 +796,16 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
                       : 'Generando módulo...'
                     }
                   </p>
+                  {!!status?.current_module_title && (
+                    <p className="text-gray-300 text-sm mt-2">
+                      Módulo actual: <span className="text-purple-300 font-semibold">{status.current_module_title}</span>
+                    </p>
+                  )}
+                  {!!status?.current_module_id && !!status?.module_runs_summary?.[status.current_module_id]?.last_step && (
+                    <p className="text-gray-400 text-xs mt-2">
+                      Paso: {status.module_runs_summary[status.current_module_id]?.last_step}
+                    </p>
+                  )}
                   <p className="text-gray-400 text-sm mt-2">
                     {isAutoGenerating 
                       ? `Proceso automático en curso. Todos los módulos se generarán secuencialmente.`
