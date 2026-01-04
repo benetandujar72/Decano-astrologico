@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import {
   X, User, Mail, Calendar, Crown, FileText, DollarSign,
   MessageCircle, Clock, CheckCircle, XCircle, AlertCircle,
-  ChevronDown, ChevronUp, Sparkles, CreditCard, History
+  ChevronDown, ChevronUp, Sparkles, CreditCard, History, Trash2
 } from 'lucide-react';
 
 interface UserDetailViewProps {
@@ -104,6 +104,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const token = localStorage.getItem('fraktal_token');
+  const [deletingChartId, setDeletingChartId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserDetails();
@@ -253,6 +254,28 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
       setError(err.message || 'Error al cargar datos del usuario');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteChart = async (chart: Chart) => {
+    const ok = window.confirm('¿Eliminar esta carta del usuario?');
+    if (!ok) return;
+    try {
+      setDeletingChartId(chart.chart_id);
+      const res = await fetch(`${API_URL}/charts/${chart.chart_id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Error eliminando carta');
+      }
+      setCharts((prev) => prev.filter((c) => c.chart_id !== chart.chart_id));
+    } catch (e: any) {
+      console.error('Error eliminando carta:', e);
+      alert(e?.message || 'Error eliminando carta');
+    } finally {
+      setDeletingChartId(null);
     }
   };
 
@@ -470,7 +493,19 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
                           {new Date(chart.created_at).toLocaleDateString('es-ES')}
                         </p>
                       </div>
-                      <span className="text-xs text-purple-400 font-mono">{chart.chart_id.substring(0, 8)}...</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-purple-400 font-mono">{chart.chart_id.substring(0, 8)}...</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteChart(chart)}
+                          disabled={deletingChartId === chart.chart_id}
+                          className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Eliminar carta"
+                          aria-label="Eliminar carta"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

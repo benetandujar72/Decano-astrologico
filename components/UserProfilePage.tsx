@@ -87,6 +87,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [targetFeature, setTargetFeature] = useState('');
+  const [deletingChartId, setDeletingChartId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserData();
@@ -155,6 +156,21 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
       console.error('Error loading user data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteChart = async (chart: Chart) => {
+    const ok = window.confirm('¿Eliminar esta carta?');
+    if (!ok) return;
+    try {
+      setDeletingChartId(chart.chart_id);
+      await api.deleteChart(chart.chart_id);
+      setCharts((prev) => prev.filter((c) => c.chart_id !== chart.chart_id));
+    } catch (e: any) {
+      console.error('Error eliminando carta:', e);
+      alert(e?.message || 'Error eliminando carta');
+    } finally {
+      setDeletingChartId(null);
     }
   };
 
@@ -518,6 +534,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                           className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all"
                           title="Eliminar carta"
                           aria-label="Eliminar carta"
+                          onClick={() => handleDeleteChart(chart)}
+                          disabled={deletingChartId === chart.chart_id}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
