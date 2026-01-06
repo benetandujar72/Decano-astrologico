@@ -9,6 +9,7 @@ from app.api.endpoints import (
     config,
     ephemeris,
     reports,
+    rag_admin,
     subscriptions,
     admin,
     geolocation,
@@ -30,6 +31,7 @@ router.include_router(geolocation.router, prefix="/geolocation", tags=["geolocat
 router.include_router(reports.router, prefix="/reports", tags=["reports"])
 router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 router.include_router(admin.router, prefix="/admin", tags=["admin"])
+router.include_router(rag_admin.router, prefix="/admin", tags=["admin-rag"])
 
 # Nuevos endpoints para sistema de expertos y servicios profesionales
 router.include_router(expert_chat.router, prefix="/expert-chat", tags=["expert-chat"])

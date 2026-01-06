@@ -89,12 +89,16 @@ class StartReportGenerationRequest(BaseModel):
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
+    report_type: str = Field(default="individual", description="Tipo de informe: individual | pareja | familiar | equipo")
+    profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
 
 class QueueFullReportRequest(BaseModel):
     """Inicia y encola la generación completa del informe (todos los módulos)"""
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
+    report_type: str = Field(default="individual", description="Tipo de informe: individual | pareja | familiar | equipo")
+    profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
 
 
 class GenerateModuleRequest(BaseModel):
@@ -136,6 +140,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             return
 
         report_mode = (session.get("report_mode") or "full").lower().strip()
+        report_type = (session.get("report_type") or "individual").lower().strip()
         sections = full_report_service._get_sections_definition(report_mode=report_mode)
         module_index = next((i for i, s in enumerate(sections) if s["id"] == module_id), -1)
         if module_index == -1:
@@ -168,11 +173,12 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
         # Aumentado a 40 minutos para módulos complejos que pueden tardar más
         content, is_last, usage_metadata = await asyncio.wait_for(
             full_report_service.generate_single_module(
-                session["carta_data"],
-                session["user_name"],
-                module_id,
-                report_mode,
-                previous_modules,
+                chart_data=session.get("carta_data", {}) or {},
+                user_name=session.get("user_name", "Consultante"),
+                module_id=module_id,
+                report_mode=report_mode,
+                report_type=report_type,
+                previous_modules=previous_modules,
                 progress_cb=progress_cb,
                 chart_facts=session.get("chart_facts"),
             ),
@@ -578,6 +584,9 @@ async def start_report_generation(
     report_mode = (request.report_mode or "full").lower().strip()
     if report_mode not in {"full", "light"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
+    report_type = (request.report_type or "individual").lower().strip()
+    if report_type not in {"individual", "pareja", "familiar", "equipo"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_type no válido. Usa: individual | pareja | familiar | equipo")
     
     # Obtener lista de módulos
     sections = full_report_service._get_sections_definition(report_mode=report_mode)
@@ -590,14 +599,34 @@ async def start_report_generation(
         for s in sections
     ]
     
+    # Preparar facts (soporta multi-input de forma compatible)
+    profiles = request.profiles if isinstance(request.profiles, list) and request.profiles else None
+    multi_facts = None
+    if profiles:
+        items = []
+        for p in profiles:
+            if not isinstance(p, dict):
+                continue
+            carta = p.get("carta_data") or p.get("chart_data") or p.get("carta") or None
+            if not isinstance(carta, dict):
+                continue
+            items.append({
+                "name": p.get("nombre") or p.get("name") or "",
+                "facts": full_report_service.build_chart_facts(carta),
+            })
+        if items:
+            multi_facts = {"report_type": report_type, "profiles": items}
+
     # Crear sesión
     session_data = {
         "user_id": user_id,
         "user_name": user_name,
         "carta_data": request.carta_data,
+        "report_type": report_type,
+        "profiles": profiles or None,
         "report_mode": report_mode,
         # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
-        "chart_facts": full_report_service.build_chart_facts(request.carta_data),
+        "chart_facts": multi_facts or full_report_service.build_chart_facts(request.carta_data),
         "generated_modules": {},
         "module_runs": {},
         "current_module_index": 0,
@@ -632,6 +661,26 @@ async def queue_full_report(
     report_mode = (request.report_mode or "full").lower().strip()
     if report_mode not in {"full", "light"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
+    report_type = (request.report_type or "individual").lower().strip()
+    if report_type not in {"individual", "pareja", "familiar", "equipo"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_type no válido. Usa: individual | pareja | familiar | equipo")
+
+    profiles = request.profiles if isinstance(request.profiles, list) and request.profiles else None
+    multi_facts = None
+    if profiles:
+        items = []
+        for p in profiles:
+            if not isinstance(p, dict):
+                continue
+            carta = p.get("carta_data") or p.get("chart_data") or p.get("carta") or None
+            if not isinstance(carta, dict):
+                continue
+            items.append({
+                "name": p.get("nombre") or p.get("name") or "",
+                "facts": full_report_service.build_chart_facts(carta),
+            })
+        if items:
+            multi_facts = {"report_type": report_type, "profiles": items}
 
     sections = full_report_service._get_sections_definition(report_mode=report_mode)
     modules_list = [{"id": s["id"], "title": s["title"], "expected_min_chars": s["expected_min_chars"]} for s in sections]
@@ -642,9 +691,11 @@ async def queue_full_report(
         "user_id": user_id,
         "user_name": user_name,
         "carta_data": request.carta_data,
+        "report_type": report_type,
+        "profiles": profiles or None,
         "report_mode": report_mode,
         # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
-        "chart_facts": full_report_service.build_chart_facts(request.carta_data),
+        "chart_facts": multi_facts or full_report_service.build_chart_facts(request.carta_data),
         "generated_modules": {},
         "module_runs": {},
         "current_module_index": 0,
@@ -841,12 +892,16 @@ async def generate_module(
         from app.services.ai_usage_tracker import track_ai_usage
         
         try:
+            report_mode = (session.get("report_mode") or "full").lower().strip()
+            report_type = (session.get("report_type") or "individual").lower().strip()
             content, is_last, usage_metadata = await asyncio.wait_for(
                 full_report_service.generate_single_module(
-                    session["carta_data"],
-                    session["user_name"],
-                    request.module_id,
-                    previous_modules,
+                    chart_data=session.get("carta_data", {}) or {},
+                    user_name=session.get("user_name", "Consultante"),
+                    module_id=request.module_id,
+                    report_mode=report_mode,
+                    report_type=report_type,
+                    previous_modules=previous_modules,
                     chart_facts=session.get("chart_facts"),
                 ),
                 timeout=600.0  # 10 minutos máximo por módulo

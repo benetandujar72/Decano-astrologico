@@ -1,0 +1,153 @@
+/* Estilos base (SaaS/Clínico) para HTML/PDF */
+
+@page {
+  size: A4;
+  margin: 16mm 14mm 18mm 14mm;
+}
+
+@page {
+  @top-center {
+    content: element(reportHeader);
+  }
+  @bottom-center {
+    content: element(reportFooter);
+  }
+}
+
+html, body {
+  font-family: Inter, Roboto, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+  color: #0f172a;
+  font-size: 11pt;
+  line-height: 1.45;
+}
+
+.report-header, .report-footer {
+  position: running(reportHeader);
+}
+
+#reportFooter {
+  position: running(reportFooter);
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 9pt;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.subtitle {
+  color: #475569;
+  font-size: 9.5pt;
+}
+
+.user {
+  font-weight: 600;
+  text-align: right;
+}
+
+.meta {
+  color: #475569;
+  font-size: 9.5pt;
+  text-align: right;
+}
+
+.muted { color: #64748b; }
+
+.h1 {
+  font-size: 22pt;
+  margin: 0 0 6pt 0;
+}
+
+.h2 {
+  font-size: 14.5pt;
+  margin: 0 0 8pt 0;
+  padding-top: 2pt;
+}
+
+.card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10pt;
+  background: #ffffff;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8pt 12pt;
+}
+
+.label {
+  color: #475569;
+  font-size: 9pt;
+  display: block;
+}
+
+.value {
+  font-weight: 600;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e2e8f0;
+}
+
+.table th, .table td {
+  padding: 8pt;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.table th {
+  background: #f8fafc;
+  text-align: left;
+  font-weight: 700;
+}
+
+.analysis {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12pt;
+}
+
+.analysis p { margin: 0 0 10pt 0; }
+.analysis h3 { margin: 14pt 0 6pt 0; }
+
+.center { text-align: center; }
+.chart-image { width: 420px; max-width: 100%; height: auto; }
+
+/* Impresión: control de cortes */
+@media print {
+  .chapter {
+    break-before: page;
+  }
+
+  .analysis, .card, .table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
+
+

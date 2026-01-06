@@ -124,6 +124,45 @@ async def update_system_prompt(
 
 
 # ========================================
+# REPORT TEXTS (CMS ligero)
+# ========================================
+
+class ReportTextsUpdate(BaseModel):
+    texts: dict
+
+
+@router.get("/report-texts")
+async def get_report_texts(current_user: dict = Depends(get_current_user)) -> dict:
+    """Obtiene los literales editables del informe (admin)."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    from app.services.report_texts_service import load_report_texts
+    return {"texts": load_report_texts()}
+
+
+@router.put("/report-texts")
+async def update_report_texts(body: ReportTextsUpdate, current_user: dict = Depends(get_current_user)) -> dict:
+    """Actualiza literales editables del informe guardándolos en MongoDB."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
+    if not isinstance(body.texts, dict):
+        raise HTTPException(status_code=400, detail="texts debe ser un objeto")
+
+    cleaned = {}
+    for k, v in body.texts.items():
+        if isinstance(k, str) and isinstance(v, str):
+            cleaned[k] = v
+
+    await db.report_texts.update_one(
+        {"_id": "default"},
+        {"$set": {"texts": cleaned, "updated_at": datetime.utcnow().isoformat(), "updated_by": current_user.get("username")}},
+        upsert=True,
+    )
+    return {"ok": True, "texts": cleaned}
+
+
+# ========================================
 # SPECIALIZED PROMPTS ENDPOINTS
 # ========================================
 

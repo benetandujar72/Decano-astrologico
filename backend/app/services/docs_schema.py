@@ -13,6 +13,12 @@ from typing import Dict, Tuple
 
 # Stable topic taxonomy used to tag chunks and filter retrieval.
 DOC_TOPICS = {
+    # Knowledge-base isolation topics (RAG Router)
+    "adultos",
+    "infantil",
+    "profesional",
+    "sistemico",
+    # Legacy/module topics
     "general",
     "fundamentos",
     "personales",

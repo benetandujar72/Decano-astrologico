@@ -54,7 +54,7 @@ import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualizac
 import LandingPage from './components/LandingPage';
 import { calculateChartData } from './astrologyEngine';
 import { api } from './services/api';
-import './styles/mystic-theme.css'; // 🆕 Estilos místicos
+import './styles/mystic-theme.css'; // Estilos base (SaaS/Clínico)
 import './components/PlanetaryOrbit.css'; // 🆕 Animaciones 
 
 // Symbol Dictionaries for Legend
@@ -1721,7 +1721,12 @@ ${analysisText}
             </div>
           </div>
           <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-125">
-            <NatalChart positions={analysisResult.positions} lang={lang} />
+            <NatalChart
+              positions={analysisResult.positions}
+              lang={lang}
+              houses={cartaCompleta?.casas}
+              ascLongitude={cartaCompleta?.angulos?.ascendente?.longitud}
+            />
           </div>
         </div>
         <ControlPanel lang={lang} onTimeShift={handleTimeShift} onAction={handleToolbarAction} />

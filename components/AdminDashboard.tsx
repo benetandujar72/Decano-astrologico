@@ -100,8 +100,17 @@ interface SpecializedPrompt {
   created_by?: string;
 }
 
+interface RagMapping {
+  report_type: string;
+  prompt_type: string;
+  docs_topic: string;
+  docs_version: string;
+  updated_at?: string;
+  updated_by?: string;
+}
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'invoices' | 'prompts' | 'admin-plans' | 'ai-usage'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'invoices' | 'prompts' | 'rag' | 'report-texts' | 'admin-plans' | 'ai-usage'>('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -146,6 +155,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   const [adminPlanMessage, setAdminPlanMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [selectedAdminPlan, setSelectedAdminPlan] = useState<'pro' | 'premium' | 'enterprise'>('enterprise');
 
+  // RAG Router mappings
+  const [ragMappings, setRagMappings] = useState<RagMapping[]>([]);
+  const [ragLoading, setRagLoading] = useState(false);
+  const [ragError, setRagError] = useState<string | null>(null);
+
+  // Report texts (CMS ligero)
+  const [reportTextsJson, setReportTextsJson] = useState<string>('{}');
+  const [reportTextsLoading, setReportTextsLoading] = useState(false);
+  const [reportTextsError, setReportTextsError] = useState<string | null>(null);
+
   // Verificar permisos de admin al montar
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -180,6 +199,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
       fetchUsers();
     } else if (activeTab === 'prompts') {
       fetchSpecializedPrompts();
+    } else if (activeTab === 'rag') {
+      fetchRagMappings();
+    } else if (activeTab === 'report-texts') {
+      fetchReportTexts();
     } else if (activeTab === 'subscriptions') {
       fetchSubscribers();
       fetchRevenueStats();
@@ -187,6 +210,95 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
       fetchPayments();
     }
   }, [activeTab]);
+
+  const fetchRagMappings = async () => {
+    try {
+      setRagLoading(true);
+      setRagError(null);
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_URL}/admin/rag-mappings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(`Error cargando RAG mappings (${response.status}): ${txt}`);
+      }
+      const data = await response.json();
+      setRagMappings(data.mappings || []);
+    } catch (e: any) {
+      console.error('Error loading rag mappings:', e);
+      setRagError(e?.message || 'Error cargando RAG mappings');
+    } finally {
+      setRagLoading(false);
+    }
+  };
+
+  const upsertRagMapping = async (mapping: RagMapping) => {
+    const token = localStorage.getItem('fraktal_token');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${API_URL}/admin/rag-mappings`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(mapping)
+    });
+    if (!response.ok) {
+      const txt = await response.text();
+      throw new Error(`Error guardando mapping (${response.status}): ${txt}`);
+    }
+    return await response.json();
+  };
+
+  const fetchReportTexts = async () => {
+    try {
+      setReportTextsLoading(true);
+      setReportTextsError(null);
+      const token = localStorage.getItem('fraktal_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/config/report-texts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(`Error cargando report-texts (${response.status}): ${txt}`);
+      }
+      const data = await response.json();
+      setReportTextsJson(JSON.stringify(data.texts || {}, null, 2));
+    } catch (e: any) {
+      console.error('Error loading report texts:', e);
+      setReportTextsError(e?.message || 'Error cargando report-texts');
+    } finally {
+      setReportTextsLoading(false);
+    }
+  };
+
+  const saveReportTexts = async () => {
+    const token = localStorage.getItem('fraktal_token');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    let textsObj: any = {};
+    try {
+      textsObj = JSON.parse(reportTextsJson || '{}');
+    } catch (e: any) {
+      throw new Error('JSON inválido: revisa la sintaxis');
+    }
+    const response = await fetch(`${API_URL}/config/report-texts`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ texts: textsObj })
+    });
+    if (!response.ok) {
+      const txt = await response.text();
+      throw new Error(`Error guardando report-texts (${response.status}): ${txt}`);
+    }
+    return await response.json();
+  };
 
   // Refetch subscriptions when filters change
   useEffect(() => {
@@ -662,28 +774,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
     { id: 'subscriptions', name: 'Suscripciones', icon: Crown },
     { id: 'invoices', name: 'Facturas', icon: FileText },
     { id: 'prompts', name: 'Prompts', icon: Settings },
+    { id: 'rag', name: 'RAG Router', icon: Filter },
+    { id: 'report-texts', name: 'Textos PDF', icon: FileText },
     { id: 'ai-usage', name: 'Control IA', icon: Brain }
   ];
 
   return (
-    <div className="min-h-screen py-8 px-4">
+    <div className="min-h-screen py-8 px-4 bg-slate-50 text-slate-900">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <button
               onClick={onBack}
-              className="text-gray-400 hover:text-white mb-4 transition-colors flex items-center gap-2"
+              className="text-slate-600 hover:text-slate-900 mb-4 transition-colors flex items-center gap-2"
             >
               <ArrowLeft size={20} />
               Volver
             </button>
-            <h1 className="text-4xl font-bold mystic-text-gradient mb-2">
+            <h1 className="text-3xl md:text-4xl font-semibold mb-2">
               Panel de Administración
             </h1>
-            <p className="text-gray-400">Gestión completa del sistema Fraktal</p>
+            <p className="text-slate-600">Gestión y observabilidad del sistema</p>
           </div>
-          <div className="mystic-badge">
+          <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-semibold tracking-wide">
             ADMIN
           </div>
         </div>
@@ -699,8 +813,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 className={`
                   flex items-center px-6 py-3 rounded-lg whitespace-nowrap transition-all
                   ${activeTab === tab.id
-                    ? 'mystic-button text-white'
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                   }
                 `}
               >
@@ -712,59 +826,59 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
         </div>
 
         {/* Content */}
-        <div className="mystic-card p-8">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Estadísticas Generales</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-6">Estadísticas Generales</h2>
               
               {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Total Usuarios */}
-                  <div className="bg-linear-to-br from-indigo-500/20 to-purple-600/20 rounded-xl p-6 border border-indigo-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <Users className="w-8 h-8 text-indigo-400" />
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <Users className="w-8 h-8 text-slate-700" />
+                      <TrendingUp className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       {stats.total_users}
                     </div>
-                    <div className="text-gray-400 text-sm">Total Usuarios</div>
+                    <div className="text-slate-600 text-sm">Total Usuarios</div>
                   </div>
 
                   {/* Suscripciones Activas */}
-                  <div className="bg-linear-to-br from-yellow-500/20 to-orange-600/20 rounded-xl p-6 border border-yellow-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <Crown className="w-8 h-8 text-yellow-400" />
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <Crown className="w-8 h-8 text-slate-700" />
+                      <TrendingUp className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       {stats.active_subscriptions}
                     </div>
-                    <div className="text-gray-400 text-sm">Suscripciones Activas</div>
+                    <div className="text-slate-600 text-sm">Suscripciones Activas</div>
                   </div>
 
                   {/* Total Cartas */}
-                  <div className="bg-linear-to-br from-emerald-500/20 to-teal-600/20 rounded-xl p-6 border border-emerald-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <FileText className="w-8 h-8 text-emerald-400" />
-                      <Activity className="w-5 h-5 text-emerald-400" />
+                      <FileText className="w-8 h-8 text-slate-700" />
+                      <Activity className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       {stats.total_charts}
                     </div>
-                    <div className="text-gray-400 text-sm">Cartas Generadas</div>
+                    <div className="text-slate-600 text-sm">Cartas Generadas</div>
                   </div>
 
                   {/* Ingresos Mensuales */}
-                  <div className="bg-linear-to-br from-green-500/20 to-emerald-600/20 rounded-xl p-6 border border-green-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <DollarSign className="w-8 h-8 text-green-400" />
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <DollarSign className="w-8 h-8 text-slate-700" />
+                      <TrendingUp className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       €{stats.monthly_revenue.toFixed(2)}
                     </div>
-                    <div className="text-gray-400 text-sm">Ingresos del Mes</div>
+                    <div className="text-slate-600 text-sm">Ingresos del Mes</div>
                   </div>
                 </div>
               )}
@@ -774,8 +888,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
           {activeTab === 'admin-plans' && (
             <div className="space-y-6">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white mb-2">Mi Plan de Administrador</h2>
-                <p className="text-gray-400">Como administrador, tienes acceso a todos los planes sin necesidad de pagar</p>
+                <h2 className="text-2xl font-semibold text-slate-900 mb-2">Mi Plan de Administrador</h2>
+                <p className="text-slate-600">Como administrador, tienes acceso a todos los planes sin necesidad de pagar</p>
               </div>
 
               {adminPlanMessage && (
@@ -1334,6 +1448,200 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                    }}
                  />
                )}
+            </div>
+          )}
+
+          {activeTab === 'rag' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-slate-900">RAG Router</h2>
+                  <p className="text-slate-600 text-sm">
+                    Mapea <span className="font-mono">report_type</span> → <span className="font-mono">prompt_type</span> + <span className="font-mono">docs_topic/docs_version</span>.
+                    El retrieval se ejecuta en modo <span className="font-mono">strict_topic</span> (sin cruces).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRagMappings((prev) => [
+                      { report_type: 'individual', prompt_type: 'carutti', docs_topic: 'adultos', docs_version: '' },
+                      ...prev,
+                    ]);
+                  }}
+                  className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors inline-flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  Nuevo mapping
+                </button>
+              </div>
+
+              {ragError && (
+                <div className="border border-red-200 bg-red-50 text-red-800 rounded-xl p-4 text-sm">
+                  {ragError}
+                </div>
+              )}
+
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr className="text-left text-slate-600">
+                        <th className="p-3">report_type</th>
+                        <th className="p-3">prompt_type</th>
+                        <th className="p-3">docs_topic</th>
+                        <th className="p-3">docs_version</th>
+                        <th className="p-3">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ragLoading ? (
+                        <tr><td className="p-4 text-slate-600" colSpan={5}>Cargando…</td></tr>
+                      ) : ragMappings.length === 0 ? (
+                        <tr><td className="p-4 text-slate-600" colSpan={5}>No hay mappings aún.</td></tr>
+                      ) : (
+                        ragMappings.map((m, idx) => (
+                          <tr key={`${m.report_type}-${idx}`} className="border-b border-slate-100">
+                            <td className="p-3">
+                              <select
+                                value={m.report_type}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setRagMappings((prev) => prev.map((x, i) => i === idx ? { ...x, report_type: v } : x));
+                                }}
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white"
+                              >
+                                {['individual', 'pareja', 'familiar', 'equipo', 'adultos', 'infantil', 'profesional'].map((rt) => (
+                                  <option key={rt} value={rt}>{rt}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="p-3">
+                              <input
+                                value={m.prompt_type}
+                                onChange={(e) => setRagMappings((prev) => prev.map((x, i) => i === idx ? { ...x, prompt_type: e.target.value } : x))}
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                                placeholder="carutti | infantil | ..."
+                              />
+                            </td>
+                            <td className="p-3">
+                              <select
+                                value={m.docs_topic}
+                                onChange={(e) => setRagMappings((prev) => prev.map((x, i) => i === idx ? { ...x, docs_topic: e.target.value } : x))}
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white"
+                              >
+                                {['adultos', 'infantil', 'profesional', 'sistemico', 'general', 'fundamentos', 'personales', 'sociales', 'transpersonales', 'nodos', 'aspectos', 'ejes', 'evolucion'].map((t) => (
+                                  <option key={t} value={t}>{t}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="p-3">
+                              <input
+                                value={m.docs_version}
+                                onChange={(e) => setRagMappings((prev) => prev.map((x, i) => i === idx ? { ...x, docs_version: e.target.value } : x))}
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                                placeholder="(vacío = DOCS_VERSION)"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      setRagError(null);
+                                      await upsertRagMapping(m);
+                                      setMessage({ type: 'success', text: `Mapping guardado: ${m.report_type}` });
+                                      await fetchRagMappings();
+                                    } catch (e: any) {
+                                      setMessage({ type: 'error', text: e?.message || 'Error guardando mapping' });
+                                    }
+                                  }}
+                                  className="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRagMappings((prev) => prev.filter((_, i) => i !== idx))}
+                                  className="bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-colors"
+                                  title="Quitar (no borra en BD hasta que guardes otro mapping)"
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-500">
+                Endpoint backend: <span className="font-mono">GET/PUT /admin/rag-mappings</span>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'report-texts' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-slate-900">Textos del PDF (CMS ligero)</h2>
+                  <p className="text-slate-600 text-sm">
+                    Edita literales del informe sin tocar código. Se guardan en Mongo (<span className="font-mono">report_texts</span>).
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={fetchReportTexts}
+                    className="bg-slate-100 text-slate-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors"
+                    disabled={reportTextsLoading}
+                  >
+                    Recargar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setReportTextsError(null);
+                        await saveReportTexts();
+                        setMessage({ type: 'success', text: 'Textos guardados correctamente' });
+                        await fetchReportTexts();
+                      } catch (e: any) {
+                        setReportTextsError(e?.message || 'Error guardando report-texts');
+                        setMessage({ type: 'error', text: e?.message || 'Error guardando report-texts' });
+                      }
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    disabled={reportTextsLoading}
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+
+              {reportTextsError && (
+                <div className="border border-red-200 bg-red-50 text-red-800 rounded-xl p-4 text-sm">
+                  {reportTextsError}
+                </div>
+              )}
+
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <textarea
+                  value={reportTextsJson}
+                  onChange={(e) => setReportTextsJson(e.target.value)}
+                  className="w-full min-h-[420px] p-4 font-mono text-xs bg-white outline-none"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="text-xs text-slate-500">
+                Endpoint backend: <span className="font-mono">GET/PUT /config/report-texts</span>
+              </div>
             </div>
           )}
 

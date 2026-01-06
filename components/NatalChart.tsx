@@ -5,6 +5,8 @@ import { TRANSLATIONS } from '../constants';
 interface NatalChartProps {
   positions: PlanetPosition[];
   lang: Language;
+  houses?: Array<{ numero: number; cuspide: number; texto?: string }>;
+  ascLongitude?: number;
 }
 
 const ZODIAC_SYMBOLS: Record<string, string> = {
@@ -19,7 +21,7 @@ const PLANET_SYMBOLS: Record<string, string> = {
   'Ascendente': 'AC', 'Nodo Norte': '☊'
 };
 
-const NatalChart: React.FC<NatalChartProps> = ({ positions, lang }) => {
+const NatalChart: React.FC<NatalChartProps> = ({ positions, lang, houses, ascLongitude: ascLongitudeProp }) => {
   const [hoveredPlanet, setHoveredPlanet] = useState<PlanetPosition | null>(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
@@ -30,9 +32,9 @@ const NatalChart: React.FC<NatalChartProps> = ({ positions, lang }) => {
   const RADIUS = SIZE / 2 - 40;
   const INNER_RADIUS = RADIUS - 60;
   
-  // Find Ascendant longitude to rotate chart so ASC is at 9 o'clock (180 degrees visually in SVG)
+  // ASC: prefer prop (viene del backend) y si no, caer al planeta "Ascendente"
   const ascendant = positions.find(p => p.name === 'Ascendente');
-  const ascLongitude = ascendant ? ascendant.longitude : 0;
+  const ascLongitude = (typeof ascLongitudeProp === 'number' ? ascLongitudeProp : (ascendant ? ascendant.longitude : 0));
   
   // SVG starts at 0 degrees = 3 o'clock. We want ASC at 9 o'clock (Left).
   // Current ASC is at `ascLongitude`. We want to rotate so `ascLongitude` aligns with 180 deg.
@@ -134,13 +136,63 @@ const NatalChart: React.FC<NatalChartProps> = ({ positions, lang }) => {
             return drawSector(start, start + 30, colors[i % 4], sign);
           })}
 
-          {/* House Lines */}
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(deg => {
-             const realDeg = (deg + ascLongitude) % 360; 
-             const start = polarToCartesian(CENTER, CENTER, INNER_RADIUS, realDeg);
-             const end = polarToCartesian(CENTER, CENTER, INNER_RADIUS - 30, realDeg); 
-             return <line key={deg} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#475569" strokeWidth="1" />
-          })}
+          {/* House Lines (Placidus exactas si vienen del backend) */}
+          {(() => {
+            const cusps = Array.isArray(houses) && houses.length >= 12
+              ? [...houses].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0)).slice(0, 12)
+              : null;
+
+            const elements: React.ReactElement[] = [];
+
+            if (!cusps) {
+              // Fallback visual: 12 divisiones iguales
+              for (const deg of [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]) {
+                const start = polarToCartesian(CENTER, CENTER, INNER_RADIUS, deg);
+                const end = polarToCartesian(CENTER, CENTER, INNER_RADIUS - 30, deg);
+                elements.push(
+                  <line key={`house-fallback-${deg}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#475569" strokeWidth="1" />
+                );
+              }
+              return elements;
+            }
+
+            const midAngle = (a: number, b: number) => {
+              const aa = ((a % 360) + 360) % 360;
+              const bb = ((b % 360) + 360) % 360;
+              const delta = (bb - aa + 360) % 360;
+              return (aa + delta / 2) % 360;
+            };
+
+            cusps.forEach((c, idx) => {
+              const lon = c.cuspide;
+              const start = polarToCartesian(CENTER, CENTER, INNER_RADIUS, lon);
+              const end = polarToCartesian(CENTER, CENTER, INNER_RADIUS - 34, lon);
+              elements.push(
+                <line key={`house-${c.numero}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#334155" strokeWidth={c.numero === 1 ? 2 : 1} opacity={0.9} />
+              );
+
+              // Número de casa cerca del centro (midpoint entre cúspides)
+              const next = cusps[(idx + 1) % cusps.length];
+              const mid = midAngle(lon, next.cuspide);
+              const labelPos = polarToCartesian(CENTER, CENTER, INNER_RADIUS - 90, mid);
+              elements.push(
+                <text
+                  key={`house-label-${c.numero}`}
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  fill="#0f172a"
+                  fontSize="10"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  opacity={0.85}
+                >
+                  {c.numero}
+                </text>
+              );
+            });
+
+            return elements;
+          })()}
 
           {/* Center Hub */}
           <circle cx={CENTER} cy={CENTER} r={INNER_RADIUS - 40} fill="rgba(15, 23, 42, 0.5)" stroke="#334155" />

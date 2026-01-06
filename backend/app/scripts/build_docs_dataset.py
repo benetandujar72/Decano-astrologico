@@ -145,6 +145,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--docs-path", required=True, help="Directorio con PDFs (local).")
     parser.add_argument("--version", required=True, help="Versionado lógico de docs (ej: atlas_v1).")
+    parser.add_argument("--topic", default="", help="Override topic para toda la ingesta (ej: adultos|infantil|profesional).")
     parser.add_argument("--db", default="fraktal", help="DB name in MongoDB Atlas.")
     parser.add_argument("--chunks-collection", default="documentation_chunks", help="Collection for chunks.")
     parser.add_argument("--sources-collection", default="documentation_sources", help="Collection for sources.")
@@ -155,6 +156,8 @@ def main() -> None:
     parser.add_argument("--embed-device", default="auto", help="auto|cpu|cuda")
     parser.add_argument("--embed-batch-size", type=int, default=64)
     parser.add_argument("--no-embeddings", action="store_true", help="No generar embeddings (solo chunks).")
+    parser.add_argument("--copyright-safe", action="store_true", help="No guardar texto crudo: reescribir/resumir chunks antes de guardar y vectorizar.")
+    parser.add_argument("--summary-max-chars", type=int, default=1200, help="Máximo de caracteres por chunk resumido (copyright-safe).")
     args = parser.parse_args()
 
     mongo_url = os.getenv("MONGODB_URI") or os.getenv("MONGODB_URL")
@@ -165,8 +168,14 @@ def main() -> None:
     if not os.path.isdir(docs_path):
         raise SystemExit(f"Directorio no encontrado: {docs_path}")
 
-    pdfs = sorted([p for p in os.listdir(docs_path) if p.lower().endswith(".pdf")])
-    if not pdfs:
+    # Recorrer recursivo para soportar carpetas (ej: docs/adultos/*.pdf, docs/infantil/*.pdf)
+    pdf_paths: List[str] = []
+    for root, _, files in os.walk(docs_path):
+        for f in files:
+            if f.lower().endswith(".pdf"):
+                pdf_paths.append(os.path.join(root, f))
+    pdf_paths = sorted(pdf_paths)
+    if not pdf_paths:
         raise SystemExit(f"No se encontraron PDFs en {docs_path}")
 
     client = MongoClient(mongo_url, serverSelectionTimeoutMS=5000, connectTimeoutMS=10000)
@@ -223,11 +232,19 @@ def main() -> None:
         print(f"[OK] query_vectors: modules={len(qv_docs)} model={args.embed_model}")
 
     total_chunks = 0
-    for filename in pdfs:
-        path = os.path.join(docs_path, filename)
+    topic_override = (args.topic or "").lower().strip()
+    for path in pdf_paths:
+        filename = os.path.basename(path)
         sha = _sha256_file(path)
         doc_id = f"{os.path.splitext(filename)[0]}:{sha[:12]}"
-        topic = _infer_topic(filename)
+        # topic: override > folder > heurística filename
+        topic = topic_override
+        if not topic:
+            rel_dir = os.path.relpath(os.path.dirname(path), docs_path)
+            if rel_dir and rel_dir != ".":
+                topic = rel_dir.split(os.sep)[0].lower().strip()
+        if not topic:
+            topic = _infer_topic(filename)
         if topic not in DOC_TOPICS:
             topic = "general"
 
@@ -252,6 +269,17 @@ def main() -> None:
         docs: List[Dict[str, Any]] = []
         texts: List[str] = []
         for idx, (ps, pe, text) in enumerate(chunks):
+            original_text = text
+            if args.copyright_safe:
+                from app.services.docs_summarizer import summarize_for_rag
+
+                summarized = summarize_for_rag(original_text, max_chars=int(args.summary_max_chars))
+                # Guardar SOLO el resumen (copyright-safe) y un hash del original para trazabilidad
+                text = summarized
+                raw_sha = hashlib.sha256(original_text.encode("utf-8", errors="ignore")).hexdigest()
+            else:
+                raw_sha = None
+
             texts.append(text)
             docs.append(
                 {
@@ -265,6 +293,7 @@ def main() -> None:
                     "chunk_id": idx,
                     "text": text,
                     "len": len(text),
+                    **({"raw_text_sha256": raw_sha} if raw_sha else {}),
                     "ingested_at": ingested_at,
                 }
             )
