@@ -359,81 +359,81 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600/20 rounded-full mb-4">
-          <Sparkles className="w-8 h-8 text-purple-400" />
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 border border-blue-200 rounded-full mb-4">
+          <Sparkles className="w-8 h-8 text-blue-700" />
         </div>
-        <h1 className="text-4xl font-bold text-white mb-4">Demo de Informe Astrológico IA</h1>
-        <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold text-slate-900 mb-4">Demo de informe astrológico (IA)</h1>
+        <p className="text-slate-700 text-lg max-w-2xl mx-auto">
           Descubre tu perfil astrológico paso a paso con nuestra IA especializada (Método Carutti).
         </p>
       </div>
 
       {/* Form Step */}
       {step === 'form' && (
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-purple-400" />
+        <div className="md-card rounded-2xl p-8">
+          <h2 className="text-2xl font-semibold text-slate-900 mb-6 flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-slate-700" />
             Tus Datos de Nacimiento
           </h2>
 
           <div className="space-y-6">
             {/* Nombre */}
             <div>
-              <label className="block text-white font-semibold mb-2">
-                Nombre <span className="text-red-400">*</span>
+              <label className="block text-slate-900 font-semibold mb-2">
+                Nombre <span className="text-red-700">*</span>
               </label>
               <input
                 type="text"
                 value={demoData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                className="md-input w-full px-4 py-3 rounded-lg outline-none transition-all"
                 placeholder="Tu nombre"
               />
             </div>
 
             {/* Fecha de Nacimiento */}
             <div>
-              <label htmlFor="birth-date" className="block text-white font-semibold mb-2">
-                Fecha de Nacimiento <span className="text-red-400">*</span>
+              <label htmlFor="birth-date" className="block text-slate-900 font-semibold mb-2">
+                Fecha de Nacimiento <span className="text-red-700">*</span>
               </label>
               <input
                 id="birth-date"
                 type="date"
                 value={demoData.birthDate}
                 onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                className="md-input w-full px-4 py-3 rounded-lg outline-none transition-all"
                 aria-required="true"
               />
             </div>
 
             {/* Hora de Nacimiento (Opcional) */}
             <div>
-              <label htmlFor="birth-time" className="block text-white font-semibold mb-2">
-                Hora de Nacimiento <span className="text-gray-400 text-sm">(Opcional)</span>
+              <label htmlFor="birth-time" className="block text-slate-900 font-semibold mb-2">
+                Hora de Nacimiento <span className="text-slate-600 text-sm">(Opcional)</span>
               </label>
               <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-gray-400" />
+                <Clock className="w-5 h-5 text-slate-600" />
                 <input
                   id="birth-time"
                   type="time"
                   value={demoData.birthTime}
                   onChange={(e) => handleInputChange('birthTime', e.target.value)}
-                  className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                  className="md-input flex-1 px-4 py-3 rounded-lg outline-none transition-all"
                   aria-label="Hora de nacimiento"
                 />
               </div>
-              <p className="text-gray-400 text-sm mt-1">
+              <p className="text-slate-600 text-sm mt-1">
                 La hora exacta permite un análisis más preciso del ascendente
               </p>
             </div>
 
             {/* Lugar de Nacimiento (Opcional) */}
             <div>
-              <label className="block text-white font-semibold mb-2">
-                Lugar de Nacimiento <span className="text-gray-400 text-sm">(Opcional)</span>
+              <label className="block text-slate-900 font-semibold mb-2">
+                Lugar de Nacimiento <span className="text-slate-600 text-sm">(Opcional)</span>
               </label>
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-gray-400" />
+                <MapPin className="w-5 h-5 text-slate-600" />
                 <input
                   type="text"
                   value={demoData.birthPlace}
@@ -444,20 +444,20 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                       geocodeBirthPlace();
                     }
                   }}
-                  className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                  className="md-input flex-1 px-4 py-3 rounded-lg outline-none transition-all"
                   placeholder="Ciudad, País"
                 />
                 <button
                   type="button"
                   onClick={geocodeBirthPlace}
                   disabled={isGeocoding || !demoData.birthPlace}
-                  className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-semibold text-sm"
+                  className="md-button px-4 py-3 rounded-lg transition-colors font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGeocoding ? 'Buscando...' : 'Buscar'}
                 </button>
               </div>
               {demoData.latitude && demoData.longitude && (
-                <p className="text-green-400 text-sm mt-2">
+                <p className="text-green-700 text-sm mt-2">
                   ✓ Coordenadas: {parseFloat(demoData.latitude).toFixed(4)}, {parseFloat(demoData.longitude).toFixed(4)}
                 </p>
               )}
@@ -465,9 +465,9 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-900/30 border border-red-500 rounded-lg p-4 flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                <p className="text-red-300 text-sm">{error}</p>
+              <div className="md-alert md-alert--error flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p className="text-sm">{error}</p>
               </div>
             )}
 
@@ -476,7 +476,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
               type="button"
               onClick={startDemo}
               disabled={isLoading}
-              className="w-full py-4 bg-linear-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="md-button w-full py-4 font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -496,23 +496,23 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
 
       {/* Chat Step */}
       {step === 'chat' && (
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden flex flex-col h-150">
+        <div className="md-card rounded-2xl overflow-hidden flex flex-col h-150">
           {/* Chat Header */}
-          <div className="flex flex-col border-b border-white/10 bg-black/20">
+          <div className="flex flex-col border-b border-slate-200 bg-slate-50/60">
             <div className="p-4 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-600/30 flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-purple-300" />
+                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center">
+                  <Bot className="w-6 h-6 text-blue-700" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold">Asistente Astrológico</h3>
-                  <p className="text-xs text-purple-300">V6</p>
+                  <h3 className="text-slate-900 font-semibold">Asistente astrológico</h3>
+                  <p className="text-xs text-slate-600">V6</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={downloadPdf}
-                  className="text-purple-300 hover:text-white text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                  className="text-blue-700 hover:text-blue-900 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
                   title="Descargar chat como PDF"
                 >
                   <Download className="w-4 h-4" />
@@ -520,7 +520,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                 </button>
                 <button 
                   onClick={resetDemo}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="text-slate-600 hover:text-slate-900 text-sm"
                 >
                   Reiniciar
                 </button>
@@ -529,43 +529,43 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
             
             {/* Progress Tracker */}
             <div className="px-4 pb-3 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-purple-300/50">
-                <div className="w-5 h-5 rounded-full border border-purple-500/30 flex items-center justify-center bg-purple-500/10">✓</div>
+              <div className="flex items-center gap-2 text-slate-600">
+                <div className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center bg-slate-100">✓</div>
                 <span>Datos</span>
               </div>
-              <div className="h-px w-8 bg-purple-500/20"></div>
+              <div className="h-px w-8 bg-slate-200"></div>
               
-              <div className="flex items-center gap-2 text-purple-300">
-                <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-[0_0_10px_rgba(168,85,247,0.4)] animate-pulse">2</div>
+              <div className="flex items-center gap-2 text-blue-700">
+                <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-sm animate-pulse">2</div>
                 <span className="font-medium">Análisis en curso</span>
               </div>
-              <div className="h-px w-8 bg-white/10"></div>
+              <div className="h-px w-8 bg-slate-200"></div>
               
-              <div className="flex items-center gap-2 text-gray-500">
-                <div className="w-5 h-5 rounded-full border border-white/10 flex items-center justify-center">3</div>
+              <div className="flex items-center gap-2 text-slate-600">
+                <div className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center bg-white">3</div>
                 <span>Plan Completo</span>
               </div>
             </div>
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-purple-600/30 scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent bg-white">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
                 className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.role !== 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-purple-600/30 flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="w-5 h-5 text-purple-300" />
+                  <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 mt-1">
+                    <Bot className="w-5 h-5 text-blue-700" />
                   </div>
                 )}
                 
                 <div
                   className={`max-w-[80%] rounded-2xl p-4 ${
                     msg.role === 'user'
-                      ? 'bg-purple-600 text-white rounded-tr-none'
-                      : 'bg-white/10 text-gray-200 rounded-tl-none'
+                      ? 'bg-blue-600 text-white rounded-tr-none'
+                      : 'bg-slate-50 border border-slate-200 text-slate-900 rounded-tl-none'
                   }`}
                 >
                   {msg.role === 'assistant' ? (
@@ -580,7 +580,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                             const className = `my-1 ${props?.className ?? ''}`.trim();
                             return React.createElement('li', { ...props, className });
                           },
-                          strong: (props: any) => <strong className="font-semibold text-white" {...props} />,
+                          strong: (props: any) => <strong className="font-semibold text-slate-900" {...props} />,
                           em: (props: any) => <em className="italic" {...props} />,
                           a: (props: any) => {
                             const href = props?.href as string | undefined;
@@ -589,14 +589,14 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                                 href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-purple-300 underline underline-offset-2 hover:text-purple-200"
+                                className="text-blue-700 underline underline-offset-2 hover:text-blue-900"
                                 {...props}
                               />
                             );
                           },
                           pre: (props: any) => (
                             <pre
-                              className="bg-black/30 border border-white/10 rounded-lg p-3 my-2 overflow-x-auto"
+                              className="bg-slate-50 text-slate-900 border border-slate-200 rounded-lg p-3 my-2 overflow-x-auto"
                               {...props}
                             />
                           ),
@@ -604,11 +604,11 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                             const { inline, ...rest } = props || {};
                             return inline ? (
                               <code
-                                className="px-1 py-0.5 rounded bg-black/30 border border-white/10 text-purple-100"
+                                className="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-900"
                                 {...rest}
                               />
                             ) : (
-                              <code className="text-purple-100" {...rest} />
+                              <code className="text-slate-50" {...rest} />
                             );
                           },
                         }}
@@ -622,22 +622,22 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-gray-600/30 flex items-center justify-center shrink-0 mt-1">
-                    <User className="w-5 h-5 text-gray-300" />
+                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 mt-1">
+                    <User className="w-5 h-5 text-slate-700" />
                   </div>
                 )}
               </div>
             ))}
             {isLoading && (
               <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-purple-600/30 flex items-center justify-center shrink-0 mt-1">
-                  <Bot className="w-5 h-5 text-purple-300" />
+                <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 mt-1">
+                  <Bot className="w-5 h-5 text-blue-700" />
                 </div>
-                <div className="bg-white/10 rounded-2xl p-4 rounded-tl-none">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 rounded-tl-none">
                   <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]" />
                   </div>
                 </div>
               </div>
@@ -646,15 +646,15 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-white/10 bg-black/20">
+          <div className="p-4 border-t border-slate-200 bg-slate-50/60">
             {messages.length > 0 && (messages[messages.length - 1].step === 'completed' || messages[messages.length - 1].content.includes("Este es el final de tu análisis inicial")) ? (
               <div className="flex flex-col items-center gap-4 animate-fade-in">
-                <p className="text-purple-200 text-center text-sm">
+                <p className="text-slate-700 text-center text-sm">
                   ¿Quieres profundizar más en tu carta astral y descubrir todo tu potencial?
                 </p>
                 <button
                   onClick={onHire}
-                  className="w-full bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                  className="md-button w-full font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-5 h-5" />
                   Contratar Servicios Profesionales de Jon Landeta
@@ -666,7 +666,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                   <button
                     onClick={handleNextStep}
                     disabled={isLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-full text-purple-200 text-sm transition-all whitespace-nowrap"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-full text-blue-900 text-sm transition-all whitespace-nowrap"
                   >
                     Siguiente Paso <ArrowRight className="w-4 h-4" />
                   </button>
@@ -674,13 +674,13 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                     <>
                       <button
                         onClick={() => setInputMessage("Explícame más sobre esto")}
-                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+                        className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-700 text-sm transition-all whitespace-nowrap"
                       >
                         Explícame más
                       </button>
                       <button
                         onClick={() => setInputMessage("¿Qué significa esto para mi vida?")}
-                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 text-sm transition-all whitespace-nowrap"
+                        className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-700 text-sm transition-all whitespace-nowrap"
                       >
                         ¿Qué significa?
                       </button>
@@ -689,7 +689,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                 </div>
 
                 {isGuidedOnly ? (
-                  <p className="text-xs text-purple-200/80">
+                  <p className="text-xs text-slate-600">
                     Plan FREE: demo guiada (sin preguntas libres). Usa “Siguiente Paso” para continuar.
                   </p>
                 ) : (
@@ -699,13 +699,13 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       placeholder="Escribe tu pregunta..."
-                      className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
+                      className="md-input flex-1 px-4 py-3 rounded-xl outline-none transition-all"
                       disabled={isLoading}
                     />
                     <button
                       type="submit"
                       disabled={!inputMessage.trim() || isLoading}
-                      className="px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+                      className="md-button px-4 py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Enviar mensaje"
                     >
                       <Send className="w-5 h-5" />

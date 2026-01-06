@@ -650,20 +650,20 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const progress = modules.length > 0 ? (Math.min(generatedModulesCount, modules.length) / modules.length) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-purple-500/30 flex flex-col">
+    <div className="fixed inset-0 md-backdrop flex items-center justify-center z-50 p-4">
+      <div className="md-modal w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-purple-900/50 to-indigo-900/50">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50/60">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-purple-400" />
+            <Sparkles className="w-6 h-6 text-slate-700" />
             <div>
-              <h2 className="text-2xl font-bold text-white">Generación de Informe Exhaustivo</h2>
-              <p className="text-gray-400 text-sm">Proceso paso a paso según CORE CARUTTI v5.3</p>
+              <h2 className="text-2xl font-semibold text-slate-900">Generación de informe exhaustivo</h2>
+              <p className="text-slate-600 text-sm">Proceso paso a paso según CORE CARUTTI v5.3</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-slate-500 hover:text-slate-900 transition-colors"
             title="Cerrar"
           >
             <X size={24} />
@@ -671,9 +671,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         </div>
 
         {/* Barra + Botones de módulos (simplificado) */}
-        <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
+        <div className="px-6 py-4 bg-slate-50/60 border-b border-slate-200">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-300">
+            <span className="text-sm text-slate-700">
               {isCompleted
                 ? 'Informe completo'
                 : `Progreso: ${generatedModulesCount} de ${modules.length} módulos`
@@ -681,16 +681,16 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
             </span>
             <div className="flex items-center gap-3">
               {estimatedTimeRemaining !== null && (
-                <span className="text-sm text-purple-400 font-semibold">
+                <span className="text-sm text-blue-700 font-semibold">
                   ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
                 </span>
               )}
-              <span className="text-sm text-gray-300">{Math.round(progress)}%</span>
+              <span className="text-sm text-slate-700">{Math.round(progress)}%</span>
             </div>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2 mb-3">
+          <div className="w-full bg-slate-200 rounded-full h-2 mb-3 overflow-hidden">
             <div
-              className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-300"
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -703,10 +703,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
               const base = 'px-3 py-2 rounded-lg text-xs font-semibold transition-all border';
               const cls = isCurrent
-                ? `${base} bg-purple-600 text-white border-purple-300/30 shadow-[0_0_12px_rgba(168,85,247,0.35)]`
+                ? `${base} bg-blue-600 text-white border-blue-200 shadow-sm`
                 : isGenerated
-                ? `${base} bg-gray-700/40 text-gray-400 border-gray-600/40 opacity-70 cursor-not-allowed`
-                : `${base} bg-gray-700 text-gray-200 border-gray-600/60`;
+                ? `${base} bg-slate-50 text-slate-800 border-slate-200 opacity-70 cursor-not-allowed`
+                : `${base} bg-slate-100 text-slate-600 border-slate-200`;
 
               return (
                 <button
@@ -727,9 +727,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {/* (Opcional) Eventos: mantenemos pero más discreto */}
           {!!events.length && (
-            <div className="bg-gray-800/30 border border-gray-700 rounded-lg p-3 mb-4">
-              <div className="text-[11px] text-gray-400 mb-2">Eventos</div>
-              <ul className="text-[11px] text-gray-500 space-y-1">
+            <div className="md-card md-card--flat rounded-lg p-3 mb-4">
+              <div className="text-[11px] text-slate-600 mb-2">Eventos</div>
+              <ul className="text-[11px] text-slate-600 space-y-1">
                 {events.slice(0, 6).map((e, i) => (
                   <li key={i}>- {e}</li>
                 ))}
@@ -738,32 +738,32 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           )}
 
           {isCompleted && (
-            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-2 text-green-400">
+            <div className="md-alert md-alert--success mb-4">
+              <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" />
                 <span className="font-semibold">Informe completo generado</span>
               </div>
-              <p className="text-green-200 mt-2 text-sm">
+              <p className="mt-2 text-sm">
                 Ya puedes descargar el PDF final o abrir el exportador.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   onClick={() => downloadPdf()}
                   disabled={isDownloadingPdf}
-                  className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2 disabled:opacity-60"
+                  className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:opacity-60"
                 >
                   {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                   Descargar PDF
                 </button>
                 <button
                   onClick={async () => { await getFullReport(); }}
-                  className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                  className="md-button md-button--secondary px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
                 >
                   Abrir exportador
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 {downloadedPdf && (
-                  <span className="text-xs text-green-300 self-center">PDF descargado.</span>
+                  <span className="text-xs text-green-800 self-center">PDF descargado.</span>
                 )}
               </div>
             </div>
@@ -771,83 +771,81 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
           {isLoading && (
             <div className="flex flex-col items-center justify-center h-full">
-              <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
-              <p className="text-gray-300">Inicializando generación...</p>
+              <Loader2 className="w-12 h-12 text-blue-700 animate-spin mb-4" />
+              <p className="text-slate-600">Inicializando generación...</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-2 text-red-400">
+            <div className="md-alert md-alert--error mb-4">
+              <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
                 <span className="font-semibold">Error</span>
               </div>
-              <p className="text-red-300 mt-2">{error}</p>
+              <p className="mt-2">{error}</p>
             </div>
           )}
 
           {currentModule && (
             <>
               <div className="mb-4">
-                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-purple-400" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-slate-700" />
                   {currentModule.title}
                 </h3>
-                <p className="text-gray-400 text-sm">
+                <p className="text-slate-600 text-sm">
                   Extensión mínima esperada: {currentModule.expected_min_chars.toLocaleString()} caracteres
                 </p>
               </div>
 
               {(isGenerating || isAutoGenerating) && (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
-                  <p className="text-gray-300 font-semibold text-lg">
+                  <Loader2 className="w-12 h-12 text-blue-700 animate-spin mb-4" />
+                  <p className="text-slate-700 font-semibold text-lg">
                     {isAutoGenerating 
                       ? `Generando módulo ${generatedModulesCount + 1} de ${modules.length}...`
                       : 'Generando módulo...'
                     }
                   </p>
                   {!!status?.current_module_title && (
-                    <p className="text-gray-300 text-sm mt-2">
-                      Módulo actual: <span className="text-purple-300 font-semibold">{status.current_module_title}</span>
+                    <p className="text-slate-600 text-sm mt-2">
+                      Módulo actual: <span className="text-blue-700 font-semibold">{status.current_module_title}</span>
                     </p>
                   )}
                   {!!status?.current_module_id && !!status?.module_runs_summary?.[status.current_module_id]?.last_step && (
-                    <p className="text-gray-400 text-xs mt-2">
+                    <p className="text-slate-600 text-xs mt-2">
                       Paso: {status.module_runs_summary[status.current_module_id]?.last_step}
                     </p>
                   )}
-                  <p className="text-gray-400 text-sm mt-2">
+                  <p className="text-slate-600 text-sm mt-2">
                     {isAutoGenerating 
                       ? `Proceso automático en curso. Todos los módulos se generarán secuencialmente.`
                       : 'Esto puede tardar varios minutos'
                     }
                   </p>
                   {estimatedTimeRemaining !== null && (
-                    <p className="text-purple-400 font-semibold mt-3">
-                      ⏱️ Tiempo estimado restante: {formatTimeRemaining(estimatedTimeRemaining)}
-                    </p>
+                    <p className="text-blue-700 font-semibold mt-3">⏱️ Tiempo estimado restante: {formatTimeRemaining(estimatedTimeRemaining)}</p>
                   )}
-                  <p className="text-gray-500 text-xs mt-4">
+                  <p className="text-slate-600 text-xs mt-4">
                     El sistema está analizando las efemérides y la documentación de Carutti
                   </p>
                   <div className="mt-6 w-full max-w-md">
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 animate-pulse" style={{ width: '60%' }} />
+                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600 animate-pulse" style={{ width: '60%' }} />
                     </div>
                   </div>
                 </div>
               )}
 
               {!isGenerating && currentModuleContent && (
-                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                  <div className="prose prose-invert max-w-none">
-                    <div className="text-gray-200 whitespace-pre-wrap leading-relaxed">
+                <div className="md-card rounded-lg p-6">
+                  <div className="max-w-none">
+                    <div className="text-slate-900 whitespace-pre-wrap leading-relaxed">
                       {currentModuleContent}
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-gray-700">
-                    <p className="text-sm text-gray-400">
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <p className="text-sm text-slate-600">
                       Longitud generada: {currentModuleContent.length.toLocaleString()} caracteres
                     </p>
                   </div>
@@ -855,8 +853,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
               )}
 
               {!isGenerating && !currentModuleContent && !isLoading && (
-                <div className="text-center py-12 text-gray-400">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-400" />
+                <div className="text-center py-12 text-slate-600">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-700" />
                   <p>Preparando generación del módulo...</p>
                 </div>
               )}
@@ -866,11 +864,11 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
         {/* Footer Actions */}
         {!isAutoGenerating && (
-          <div className="p-6 border-t border-gray-700 bg-gray-800/50 flex items-center justify-between">
+          <div className="p-6 border-t border-slate-200 bg-slate-50/60 flex items-center justify-between">
             <button
               onClick={handleRegenerate}
               disabled={isGenerating || !currentModuleContent}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               Regenerar Módulo Actual
@@ -880,7 +878,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
               {!isGenerating && currentModuleContent && !isLastModule && (
                 <button
                   onClick={handleNext}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                  className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
                 >
                   Proceder al Siguiente Módulo
                   <ArrowRight className="w-4 h-4" />
@@ -888,7 +886,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
               )}
 
               {isGenerating && (
-                <div className="px-6 py-2 bg-gray-700 text-gray-300 rounded-lg font-semibold flex items-center gap-2">
+                <div className="px-6 py-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg font-semibold flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Generando módulo...
                 </div>
@@ -899,7 +897,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
                   onClick={async () => {
                     await getFullReport();
                   }}
-                  className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                  className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Finalizar y Generar Informe Completo
@@ -911,19 +909,19 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
         {/* Footer para modo automático */}
         {isAutoGenerating && (
-          <div className="p-6 border-t border-gray-700 bg-gray-800/50">
+          <div className="p-6 border-t border-slate-200 bg-slate-50/60">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                <Loader2 className="w-5 h-5 animate-spin text-blue-700" />
                 <div>
-                  <p className="text-white font-semibold text-sm">Generando informe…</p>
-                  <p className="text-gray-400 text-xs">
+                  <p className="text-slate-900 font-semibold text-sm">Generando informe…</p>
+                  <p className="text-slate-600 text-xs">
                     {status?.current_module_title ? `Módulo actual: ${status.current_module_title}` : `Módulo ${activeIndex + 1} de ${modules.length}`}
                   </p>
                 </div>
               </div>
               {estimatedTimeRemaining !== null && (
-                <p className="text-purple-300 text-sm font-semibold">
+                <p className="text-blue-700 text-sm font-semibold">
                   ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
                 </p>
               )}

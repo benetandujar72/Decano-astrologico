@@ -118,16 +118,16 @@ const LandingPage: React.FC<LandingPageProps> = ({
           <button
             type="button"
             onClick={onGoToApp}
-            className="flex items-center gap-2 text-white hover:text-indigo-200 transition-colors"
+            className="flex items-center gap-2 text-slate-900 hover:text-blue-700 transition-colors"
             aria-label={isAuthenticated ? 'Ir a la app' : 'Entrar'}
             title={isAuthenticated ? 'Ir a la app' : 'Entrar'}
           >
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-              <Sparkles className="text-indigo-300" size={18} />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+              <Sparkles className="text-blue-700" size={18} />
             </div>
             <div className="leading-tight">
               <div className="text-sm font-bold tracking-wide">FRAKTAL</div>
-              <div className="text-[11px] text-gray-400">Astrología sistémica</div>
+              <div className="text-[11px] text-slate-600">Astrología sistémica</div>
             </div>
           </button>
 
@@ -135,7 +135,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               onClick={onGoToApp}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors inline-flex items-center gap-2"
+              className="md-button px-4 py-2 rounded-lg text-sm font-semibold transition-colors inline-flex items-center gap-2"
             >
               {isAuthenticated ? 'Ir a la app' : 'Entrar'}
               <ArrowRight size={16} />
@@ -145,10 +145,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         <section className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight">
+            <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 leading-tight">
               Tu carta natal, con análisis profundo y accionable
             </h1>
-            <p className="mt-5 text-gray-300 text-lg leading-relaxed">
+            <p className="mt-5 text-slate-700 text-lg leading-relaxed">
               FRAKTAL combina cálculo astrológico preciso con un enfoque sistémico: claridad, síntesis y pasos prácticos.
               La landing es pública. Para usar la app o reservar, necesitas validación de usuario.
             </p>
@@ -157,46 +157,46 @@ const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 onClick={handleReserve}
-                className="px-5 py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold transition-all"
+                className="md-button px-5 py-3 rounded-xl font-semibold transition-all"
               >
                 Servicios de Jon Landeta
               </button>
               <button
                 type="button"
                 onClick={handleReserve}
-                className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold transition-colors"
+                className="md-button md-button--secondary px-5 py-3 rounded-xl font-semibold transition-colors"
               >
                 Ver catálogo de servicios
               </button>
             </div>
 
             {!isAuthenticated && (
-              <div className="mt-4 text-xs text-gray-400">
+              <div className="mt-4 text-xs text-slate-600">
                 Para reservar servicios, primero inicia sesión.
               </div>
             )}
 
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Freemium</div>
-                <div className="mt-1 text-sm text-gray-200">Vista previa persuasiva para plan FREE</div>
+              <div className="md-card md-card--flat rounded-xl p-4">
+                <div className="text-xs text-blue-700 font-bold uppercase tracking-wider">Freemium</div>
+                <div className="mt-1 text-sm text-slate-700">Vista previa persuasiva para plan FREE</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">PDF</div>
-                <div className="mt-1 text-sm text-gray-200">Informe descargable para planes de pago</div>
+              <div className="md-card md-card--flat rounded-xl p-4">
+                <div className="text-xs text-blue-700 font-bold uppercase tracking-wider">PDF</div>
+                <div className="mt-1 text-sm text-slate-700">Informe descargable para planes de pago</div>
               </div>
             </div>
 
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mt-8 md-card rounded-2xl p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Servicios</div>
-                  <div className="text-white font-semibold">Catálogo público (preview)</div>
+                  <div className="text-xs text-blue-700 font-bold uppercase tracking-wider">Servicios</div>
+                  <div className="text-slate-900 font-semibold">Catálogo público (preview)</div>
                 </div>
                 <button
                   type="button"
                   onClick={handleReserve}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+                  className="md-button px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Reservar
                 </button>
@@ -204,19 +204,19 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {services.map((svc) => (
-                  <div key={svc.service_id} className="rounded-xl border border-white/10 bg-slate-900/30 p-4">
+                  <div key={svc.service_id} className="md-card md-card--flat rounded-xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm text-white font-semibold">{svc.name}</div>
-                        <div className="mt-1 text-xs text-gray-400">{svc.description}</div>
+                        <div className="text-sm text-slate-900 font-semibold">{svc.name}</div>
+                        <div className="mt-1 text-xs text-slate-600">{svc.description}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-gray-400">Desde</div>
-                        <div className="text-sm text-white font-bold">€{svc.base_price}</div>
+                        <div className="text-xs text-slate-600">Desde</div>
+                        <div className="text-sm text-slate-900 font-bold">€{svc.base_price}</div>
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="text-[11px] text-gray-400">
+                      <div className="text-[11px] text-slate-600">
                         {svc.duration_minutes ? `${svc.duration_minutes} min` : 'Duración a convenir'}
                       </div>
                       <button
@@ -236,65 +236,65 @@ const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-linear-to-b from-white/5 to-white/0 p-5">
-            <div className="text-sm font-semibold text-white">Capturas</div>
+          <div className="md-card md-card--flat rounded-2xl p-5">
+            <div className="text-sm font-semibold text-slate-900">Capturas</div>
             <div className="mt-4 grid grid-cols-1 gap-3">
               <img
                 src="/screenshots/fraktal-01.svg"
                 alt="Captura: flujo de análisis"
-                className="w-full rounded-xl border border-white/10 bg-black/20"
+                className="w-full rounded-xl border border-slate-200 bg-white"
                 loading="lazy"
               />
               <img
                 src="/screenshots/fraktal-02.svg"
                 alt="Captura: informe y resultados"
-                className="w-full rounded-xl border border-white/10 bg-black/20"
+                className="w-full rounded-xl border border-slate-200 bg-white"
                 loading="lazy"
               />
               <img
                 src="/screenshots/fraktal-03.svg"
                 alt="Captura: servicios y reservas"
-                className="w-full rounded-xl border border-white/10 bg-black/20"
+                className="w-full rounded-xl border border-slate-200 bg-white"
                 loading="lazy"
               />
             </div>
-            <div className="mt-3 text-[11px] text-gray-400">
+            <div className="mt-3 text-[11px] text-slate-600">
               Estas imágenes son marcadores de posición. Reemplázalas por capturas reales cuando quieras.
             </div>
           </div>
         </section>
 
         <section className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center gap-2 text-white font-semibold">
-              <Mail size={18} className="text-indigo-300" />
+          <div className="md-card rounded-2xl p-6">
+            <div className="flex items-center gap-2 text-slate-900 font-semibold">
+              <Mail size={18} className="text-slate-700" />
               Contacto
             </div>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-slate-700">
               Cuéntame qué necesitas y te responderé lo antes posible.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">Nombre</label>
+                  <label className="block text-xs text-slate-600 mb-1.5 font-bold uppercase tracking-wider">Nombre</label>
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                     minLength={2}
-                    className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none"
+                    className="md-input w-full rounded-lg px-4 py-3"
                     placeholder="Tu nombre"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">Email</label>
+                  <label className="block text-xs text-slate-600 mb-1.5 font-bold uppercase tracking-wider">Email</label>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     type="email"
-                    className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none"
+                    className="md-input w-full rounded-lg px-4 py-3"
                     placeholder="tu@email.com"
                   />
                 </div>
@@ -306,25 +306,25 @@ const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">Mensaje</label>
+                <label className="block text-xs text-slate-600 mb-1.5 font-bold uppercase tracking-wider">Mensaje</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   required
                   minLength={10}
                   rows={6}
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 outline-none resize-y"
+                  className="md-input w-full rounded-lg px-4 py-3 resize-y"
                   placeholder="Explícame tu caso: fecha/hora/lugar si aplica, objetivo, y qué esperas del análisis..."
                 />
               </div>
 
               {sendError && (
-                <div className="text-xs text-red-300 bg-red-900/20 p-2 rounded border border-red-500/20">
+                <div className="md-alert md-alert--error text-xs p-2 rounded">
                   {sendError}
                 </div>
               )}
               {sentOk && (
-                <div className="text-xs text-emerald-300 bg-emerald-900/20 p-2 rounded border border-emerald-500/20">
+                <div className="md-alert md-alert--success text-xs p-2 rounded">
                   Mensaje enviado correctamente.
                 </div>
               )}
@@ -332,10 +332,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="submit"
                 disabled={!canSend || isSending}
-                className={`w-full px-5 py-3 rounded-xl font-semibold transition-all inline-flex items-center justify-center gap-2 ${
-                  !canSend || isSending
-                    ? 'bg-white/10 text-gray-400 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                className={`md-button w-full px-5 py-3 rounded-xl font-semibold transition-all inline-flex items-center justify-center gap-2 ${
+                  !canSend || isSending ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 {isSending ? 'Enviando…' : 'Enviar mensaje'}
@@ -344,12 +342,12 @@ const LandingPage: React.FC<LandingPageProps> = ({
             </form>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center gap-2 text-white font-semibold">
-              <Phone size={18} className="text-indigo-300" />
+          <div className="md-card rounded-2xl p-6">
+            <div className="flex items-center gap-2 text-slate-900 font-semibold">
+              <Phone size={18} className="text-slate-700" />
               Respuesta y sesiones
             </div>
-            <p className="mt-2 text-sm text-gray-300 leading-relaxed">
+            <p className="mt-2 text-sm text-slate-700 leading-relaxed">
               Si necesitas un acompañamiento más directo, puedes reservar servicios profesionales desde la app.
               La disponibilidad y los precios aparecen en el catálogo.
             </p>
@@ -357,28 +355,28 @@ const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 onClick={handleReserve}
-                className="w-full px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold transition-colors"
+                className="md-button md-button--secondary w-full px-5 py-3 rounded-xl font-semibold transition-colors"
               >
                 Ver catálogo de servicios
               </button>
             </div>
-            <div className="mt-3 text-[11px] text-gray-400">
+            <div className="mt-3 text-[11px] text-slate-600">
               Nota: el acceso a servicios requiere iniciar sesión.
             </div>
           </div>
         </section>
 
-        <footer className="mt-14 border-t border-white/10 pt-6 text-xs text-gray-400 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <footer className="mt-14 border-t border-slate-200 pt-6 text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>© {new Date().getFullYear()} FRAKTAL</div>
           <div className="flex items-center gap-6">
             <button 
               type="button" 
               onClick={onViewServices} 
-              className="text-gray-400 hover:text-purple-400 transition-colors font-medium"
+              className="text-slate-600 hover:text-blue-700 transition-colors font-medium"
             >
               Contratar Servicios de Jon Landeta
             </button>
-            <button type="button" onClick={onGoToApp} className="text-indigo-300 hover:text-indigo-200 transition-colors">
+            <button type="button" onClick={onGoToApp} className="text-blue-700 hover:text-blue-900 transition-colors">
               {isAuthenticated ? 'Ir a la app' : 'Entrar'}
             </button>
           </div>

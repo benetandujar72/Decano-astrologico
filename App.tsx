@@ -1624,35 +1624,35 @@ ${analysisText}
     <div className="min-h-screen flex items-center justify-center p-6 relative">
       <div className="w-full max-w-4xl animate-fade-in z-10">
         <div className="mb-8 flex justify-center">
-          <h2 className="text-xl text-white/80 font-serif border-b border-white/10 pb-2 px-8">{t.selectProtocol}</h2>
+          <h2 className="text-2xl text-slate-900 font-semibold border-b border-slate-200 pb-2 px-8">{t.selectProtocol}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <button onClick={() => { setAnalysisType(AnalysisType.PSYCHOLOGICAL); handleAnalyze(); }}
-            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-indigo-500/40 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 border border-indigo-500/20">
+            className="group md-card p-8 rounded-2xl text-left transition-all hover:border-blue-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-700 mb-6 group-hover:scale-110 border border-blue-100">
               <Brain size={28} />
             </div>
-            <h3 className="text-2xl text-white font-serif mb-3">{t.modePsyTitle}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">{t.modePsyDesc}</p>
-            <div className="flex items-center text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+            <h3 className="text-2xl text-slate-900 font-semibold mb-3">{t.modePsyTitle}</h3>
+            <p className="text-slate-600 text-sm leading-relaxed mb-8">{t.modePsyDesc}</p>
+            <div className="flex items-center text-blue-700 text-xs font-bold uppercase tracking-widest group-hover:text-blue-900 transition-colors">
               {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2" />
             </div>
           </button>
           <button onClick={() => { setAnalysisType(AnalysisType.TECHNICAL); handleAnalyze(); }}
-            className="group glass-panel p-8 rounded-2xl text-left transition-all hover:bg-slate-800/80 hover:border-emerald-500/40 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 border border-emerald-500/20">
+            className="group md-card p-8 rounded-2xl text-left transition-all hover:border-emerald-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 border border-emerald-100">
               <Layout size={28} />
             </div>
-            <h3 className="text-2xl text-white font-serif mb-3">{t.modeTechTitle}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed mb-8 font-light">{t.modeTechDesc}</p>
-            <div className="flex items-center text-emerald-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+            <h3 className="text-2xl text-slate-900 font-semibold mb-3">{t.modeTechTitle}</h3>
+            <p className="text-slate-600 text-sm leading-relaxed mb-8">{t.modeTechDesc}</p>
+            <div className="flex items-center text-emerald-700 text-xs font-bold uppercase tracking-widest group-hover:text-emerald-900 transition-colors">
               {t.btnAnalyze} <ArrowRight size={14} className="ml-2 group-hover:translate-x-2" />
             </div>
           </button>
         </div>
-        <button onClick={() => setMode(AppMode.INPUT)} className="mt-8 mx-auto flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-sm">
+        <button onClick={() => setMode(AppMode.INPUT)} className="mt-8 mx-auto flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm font-medium">
           <ChevronLeft size={16} /> {t.btnNew}
         </button>
       </div>
@@ -1660,35 +1660,35 @@ ${analysisText}
   );
 
   const renderProcessing = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative font-mono">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative font-sans">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-4xl items-center z-10">
         <div className="flex flex-col items-center justify-center order-2 md:order-1">
-          <div className="scale-125 mb-10 mystic-glow">
+          <div className="scale-125 mb-10">
             <PlanetaryOrbit size="large" />
           </div>
-          <h2 className="text-xl text-white font-bold mb-2 tracking-[0.2em] text-center mystic-text-glow">
+          <h2 className="text-xl text-slate-900 font-semibold mb-2 tracking-wide text-center">
             {t.processingSteps[Math.min(currentStepIndex, t.processingSteps.length - 1)]}
           </h2>
         </div>
-        <div className="glass-panel rounded-xl p-8 order-1 md:order-2 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse"></div>
+        <div className="md-card p-8 order-1 md:order-2 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-blue-600 animate-pulse"></div>
           <div className="space-y-5">
             {t.processingSteps.map((step, idx) => {
               const isCompleted = idx < currentStepIndex; const isActive = idx === currentStepIndex;
               if (idx > currentStepIndex + 2 || idx < currentStepIndex - 2) return null;
               return (
-                <div key={idx} className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'translate-x-4 opacity-100 scale-105' : 'opacity-40'}`}>
+                <div key={idx} className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'translate-x-4 opacity-100' : 'opacity-40'}`}>
                   <div className="shrink-0">
-                    {isCompleted ? <CheckCircle2 size={16} className="text-emerald-400" /> :
-                      isActive ? <CircleDashed size={16} className="text-indigo-400 animate-spin" /> :
-                        <div className="w-4 h-4 rounded-full border border-gray-700" />}
+                    {isCompleted ? <CheckCircle2 size={16} className="text-green-600" /> :
+                      isActive ? <CircleDashed size={16} className="text-blue-600 animate-spin" /> :
+                        <div className="w-4 h-4 rounded-full border border-slate-200" />}
                   </div>
-                  <span className={`text-xs ${isActive ? 'text-indigo-200 font-bold' : 'text-gray-400'}`}>{step}</span>
+                  <span className={`text-sm ${isActive ? 'text-blue-700 font-semibold' : 'text-slate-500'}`}>{step}</span>
                 </div>
               );
             })}
           </div>
-          {errorMsg && <div className="mt-6 p-4 bg-red-900/20 border border-red-500/20 rounded text-red-200 text-xs flex gap-3 items-center"><AlertCircle size={20} /> {errorMsg} <button onClick={() => setMode(AppMode.INPUT)} className="ml-auto underline font-bold">RETRY</button></div>}
+          {errorMsg && <div className="mt-6 p-4 md-alert md-alert--error flex gap-3 items-center"><AlertCircle size={20} /> {errorMsg} <button onClick={() => setMode(AppMode.INPUT)} className="ml-auto underline font-bold">REINTENTAR</button></div>}
         </div>
       </div>
     </div>

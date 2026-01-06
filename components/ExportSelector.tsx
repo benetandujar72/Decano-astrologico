@@ -82,7 +82,7 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
 
   if (loading) {
     return (
-      <div className="text-center text-gray-400">
+      <div className="text-center text-slate-600">
         Cargando formatos...
       </div>
     );
@@ -91,8 +91,8 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h3 className="text-xl font-bold text-white mb-2">Seleccionar Formato de Exportación</h3>
-        <p className="text-sm text-gray-400">Elige el formato para descargar tu informe completo</p>
+        <h3 className="text-xl font-semibold text-slate-900 mb-2">Seleccionar formato de exportación</h3>
+        <p className="text-sm text-slate-600">Elige el formato para descargar tu informe completo</p>
       </div>
 
       {/* Grid de formatos */}
@@ -103,10 +103,10 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
             onClick={() => setSelectedFormat(format.id)}
             disabled={!format.available}
             className={`
-              relative p-6 rounded-xl border-2 transition-all
+              relative p-6 rounded-xl border transition-all
               ${selectedFormat === format.id
-                ? 'border-indigo-500 bg-indigo-500/10'
-                : 'border-white/10 bg-slate-800/50 hover:border-indigo-500/50'
+                ? 'border-blue-300 bg-blue-50'
+                : 'border-slate-200 bg-white hover:border-blue-300'
               }
               ${!format.available ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
               group
@@ -116,8 +116,8 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
               <div className={`
                 flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center
                 ${selectedFormat === format.id
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-slate-700 text-gray-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-400'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-700'
                 }
                 transition-colors
               `}>
@@ -125,15 +125,15 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
               </div>
               
               <div className="flex-1 text-left">
-                <h4 className="text-white font-bold mb-1">{format.name}</h4>
-                <p className="text-xs text-gray-400">{format.description}</p>
+                <h4 className="text-slate-900 font-semibold mb-1">{format.name}</h4>
+                <p className="text-xs text-slate-600">{format.description}</p>
                 {!format.available && (
-                  <span className="text-xs text-red-400 mt-1 inline-block">No disponible</span>
+                  <span className="text-xs text-red-700 mt-1 inline-block">No disponible</span>
                 )}
               </div>
 
               {selectedFormat === format.id && (
-                <div className="absolute top-3 right-3 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
+                <div className="absolute top-3 right-3 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -148,22 +148,16 @@ const ExportSelector: React.FC<ExportSelectorProps> = ({ onExport, isLoading = f
       <button
         onClick={handleExport}
         disabled={isLoading || !selectedFormat}
-        className={`
-          w-full py-4 px-6 rounded-xl font-bold text-white
-          flex items-center justify-center gap-3
-          transition-all
-          ${isLoading || !selectedFormat
-            ? 'bg-gray-600 cursor-not-allowed opacity-50'
-            : 'bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/25'
-          }
-        `}
+        className={`md-button w-full py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-3 transition-all ${
+          isLoading || !selectedFormat ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
       >
         <Download size={20} />
         {isLoading ? 'Generando...' : 'Descargar Informe'}
       </button>
 
       {/* Nota informativa */}
-      <div className="text-center text-xs text-gray-500 pt-2">
+      <div className="text-center text-xs text-slate-600 pt-2">
         El informe incluirá: carta astral, datos personales, posiciones planetarias y análisis completo
       </div>
     </div>

@@ -19,9 +19,8 @@ const PlanetaryOrbit: React.FC<PlanetaryOrbitProps> = ({ size = 'medium' }) => {
     <div className={`relative ${sizeClasses[size]} mx-auto`}>
       {/* Sol central */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-[0_0_50px_rgba(251,191,36,0.8)]">
-          <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-300 to-orange-400 animate-spin-slow" 
-               style={{ animationDuration: '20s' }} />
+        <div className="w-16 h-16 rounded-full bg-blue-100 border border-blue-200 animate-pulse shadow-sm flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-blue-600/20 blur-sm animate-pulse" />
         </div>
       </div>
 
@@ -29,7 +28,7 @@ const PlanetaryOrbit: React.FC<PlanetaryOrbitProps> = ({ size = 'medium' }) => {
       {[1, 2, 3, 4].map((orbit) => (
         <div
           key={orbit}
-          className="absolute inset-0 border border-white/10 rounded-full animate-spin-slow"
+          className="absolute inset-0 border border-slate-200 rounded-full animate-spin-slow"
           style={{
             margin: `${orbit * 16}px`,
             animationDuration: `${orbit * 8}s`,
@@ -38,20 +37,18 @@ const PlanetaryOrbit: React.FC<PlanetaryOrbitProps> = ({ size = 'medium' }) => {
         >
           {/* Planeta */}
           <div
-            className={`absolute w-${orbit * 2 + 4} h-${orbit * 2 + 4} rounded-full`}
+            className={`absolute w-${orbit * 2 + 4} h-${orbit * 2 + 4} rounded-full border border-slate-200 bg-white shadow-sm`}
             style={{
               top: '50%',
               left: '-12px',
               transform: 'translateY(-50%)',
-              background: `radial-gradient(circle, ${getPlanetColor(orbit)})`,
-              boxShadow: `0 0 20px ${getPlanetGlow(orbit)}`
             }}
           />
         </div>
       ))}
 
       {/* Efectos de brillo */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-indigo-500/5 to-transparent animate-pulse" />
+      <div className="absolute inset-0 bg-radial from-blue-500/5 to-transparent animate-pulse" />
     </div>
   );
 };

@@ -172,7 +172,7 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                 {/* Card */}
                 <div className={`md-card rounded-2xl p-8 h-full flex flex-col transform transition-all duration-200 hover:shadow-md ${isPopular ? 'ring-2 ring-blue-200' : ''}`}>
                     {/* Icon */}
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-slate-900 text-white">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-blue-50 text-blue-700 border border-blue-100">
                       {React.cloneElement(getPlanIcon(plan.tier) as any, { className: 'w-6 h-6' })}
                     </div>
 

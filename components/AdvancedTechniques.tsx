@@ -111,14 +111,14 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
         <div className="mb-12">
           <button
             onClick={onBack}
-            className="text-gray-400 hover:text-white mb-4 transition-colors"
+            className="text-slate-600 hover:text-slate-900 mb-4 transition-colors"
           >
             ← Volver
           </button>
-          <h1 className="text-5xl font-bold text-white mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
-            Técnicas Avanzadas
+          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-4">
+            Técnicas avanzadas
           </h1>
-          <p className="text-xl text-gray-300">
+          <p className="text-xl text-slate-700">
             Explora análisis astrológicos especializados y predictivos
           </p>
         </div>
@@ -134,8 +134,7 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
                 onClick={() => handleSelect(technique.id, technique.comingSoon)}
                 className={`
                   relative group cursor-pointer
-                  bg-gradient-to-br ${technique.color}
-                  p-[2px] rounded-2xl
+                  rounded-2xl
                   transform transition-all duration-300
                   hover:scale-105 hover:shadow-2xl
                   ${technique.comingSoon ? 'opacity-60' : ''}
@@ -143,38 +142,34 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
               >
                 {/* Coming Soon Badge */}
                 {technique.comingSoon && (
-                  <div className="absolute -top-3 -right-3 z-10 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="absolute -top-3 -right-3 z-10 bg-amber-500 text-slate-900 text-xs font-bold px-3 py-1 rounded-full">
                     Próximamente
                   </div>
                 )}
 
                 {/* Pro Badge */}
                 {technique.isPro && !technique.comingSoon && (
-                  <div className="absolute -top-3 -left-3 z-10 bg-linear-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="absolute -top-3 -left-3 z-10 bg-amber-500 text-slate-900 text-xs font-bold px-3 py-1 rounded-full">
                     PRO
                   </div>
                 )}
 
-                <div className="bg-[#0a0e27] rounded-2xl p-6 h-full flex flex-col">
+                <div className="md-card rounded-2xl p-6 h-full flex flex-col">
                   {/* Icon */}
-                  <div className={`
-                    w-16 h-16 rounded-xl flex items-center justify-center mb-4
-                    bg-gradient-to-br ${technique.color}
-                    text-white
-                  `}>
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-4 bg-blue-50 border border-blue-200 text-blue-700">
                     <Icon className="w-8 h-8" />
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-xl font-bold text-white mb-2">
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
                     {technique.name}
                   </h3>
-                  <p className="text-gray-400 text-sm flex-grow">
+                  <p className="text-slate-600 text-sm flex-grow">
                     {technique.description}
                   </p>
 
                   {/* CTA */}
-                  <div className="mt-4 text-white/60 text-sm group-hover:text-white transition-colors">
+                  <div className="mt-4 text-slate-600 text-sm group-hover:text-slate-900 transition-colors">
                     {technique.comingSoon ? 'Disponible pronto →' : 'Comenzar análisis →'}
                   </div>
                 </div>
@@ -184,11 +179,11 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
         </div>
 
         {/* Info Section */}
-        <div className="mt-16 bg-white/10 backdrop-blur-lg rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-4">¿Qué son las Técnicas Avanzadas?</h2>
-          <div className="grid md:grid-cols-2 gap-8 text-gray-300">
+        <div className="mt-16 md-card rounded-2xl p-8">
+          <h2 className="text-2xl font-semibold text-slate-900 mb-4">¿Qué son las técnicas avanzadas?</h2>
+          <div className="grid md:grid-cols-2 gap-8 text-slate-700">
             <div>
-              <h3 className="text-white font-semibold mb-2">Análisis Predictivo</h3>
+              <h3 className="text-slate-900 font-semibold mb-2">Análisis predictivo</h3>
               <p>
                 Las técnicas avanzadas te permiten explorar cómo las energías cósmicas
                 evolucionan en el tiempo, proporcionando insight sobre eventos futuros
@@ -196,7 +191,7 @@ const AdvancedTechniques: React.FC<AdvancedTechniquesProps> = ({ onSelectTechniq
               </p>
             </div>
             <div>
-              <h3 className="text-white font-semibold mb-2">Precisión Profesional</h3>
+              <h3 className="text-slate-900 font-semibold mb-2">Precisión profesional</h3>
               <p>
                 Utilizamos algoritmos de Swiss Ephemeris y métodos tradicionales 
                 validados por astrólogos profesionales para garantizar la máxima

@@ -34,15 +34,15 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
   if (compacto) {
     // Modo compacto: Una sola línea
     return (
-      <div className="flex items-center gap-4 text-xs text-gray-400 font-mono border border-white/10 rounded-lg px-4 py-2 bg-slate-900/50">
-        <span className="text-white">
+      <div className="flex items-center gap-4 text-xs text-slate-600 font-mono border border-slate-200 rounded-lg px-4 py-2 bg-white">
+        <span className="text-slate-900">
           {datos.fecha_local} {datos.hora_local}
         </span>
-        <span className="text-green-400">
+        <span className="text-green-700">
           ({datos.offset_utc_legible})
-          {datos.dst_activo && <span className="text-yellow-400 ml-1">DST</span>}
+          {datos.dst_activo && <span className="text-amber-700 ml-1">DST</span>}
         </span>
-        <span className="text-gray-500">
+        <span className="text-slate-600">
           {formatCoord(datos.latitud, datos.longitud)}
         </span>
       </div>
@@ -51,9 +51,9 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
 
   // Modo completo: Grid con toda la información
   return (
-    <div className="border border-white/10 rounded-xl p-6 bg-linear-to-br from-slate-900/80 to-slate-800/50 backdrop-blur-sm">
-      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-        <Globe size={20} className="text-indigo-400" />
+    <div className="md-card rounded-xl p-6">
+      <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <Globe size={20} className="text-slate-700" />
         Datos de Nacimiento
       </h3>
 
@@ -61,26 +61,26 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
         {/* Fecha y Hora Local */}
         <div className="space-y-2">
           <div className="flex items-start gap-3">
-            <Calendar size={18} className="text-indigo-400 mt-0.5" />
+            <Calendar size={18} className="text-slate-700 mt-0.5" />
             <div className="flex-1">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Fecha Local</div>
-              <div className="text-white font-mono text-lg font-semibold">
+              <div className="text-xs text-slate-600 uppercase tracking-wide mb-1">Fecha Local</div>
+              <div className="text-slate-900 font-mono text-lg font-semibold">
                 {datos.fecha_local}
               </div>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <Clock size={18} className="text-indigo-400 mt-0.5" />
+            <Clock size={18} className="text-slate-700 mt-0.5" />
             <div className="flex-1">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Hora Local</div>
-              <div className="text-white font-mono text-lg font-semibold">
+              <div className="text-xs text-slate-600 uppercase tracking-wide mb-1">Hora Local</div>
+              <div className="text-slate-900 font-mono text-lg font-semibold">
                 {datos.hora_local}
-                <span className="text-green-400 ml-3 text-base">
+                <span className="text-green-700 ml-3 text-base">
                   {datos.offset_utc_legible}
                 </span>
                 {datos.dst_activo && (
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">
+                  <span className="ml-2 px-2 py-0.5 bg-amber-50 text-amber-800 text-xs rounded-full border border-amber-200">
                     Horario de Verano
                   </span>
                 )}
@@ -92,23 +92,23 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
         {/* Ubicación */}
         <div className="space-y-2">
           <div className="flex items-start gap-3">
-            <MapPin size={18} className="text-indigo-400 mt-0.5" />
+            <MapPin size={18} className="text-slate-700 mt-0.5" />
             <div className="flex-1">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Ubicación</div>
-              <div className="text-white font-mono text-sm">
+              <div className="text-xs text-slate-600 uppercase tracking-wide mb-1">Ubicación</div>
+              <div className="text-slate-900 font-mono text-sm">
                 {formatCoord(datos.latitud, datos.longitud)}
               </div>
-              <div className="text-gray-500 text-xs mt-1 font-mono">
+              <div className="text-slate-600 text-xs mt-1 font-mono">
                 Lat: {datos.latitud.toFixed(6)} | Lon: {datos.longitud.toFixed(6)}
               </div>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <Globe size={18} className="text-indigo-400 mt-0.5" />
+            <Globe size={18} className="text-slate-700 mt-0.5" />
             <div className="flex-1">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Zona Horaria</div>
-              <div className="text-white font-mono text-sm">
+              <div className="text-xs text-slate-600 uppercase tracking-wide mb-1">Zona Horaria</div>
+              <div className="text-slate-900 font-mono text-sm">
                 {datos.zona_horaria}
               </div>
             </div>
@@ -117,18 +117,18 @@ const ChartDataDisplay: React.FC<ChartDataDisplayProps> = ({ cartaCompleta, comp
       </div>
 
       {/* Fecha UTC (menos prominente) */}
-      <div className="mt-4 pt-4 border-t border-white/10">
+      <div className="mt-4 pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500">Fecha UTC (para cálculos astronómicos):</span>
-          <span className="text-gray-400 font-mono">{datos.fecha_utc}</span>
+          <span className="text-slate-600">Fecha UTC (para cálculos astronómicos):</span>
+          <span className="text-slate-600 font-mono">{datos.fecha_utc}</span>
         </div>
       </div>
 
       {/* Nota explicativa */}
-      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-        <p className="text-xs text-blue-300 leading-relaxed">
+      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-xs text-blue-900 leading-relaxed">
           <span className="font-semibold">ℹ️ Nota:</span> Los cálculos astrológicos usan la hora{' '}
-          <span className="font-mono text-blue-200">{datos.hora_local}</span> en tu ubicación local{' '}
+          <span className="font-mono">{datos.hora_local}</span> en tu ubicación local{' '}
           ({datos.offset_utc_legible}). La hora UTC se muestra solo como referencia técnica.
         </p>
       </div>

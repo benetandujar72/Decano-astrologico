@@ -133,16 +133,16 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-900/30 border border-red-500 rounded-xl p-6 flex items-center gap-3">
-        <AlertCircle className="w-6 h-6 text-red-400" />
-        <p className="text-red-300">{error}</p>
+      <div className="md-alert md-alert--error rounded-xl p-6 flex items-center gap-3">
+        <AlertCircle className="w-6 h-6" />
+        <p>{error}</p>
       </div>
     );
   }
@@ -154,23 +154,23 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
         {onBack && (
           <button 
             onClick={onBack}
-            className="absolute left-0 top-0 p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors"
+            className="absolute left-0 top-0 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-700 hover:text-slate-900 transition-colors"
             title="Volver"
           >
             <ArrowLeft size={24} />
           </button>
         )}
-        <h1 className="text-4xl font-bold text-white mb-4">
+        <h1 className="text-4xl font-bold text-slate-900 mb-4">
           Servicios Profesionales de Jon Landeta
         </h1>
-        <p className="text-gray-300 text-lg max-w-3xl mx-auto">
+        <p className="text-slate-700 text-lg max-w-3xl mx-auto">
           Acompañamiento terapéutico y astrológico-psicológico: presencial, online o en formato de carta personalizada.
         </p>
 
         {/* Disclaimer */}
-        <div className="mt-6 max-w-3xl mx-auto bg-amber-900/20 border border-amber-500/30 rounded-2xl p-5 text-left">
-          <p className="text-amber-200 font-semibold mb-2">Aviso importante</p>
-          <p className="text-amber-100/80 text-sm">
+        <div className="mt-6 max-w-3xl mx-auto bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left">
+          <p className="text-amber-900 font-semibold mb-2">Aviso importante</p>
+          <p className="text-amber-900/80 text-sm">
             La información compartida tiene fines de orientación y desarrollo personal. Para cuestiones clínicas, diagnósticos o
             decisiones de salud, debe ser valorada y seguida por un profesional cualificado.
           </p>
@@ -178,37 +178,37 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
 
         {/* FREE DEMO CTA - Destacado */}
         <div className="mt-8 max-w-4xl mx-auto">
-          <div className="relative bg-linear-to-r from-green-900/40 via-emerald-900/40 to-teal-900/40 border-2 border-green-500/50 rounded-3xl p-8 overflow-hidden shadow-2xl">
+          <div className="relative bg-green-50 border border-green-200 rounded-3xl p-8 overflow-hidden shadow-sm">
             {/* Background effects */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-green-200/40 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-200/40 rounded-full blur-3xl"></div>
 
             {/* Content */}
             <div className="relative z-10 text-center">
-              <div className="inline-flex items-center gap-2 bg-green-500/20 border border-green-400/50 rounded-full px-4 py-2 mb-4">
-                <Star className="w-5 h-5 text-green-400" />
-                <span className="text-green-300 font-bold text-sm">100% GRATUITO</span>
+              <div className="inline-flex items-center gap-2 bg-white border border-green-200 rounded-full px-4 py-2 mb-4">
+                <Star className="w-5 h-5 text-green-700" />
+                <span className="text-green-800 font-bold text-sm">100% GRATUITO</span>
               </div>
 
-              <h2 className="text-3xl font-bold text-white mb-3 flex items-center justify-center gap-3">
-                <Sparkles className="w-8 h-8 text-green-400" />
+              <h2 className="text-3xl font-bold text-slate-900 mb-3 flex items-center justify-center gap-3">
+                <Sparkles className="w-8 h-8 text-green-700" />
                 Prueba tu Demo Astrológica Gratis
               </h2>
 
-              <p className="text-gray-200 text-lg mb-6 max-w-2xl mx-auto">
+              <p className="text-slate-700 text-lg mb-6 max-w-2xl mx-auto">
                 Descubre una interpretación básica de tu carta natal con tu Sol, Luna y Ascendente.
-                <span className="block mt-2 text-green-300 font-semibold">Sin coste · Sin compromiso · Resultados inmediatos</span>
+                <span className="block mt-2 text-green-800 font-semibold">Sin coste · Sin compromiso · Resultados inmediatos</span>
               </p>
 
               <button
                 onClick={() => setShowDemoModal(true)}
-                className="inline-flex items-center gap-3 bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold text-lg px-8 py-4 rounded-xl transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/50"
+                className="md-button inline-flex items-center gap-3 font-bold text-lg px-8 py-4 rounded-xl transition-all transform hover:scale-105"
               >
                 <Sparkles className="w-6 h-6" />
                 <span>Generar Mi Demo Gratis</span>
               </button>
 
-              <p className="mt-4 text-gray-400 text-sm">
+              <p className="mt-4 text-slate-600 text-sm">
                 Solo necesitas tu fecha, hora y lugar de nacimiento
               </p>
             </div>
@@ -217,10 +217,10 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
 
         {/* Subscription summary (read-only) */}
         {catalogData && (
-          <div className="mt-6 inline-flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-full px-6 py-3">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="text-white">
-              {catalogData.is_admin && <span className="text-purple-400 font-bold">[ADMIN] </span>}
+          <div className="mt-6 inline-flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-full px-6 py-3">
+            <CheckCircle className="w-5 h-5 text-green-700" />
+            <span className="text-slate-900">
+              {catalogData.is_admin && <span className="text-blue-700 font-bold">[ADMIN] </span>}
               Suscripción: {catalogData.subscription_tier?.toUpperCase() || 'FREE'} ({catalogData.subscription_status || 'inactive'})
               {typeof catalogData.discount === 'number' && catalogData.discount > 0 ? ` · Descuento ${catalogData.discount}%` : ''}
             </span>
@@ -229,17 +229,17 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
 
         {/* Modalities */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-5xl mx-auto">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5">
-            <p className="text-white font-bold mb-2">Presencial</p>
-            <p className="text-gray-300 text-sm">Sesiones profundas, trabajo práctico y seguimiento. Ideal si buscas proceso y contención.</p>
+          <div className="md-card rounded-2xl p-5">
+            <p className="text-slate-900 font-semibold mb-2">Presencial</p>
+            <p className="text-slate-700 text-sm">Sesiones profundas, trabajo práctico y seguimiento. Ideal si buscas proceso y contención.</p>
           </div>
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5">
-            <p className="text-white font-bold mb-2">Online</p>
-            <p className="text-gray-300 text-sm">Videollamada (Zoom/Meet). Flexible y eficaz para acompañamiento terapéutico y lectura guiada.</p>
+          <div className="md-card rounded-2xl p-5">
+            <p className="text-slate-900 font-semibold mb-2">Online</p>
+            <p className="text-slate-700 text-sm">Videollamada (Zoom/Meet). Flexible y eficaz para acompañamiento terapéutico y lectura guiada.</p>
           </div>
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5">
-            <p className="text-white font-bold mb-2">Carta personalizada</p>
-            <p className="text-gray-300 text-sm">Informe PDF con claves, recomendaciones y plan de acción. Perfecto si prefieres formato escrito.</p>
+          <div className="md-card rounded-2xl p-5">
+            <p className="text-slate-900 font-semibold mb-2">Carta personalizada</p>
+            <p className="text-slate-700 text-sm">Informe PDF con claves, recomendaciones y plan de acción. Perfecto si prefieres formato escrito.</p>
           </div>
         </div>
       </div>
@@ -250,8 +250,8 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
           onClick={() => setCategoryFilter(null)}
           className={`px-6 py-2 rounded-full font-semibold transition-colors ${
             categoryFilter === null
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
           }`}
         >
           Todos
@@ -260,8 +260,8 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
           onClick={() => setCategoryFilter('consultation')}
           className={`px-6 py-2 rounded-full font-semibold transition-colors ${
             categoryFilter === 'consultation'
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
           }`}
         >
           Consultas
@@ -270,8 +270,8 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
           onClick={() => setCategoryFilter('training')}
           className={`px-6 py-2 rounded-full font-semibold transition-colors ${
             categoryFilter === 'training'
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
           }`}
         >
           Formación
@@ -280,8 +280,8 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
           onClick={() => setCategoryFilter('therapy')}
           className={`px-6 py-2 rounded-full font-semibold transition-colors ${
             categoryFilter === 'therapy'
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
           }`}
         >
           Terapia
@@ -298,59 +298,59 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
           return (
           <div
             key={service.service_id}
-            className={`bg-gray-900 border rounded-2xl p-6 transition-all hover:shadow-xl ${
+            className={`md-card border rounded-2xl p-6 transition-all hover:shadow-xl ${
               isContactService
-                ? 'border-green-500 hover:border-green-400 hover:shadow-green-500/20'
+                ? 'border-green-200 hover:border-green-300 hover:shadow-green-200/40'
                 : isTrainingService
-                ? 'border-blue-500 hover:border-blue-400 hover:shadow-blue-500/20'
-                : 'border-gray-700 hover:border-purple-500 hover:shadow-purple-500/20'
+                ? 'border-blue-200 hover:border-blue-300 hover:shadow-blue-200/40'
+                : 'border-slate-200 hover:border-blue-300 hover:shadow-blue-200/40'
             }`}
           >
             {/* Service Header */}
             <div className="flex items-start justify-between mb-4">
               <div className={`p-3 rounded-xl ${
                 isContactService
-                  ? 'bg-green-600/20 text-green-400'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
                   : isTrainingService
-                  ? 'bg-blue-600/20 text-blue-400'
-                  : 'bg-purple-600/20 text-purple-400'
+                  ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                  : 'bg-slate-50 text-slate-800 border border-slate-200'
               }`}>
                 {getServiceIcon(service.service_type)}
               </div>
               <div className="flex gap-2">
                 {isFree && (
-                  <span className="px-3 py-1 bg-green-600/20 text-green-400 text-xs rounded-full font-bold">
+                  <span className="px-3 py-1 bg-green-50 text-green-800 border border-green-200 text-xs rounded-full font-bold">
                     GRATIS
                   </span>
                 )}
-                <span className="px-3 py-1 bg-gray-800 text-gray-300 text-xs rounded-full">
+                <span className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-full">
                   {getCategoryLabel(service.category)}
                 </span>
               </div>
             </div>
 
             {/* Service Name */}
-            <h3 className="text-xl font-bold text-white mb-2">{service.name}</h3>
+            <h3 className="text-xl font-semibold text-slate-900 mb-2">{service.name}</h3>
 
             {/* Description */}
-            <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+            <p className="text-slate-600 text-sm mb-4 line-clamp-2">
               {service.description}
             </p>
 
             {/* Duration & Location/Platform */}
             <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-gray-300 text-sm">
+              <div className="flex items-center gap-2 text-slate-700 text-sm">
                 <Clock className="w-4 h-4" />
                 <span>{service.duration_minutes} minutos</span>
               </div>
               {service.platform && (
-                <div className="flex items-center gap-2 text-gray-300 text-sm">
+                <div className="flex items-center gap-2 text-slate-700 text-sm">
                   <Video className="w-4 h-4" />
                   <span>{service.platform}</span>
                 </div>
               )}
               {service.location && (
-                <div className="flex items-center gap-2 text-gray-300 text-sm">
+                <div className="flex items-center gap-2 text-slate-700 text-sm">
                   <MapPin className="w-4 h-4" />
                   <span>{service.location}</span>
                 </div>
@@ -360,28 +360,28 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
             {/* Price */}
             <div className="mb-4">
               {isFree ? (
-                <div className="text-3xl font-bold text-green-400">
+                <div className="text-3xl font-bold text-green-700">
                   GRATIS
                 </div>
               ) : service.discounted_price ? (
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-3xl font-bold text-white">
+                    <span className="text-3xl font-bold text-slate-900">
                       {service.discounted_price}€
                     </span>
-                    <span className="text-lg text-gray-500 line-through">
+                    <span className="text-lg text-slate-600 line-through">
                       {service.base_price}€
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <Tag className="w-4 h-4 text-green-400" />
-                    <span className="text-green-400 text-sm font-semibold">
+                    <Tag className="w-4 h-4 text-green-700" />
+                    <span className="text-green-700 text-sm font-semibold">
                       Ahorras {service.savings}€ ({service.discount_percentage}% descuento)
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="text-3xl font-bold text-white">
+                <div className="text-3xl font-bold text-slate-900">
                   {service.base_price}€
                 </div>
               )}
@@ -390,16 +390,16 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
             {/* Includes */}
             {service.includes && service.includes.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs font-semibold text-gray-400 mb-2">Incluye:</p>
+                <p className="text-xs font-semibold text-slate-600 mb-2">Incluye:</p>
                 <ul className="space-y-1">
                   {service.includes.slice(0, 3).map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-xs text-gray-300">
-                      <CheckCircle className="w-3 h-3 text-green-400 mt-0.5 shrink-0" />
+                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-700">
+                      <CheckCircle className="w-3 h-3 text-green-700 mt-0.5 shrink-0" />
                       <span>{item}</span>
                     </li>
                   ))}
                   {service.includes.length > 3 && (
-                    <li className="text-xs text-purple-400">
+                    <li className="text-xs text-blue-700">
                       +{service.includes.length - 3} más...
                     </li>
                   )}
@@ -415,7 +415,7 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
                   ? 'bg-green-600 hover:bg-green-700 text-white'
                   : isTrainingService
                   ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
               {isContactService ? 'Contactar Ahora' : 'Reservar Ahora'}
@@ -428,7 +428,7 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
       {/* No services message */}
       {catalogData?.services.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-400">No hay servicios disponibles en esta categoría</p>
+          <p className="text-slate-600">No hay servicios disponibles en esta categoría</p>
         </div>
       )}
 
@@ -447,11 +447,11 @@ const ProfessionalServices: React.FC<ProfessionalServicesProps> = ({ onBack }) =
 
       {/* Astrology Demo Modal */}
       {showDemoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center md-backdrop p-4 overflow-y-auto">
           <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowDemoModal(false)}
-              className="absolute top-4 right-4 z-10 bg-gray-900/80 hover:bg-gray-800 text-white p-2 rounded-full transition-colors"
+              className="absolute top-4 right-4 z-10 bg-slate-100 hover:bg-slate-200 text-slate-900 p-2 rounded-full transition-colors"
               aria-label="Cerrar demo"
             >
               <span className="text-2xl leading-none">×</span>

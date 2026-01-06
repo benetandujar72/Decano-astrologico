@@ -70,8 +70,8 @@ const ExpertChatButton: React.FC<ExpertChatButtonProps> = ({
           transition-all transform hover:scale-105 active:scale-95
           flex items-center justify-center gap-3
           ${hasAccess
-            ? 'bg-linear-to-r from-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-xl'
-            : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }
         `}
       >

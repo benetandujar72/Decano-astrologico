@@ -797,7 +797,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
             </h1>
             <p className="text-slate-600">Gestión y observabilidad del sistema</p>
           </div>
-          <div className="md-chip bg-slate-900 text-white border-transparent">
+          <div className="md-chip bg-blue-50 text-blue-700 border-blue-200">
             ADMIN
           </div>
         </div>
@@ -1145,7 +1145,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     <div key={user._id} className="bg-white rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-all">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
                             {user.username[0].toUpperCase()}
                           </div>
                           <div className="flex-1">
@@ -1177,7 +1177,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                         <div className="flex items-center gap-2">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                             user.role === 'admin'
-                              ? 'bg-slate-900 text-white'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
                               : 'bg-slate-100 text-slate-800 border border-slate-200'
                           }`}>
                             {user.role.toUpperCase()}

@@ -322,20 +322,20 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
     switch (status?.toLowerCase()) {
       case 'active':
       case 'completed':
-      case 'paid': return 'text-green-400 bg-green-500/20 border-green-500/30';
-      case 'pending': return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+      case 'paid': return 'text-green-800 bg-green-50 border border-green-200';
+      case 'pending': return 'text-amber-800 bg-amber-50 border border-amber-200';
       case 'cancelled':
-      case 'failed': return 'text-red-400 bg-red-500/20 border-red-500/30';
-      default: return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+      case 'failed': return 'text-red-800 bg-red-50 border border-red-200';
+      default: return 'text-slate-700 bg-slate-50 border border-slate-200';
     }
   };
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-        <div className="bg-gray-900 rounded-2xl p-8 border border-purple-500/30">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
-          <p className="text-gray-300 mt-4">Cargando datos del usuario...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center md-backdrop">
+        <div className="md-modal rounded-2xl p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-slate-600 mt-4">Cargando datos del usuario...</p>
         </div>
       </div>
     );
@@ -343,16 +343,16 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
 
   if (error || !userDetails) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
-        <div className="bg-gray-900 rounded-2xl p-8 border border-red-500/30 max-w-md w-full">
+      <div className="fixed inset-0 z-50 flex items-center justify-center md-backdrop p-4">
+        <div className="md-modal rounded-2xl p-8 max-w-md w-full">
           <div className="flex items-center gap-3 mb-4">
-            <AlertCircle className="w-6 h-6 text-red-400" />
-            <h3 className="text-xl font-bold text-white">Error</h3>
+            <AlertCircle className="w-6 h-6 text-red-700" />
+            <h3 className="text-xl font-semibold text-slate-900">Error</h3>
           </div>
-          <p className="text-gray-300 mb-6">{error || 'Usuario no encontrado'}</p>
+          <p className="text-slate-700 mb-6">{error || 'Usuario no encontrado'}</p>
           <button
             onClick={onClose}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+            className="md-button w-full px-6 py-3 rounded-xl font-semibold transition-colors"
           >
             Cerrar
           </button>
@@ -362,26 +362,26 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-purple-500/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center md-backdrop p-4">
+      <div className="md-modal rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
+        <div className="sticky top-0 bg-slate-50/80 backdrop-blur border-b border-slate-200 p-6 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
                 {userDetails.username[0].toUpperCase()}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">{userDetails.username}</h2>
-                <p className="text-gray-400">{userDetails.email}</p>
+                <h2 className="text-2xl font-semibold text-slate-900">{userDetails.username}</h2>
+                <p className="text-slate-600">{userDetails.email}</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               aria-label="Cerrar"
             >
-              <X className="w-6 h-6 text-gray-300" />
+              <X className="w-6 h-6 text-slate-700" />
             </button>
           </div>
         </div>
@@ -389,48 +389,48 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Informaciรณn Bรกsica */}
-          <div className="bg-gray-800 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <div className="md-card rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <User className="w-5 h-5" />
               Informaciรณn Bรกsica
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-gray-400 text-sm mb-1">Rol</p>
+                <p className="text-slate-600 text-sm mb-1">Rol</p>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                   userDetails.role === 'admin'
-                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                    : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    ? 'bg-red-50 text-red-800 border border-red-200'
+                    : 'bg-blue-50 text-blue-800 border border-blue-200'
                 }`}>
                   {userDetails.role.toUpperCase()}
                 </span>
               </div>
               <div>
-                <p className="text-gray-400 text-sm mb-1">Estado</p>
+                <p className="text-slate-600 text-sm mb-1">Estado</p>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                   userDetails.active
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    ? 'bg-green-50 text-green-800 border border-green-200'
+                    : 'bg-red-50 text-red-800 border border-red-200'
                 }`}>
                   {userDetails.active ? 'ACTIVO' : 'INACTIVO'}
                 </span>
               </div>
               <div>
-                <p className="text-gray-400 text-sm mb-1">Fecha Registro</p>
-                <p className="text-white text-sm">
+                <p className="text-slate-600 text-sm mb-1">Fecha Registro</p>
+                <p className="text-slate-900 text-sm">
                   {new Date(userDetails.created_at).toLocaleDateString('es-ES')}
                 </p>
               </div>
               <div>
-                <p className="text-gray-400 text-sm mb-1">ID Usuario</p>
-                <p className="text-white text-xs font-mono">{userDetails._id}</p>
+                <p className="text-slate-600 text-sm mb-1">ID Usuario</p>
+                <p className="text-slate-900 text-xs font-mono">{userDetails._id}</p>
               </div>
             </div>
           </div>
 
           {/* Plan Contratado */}
-          <div className="bg-gray-800 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <div className="md-card rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <Crown className="w-5 h-5" />
               Plan Contratado
             </h3>
@@ -643,11 +643,11 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ userId, onClose }) => {
                 )}
 
                 {(demoSessionLoading || demoSessionDetail) && (
-                  <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4">
+                  <div className="md-card md-card--flat border border-slate-200 rounded-xl p-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="min-w-0">
-                        <p className="text-white font-bold truncate">Detalle de la demo</p>
-                        <p className="text-gray-400 text-xs truncate">{selectedDemoSessionId || ''}</p>
+                        <p className="text-slate-900 font-bold truncate">Detalle de la demo</p>
+                        <p className="text-slate-500 text-xs truncate">{selectedDemoSessionId || ''}</p>
                       </div>
                       <button
                         onClick={() => {

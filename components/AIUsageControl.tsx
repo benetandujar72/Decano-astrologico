@@ -159,8 +159,8 @@ const AIUsageControl: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
-        <span className="ml-3 text-gray-300">Cargando estadísticas...</span>
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-700" />
+        <span className="ml-3 text-slate-600">Cargando estadísticas...</span>
       </div>
     );
   }
@@ -170,18 +170,18 @@ const AIUsageControl: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Brain className="w-6 h-6 text-purple-400" />
+          <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+            <Brain className="w-6 h-6 text-slate-700" />
             Control de Tokens y Gasto de IA
           </h2>
-          <p className="text-gray-400 text-sm mt-1">Trazabilidad forense completa de uso de IA</p>
+          <p className="text-slate-600 text-sm mt-1">Trazabilidad completa de uso de IA</p>
         </div>
         <button
           onClick={() => {
             setLoading(true);
             Promise.all([fetchStats(), fetchHistory()]).finally(() => setLoading(false));
           }}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+          className="md-button px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Actualizar
@@ -189,55 +189,55 @@ const AIUsageControl: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-red-400 mb-2">
+        <div className="md-alert md-alert--error">
+          <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="w-5 h-5" />
             <span className="font-semibold">Error</span>
           </div>
-          <p className="text-red-300">{error}</p>
-          <p className="text-red-400 text-xs mt-2">
+          <p>{error}</p>
+          <p className="text-xs mt-2">
             Revisa la consola del navegador (F12) para más detalles
           </p>
         </div>
       )}
 
       {/* Filtros */}
-      <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+      <div className="md-card md-card--flat rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Fecha Inicio</label>
+            <label className="block text-sm text-slate-600 mb-1">Fecha Inicio</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              className="md-input w-full px-3 py-2 rounded-lg"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Fecha Fin</label>
+            <label className="block text-sm text-slate-600 mb-1">Fecha Fin</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              className="md-input w-full px-3 py-2 rounded-lg"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Usuario</label>
+            <label className="block text-sm text-slate-600 mb-1">Usuario</label>
             <input
               type="text"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
               placeholder="ID de usuario"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              className="md-input w-full px-3 py-2 rounded-lg"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Tipo de Acción</label>
+            <label className="block text-sm text-slate-600 mb-1">Tipo de Acción</label>
             <select
               value={selectedActionType}
               onChange={(e) => setSelectedActionType(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              className="md-input w-full px-3 py-2 rounded-lg"
             >
               <option value="">Todos</option>
               <option value="report_module_generation">Generación de Módulo</option>
@@ -253,39 +253,39 @@ const AIUsageControl: React.FC = () => {
       {/* Estadísticas Generales */}
       {!loading && !error && stats && stats.total_actions > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 rounded-lg p-6 border border-purple-500/30">
+          <div className="md-card rounded-lg p-6">
             <div className="flex items-center justify-between mb-2">
-              <Zap className="w-5 h-5 text-purple-400" />
-              <span className="text-xs text-gray-400">Total Acciones</span>
+              <Zap className="w-5 h-5 text-slate-700" />
+              <span className="text-xs text-slate-600">Total Acciones</span>
             </div>
-            <p className="text-3xl font-bold text-white">{formatNumber(stats.total_actions)}</p>
+            <p className="text-3xl font-bold text-slate-900">{formatNumber(stats.total_actions)}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-900/50 to-cyan-900/50 rounded-lg p-6 border border-blue-500/30">
+          <div className="md-card rounded-lg p-6">
             <div className="flex items-center justify-between mb-2">
-              <Brain className="w-5 h-5 text-blue-400" />
-              <span className="text-xs text-gray-400">Total Tokens</span>
+              <Brain className="w-5 h-5 text-blue-700" />
+              <span className="text-xs text-slate-600">Total Tokens</span>
             </div>
-            <p className="text-3xl font-bold text-white">{formatNumber(stats.total_tokens)}</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-3xl font-bold text-slate-900">{formatNumber(stats.total_tokens)}</p>
+            <p className="text-xs text-slate-600 mt-1">
               {formatNumber(Math.round(stats.total_tokens / 1000))}K tokens
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-900/50 to-emerald-900/50 rounded-lg p-6 border border-green-500/30">
+          <div className="md-card rounded-lg p-6">
             <div className="flex items-center justify-between mb-2">
-              <DollarSign className="w-5 h-5 text-green-400" />
-              <span className="text-xs text-gray-400">Costo Total</span>
+              <DollarSign className="w-5 h-5 text-green-700" />
+              <span className="text-xs text-slate-600">Costo Total</span>
             </div>
-            <p className="text-3xl font-bold text-white">{formatCurrency(stats.total_cost_usd)}</p>
+            <p className="text-3xl font-bold text-slate-900">{formatCurrency(stats.total_cost_usd)}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-900/50 to-amber-900/50 rounded-lg p-6 border border-orange-500/30">
+          <div className="md-card rounded-lg p-6">
             <div className="flex items-center justify-between mb-2">
-              <TrendingUp className="w-5 h-5 text-orange-400" />
-              <span className="text-xs text-gray-400">Costo Promedio</span>
+              <TrendingUp className="w-5 h-5 text-amber-700" />
+              <span className="text-xs text-slate-600">Costo Promedio</span>
             </div>
-            <p className="text-3xl font-bold text-white">
+            <p className="text-3xl font-bold text-slate-900">
               {stats.total_actions > 0
                 ? formatCurrency(stats.total_cost_usd / stats.total_actions)
                 : formatCurrency(0)}
@@ -296,13 +296,13 @@ const AIUsageControl: React.FC = () => {
 
       {/* Mensaje cuando no hay datos */}
       {!loading && !error && stats && stats.total_actions === 0 && (
-        <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-8 text-center">
-          <Brain className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">No hay datos de uso de IA aún</h3>
-          <p className="text-gray-300 mb-4">
+        <div className="md-alert md-alert--info p-8 text-center">
+          <Brain className="w-12 h-12 text-blue-700 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-slate-900 mb-2">No hay datos de uso de IA aún</h3>
+          <p className="text-slate-700 mb-4">
             Los registros aparecerán aquí después de que se generen informes usando el sistema de generación paso a paso.
           </p>
-          <p className="text-gray-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Cada vez que se genera un módulo de informe, se registra automáticamente el uso de tokens y el costo estimado.
           </p>
         </div>
@@ -310,21 +310,21 @@ const AIUsageControl: React.FC = () => {
 
       {/* Estadísticas Generales */}
       {!loading && !error && stats && stats.total_actions > 0 && (
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Filter className="w-5 h-5 text-purple-400" />
+        <div className="md-card rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <Filter className="w-5 h-5 text-slate-700" />
             Por Tipo de Acción
           </h3>
           <div className="space-y-3">
             {Object.entries(stats.by_action_type).map(([type, data]) => (
-              <div key={type} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+              <div key={type} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
                 <div>
-                  <p className="text-white font-semibold">{getActionTypeLabel(type)}</p>
-                  <p className="text-xs text-gray-400">{data.count} acciones</p>
+                  <p className="text-slate-900 font-semibold">{getActionTypeLabel(type)}</p>
+                  <p className="text-xs text-slate-600">{data.count} acciones</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-bold">{formatNumber(data.tokens)} tokens</p>
-                  <p className="text-xs text-green-400">{formatCurrency(data.cost)}</p>
+                  <p className="text-slate-900 font-bold">{formatNumber(data.tokens)} tokens</p>
+                  <p className="text-xs text-green-700">{formatCurrency(data.cost)}</p>
                 </div>
               </div>
             ))}
@@ -333,68 +333,68 @@ const AIUsageControl: React.FC = () => {
       )}
 
       {/* Historial Detallado */}
-      <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <History className="w-5 h-5 text-purple-400" />
+      <div className="md-card rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <History className="w-5 h-5 text-slate-700" />
           Historial de Uso (Trazabilidad Forense)
         </h3>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
-            <span className="ml-3 text-gray-300">Cargando historial...</span>
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-700" />
+            <span className="ml-3 text-slate-600">Cargando historial...</span>
           </div>
         ) : error ? (
-          <p className="text-red-400 text-center py-8">{error}</p>
+          <p className="text-red-700 text-center py-8">{error}</p>
         ) : history.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">
+          <p className="text-slate-600 text-center py-8">
             No hay registros para mostrar. Los registros aparecerán aquí después de generar informes.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm md-table">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-2 px-3 text-gray-400">Fecha/Hora</th>
-                  <th className="text-left py-2 px-3 text-gray-400">Usuario</th>
-                  <th className="text-left py-2 px-3 text-gray-400">Acción</th>
-                  <th className="text-left py-2 px-3 text-gray-400">Modelo</th>
-                  <th className="text-right py-2 px-3 text-gray-400">Tokens</th>
-                  <th className="text-right py-2 px-3 text-gray-400">Costo</th>
-                  <th className="text-left py-2 px-3 text-gray-400">Request ID</th>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 px-3 text-slate-600">Fecha/Hora</th>
+                  <th className="text-left py-2 px-3 text-slate-600">Usuario</th>
+                  <th className="text-left py-2 px-3 text-slate-600">Acción</th>
+                  <th className="text-left py-2 px-3 text-slate-600">Modelo</th>
+                  <th className="text-right py-2 px-3 text-slate-600">Tokens</th>
+                  <th className="text-right py-2 px-3 text-slate-600">Costo</th>
+                  <th className="text-left py-2 px-3 text-slate-600">Request ID</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((record) => (
-                  <tr key={record._id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                    <td className="py-2 px-3 text-gray-300">{formatDate(record.created_at)}</td>
+                  <tr key={record._id} className="border-b border-slate-200 hover:bg-slate-50">
+                    <td className="py-2 px-3 text-slate-700">{formatDate(record.created_at)}</td>
                     <td className="py-2 px-3">
                       <div>
-                        <p className="text-white">{record.user_name}</p>
-                        <p className="text-xs text-gray-500">{record.user_id.substring(0, 8)}...</p>
+                        <p className="text-slate-900">{record.user_name}</p>
+                        <p className="text-xs text-slate-600">{record.user_id.substring(0, 8)}...</p>
                       </div>
                     </td>
                     <td className="py-2 px-3">
-                      <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded text-xs">
                         {getActionTypeLabel(record.action_type)}
                       </span>
                       {record.module_id && (
-                        <p className="text-xs text-gray-500 mt-1">Módulo: {record.module_id}</p>
+                        <p className="text-xs text-slate-600 mt-1">Módulo: {record.module_id}</p>
                       )}
                     </td>
-                    <td className="py-2 px-3 text-gray-300 text-xs">{record.model_used}</td>
-                    <td className="py-2 px-3 text-right text-gray-300">
+                    <td className="py-2 px-3 text-slate-700 text-xs">{record.model_used}</td>
+                    <td className="py-2 px-3 text-right text-slate-700">
                       <div>
-                        <p className="text-white">{formatNumber(record.total_tokens)}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-slate-900">{formatNumber(record.total_tokens)}</p>
+                        <p className="text-xs text-slate-600">
                           {formatNumber(record.prompt_tokens)} + {formatNumber(record.response_tokens)}
                         </p>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right text-green-400 font-semibold">
+                    <td className="py-2 px-3 text-right text-green-700 font-semibold">
                       {formatCurrency(record.estimated_cost_usd)}
                     </td>
-                    <td className="py-2 px-3 text-gray-500 text-xs font-mono">
+                    <td className="py-2 px-3 text-slate-600 text-xs font-mono">
                       {record.request_id?.substring(0, 12)}...
                     </td>
                   </tr>
@@ -409,15 +409,15 @@ const AIUsageControl: React.FC = () => {
           <button
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Anterior
           </button>
-          <span className="text-gray-400">Página {currentPage}</span>
+          <span className="text-slate-600">Página {currentPage}</span>
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
             disabled={history.length < pageSize}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Siguiente
           </button>

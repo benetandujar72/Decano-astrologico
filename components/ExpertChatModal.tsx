@@ -163,31 +163,31 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col border border-purple-500/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center md-backdrop p-4">
+      <div className="md-modal w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-linear-to-r from-purple-900/50 to-indigo-900/50">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50/60">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-600 rounded-lg">
+            <div className="p-2 bg-blue-600 rounded-lg">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Experto Astrológico Fraktal</h2>
-              <p className="text-sm text-gray-300">Metodología de Jon Landeta</p>
+              <h2 className="text-xl font-semibold text-slate-900">Experto astrológico</h2>
+              <p className="text-sm text-slate-600">Metodología de Jon Landeta</p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             aria-label="Cerrar chat"
           >
-            <X className="w-6 h-6 text-gray-300" />
+            <X className="w-6 h-6 text-slate-700" />
           </button>
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-950">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
           {messages.map((message, index) => (
             <div
               key={message.message_id || index}
@@ -196,12 +196,12 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
               <div
                 className={`max-w-[80%] rounded-2xl px-5 py-3 ${
                   message.role === 'user'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-100 border border-gray-700'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-50 text-slate-900 border border-slate-200'
                 }`}
               >
                 {message.role === 'assistant' && (
-                  <div className="flex items-center gap-2 mb-2 text-purple-400 text-sm font-semibold">
+                  <div className="flex items-center gap-2 mb-2 text-blue-700 text-sm font-semibold">
                     <Sparkles className="w-4 h-4" />
                     <span>Experto</span>
                   </div>
@@ -222,8 +222,8 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
           {/* Loading indicator */}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-gray-800 rounded-2xl px-5 py-3 border border-gray-700">
-                <div className="flex items-center gap-2 text-purple-400">
+              <div className="bg-slate-50 rounded-2xl px-5 py-3 border border-slate-200">
+                <div className="flex items-center gap-2 text-blue-700">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Experto analizando...</span>
                 </div>
@@ -234,7 +234,7 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
           {/* Error message */}
           {error && (
             <div className="flex justify-center">
-              <div className="bg-red-900/30 border border-red-500 rounded-xl px-4 py-3 flex items-center gap-2 text-red-300">
+              <div className="md-alert md-alert--error flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
                 <span>{error}</span>
               </div>
@@ -245,7 +245,7 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
         </div>
 
         {/* Input Area */}
-        <div className="p-6 border-t border-gray-700 bg-gray-900">
+        <div className="p-6 border-t border-slate-200 bg-slate-50/60">
           <div className="flex gap-3">
             <input
               ref={inputRef}
@@ -255,12 +255,12 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
               onKeyPress={handleKeyPress}
               placeholder="Escribe tu pregunta sobre astrología..."
               disabled={loading || !consultationId}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-5 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="md-input flex-1 rounded-xl px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={sendMessage}
               disabled={loading || !inputMessage.trim() || !consultationId}
-              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl transition-colors flex items-center gap-2 font-semibold"
+              className="md-button px-6 py-3 rounded-xl transition-colors flex items-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Enviar mensaje"
             >
               {loading ? (
@@ -275,7 +275,7 @@ const ExpertChatModal: React.FC<ExpertChatModalProps> = ({
           </div>
 
           {/* Helper text */}
-          <p className="text-xs text-gray-500 mt-3 text-center">
+          <p className="text-xs text-slate-600 mt-3 text-center">
             El experto tiene acceso a tu informe astrológico completo para respuestas personalizadas
           </p>
         </div>
