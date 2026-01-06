@@ -492,21 +492,21 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'bookings' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Mis Servicios Contratados</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Mis servicios contratados</h2>
 
               {bookings.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   <ShoppingBag className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p>No has contratado ningún servicio aún</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {bookings.map((booking) => (
-                    <div key={booking.booking_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all">
+                    <div key={booking.booking_id} className="md-card rounded-xl p-6 hover:shadow-sm transition-all">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <h3 className="text-white font-bold text-lg mb-2">{booking.service_name}</h3>
-                          <div className="space-y-1 text-sm text-gray-400">
+                          <h3 className="text-slate-900 font-semibold text-lg mb-2">{booking.service_name}</h3>
+                          <div className="space-y-1 text-sm text-slate-600">
                             {booking.scheduled_date && (
                               <p className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4" />
@@ -518,14 +518,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                         </div>
                         <div className="text-right">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            booking.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
-                            booking.status === 'pending_payment' ? 'bg-yellow-500/20 text-yellow-400' :
-                            booking.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-                            'bg-gray-500/20 text-gray-400'
+                            booking.status === 'confirmed' ? 'bg-green-50 text-green-800 border border-green-200' :
+                            booking.status === 'pending_payment' ? 'bg-amber-50 text-amber-900 border border-amber-200' :
+                            booking.status === 'completed' ? 'bg-blue-50 text-blue-800 border border-blue-200' :
+                            'bg-slate-50 text-slate-700 border border-slate-200'
                           }`}>
                             {booking.status.replace('_', ' ').toUpperCase()}
                           </span>
-                          <p className="text-white font-bold text-xl mt-2">
+                          <p className="text-slate-900 font-semibold text-xl mt-2">
                             {booking.final_price > 0 ? `€${booking.final_price.toFixed(2)}` : 'GRATIS'}
                           </p>
                         </div>
@@ -539,30 +539,30 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'charts' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Mis Cartas Astrales</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Mis cartas astrales</h2>
 
               {charts.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p>No has generado ninguna carta astral aún</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {charts.map((chart) => (
-                    <div key={chart.chart_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all">
+                    <div key={chart.chart_id} className="md-card rounded-xl p-6 hover:shadow-sm transition-all">
                       <div className="flex items-center justify-between mb-4">
-                        <FileText className="w-8 h-8 text-purple-400" />
+                        <FileText className="w-8 h-8 text-slate-700" />
                         <button
                           type="button"
-                          className="text-gray-400 hover:text-white"
+                          className="text-slate-500 hover:text-slate-900"
                           title="Ver carta"
                           aria-label="Ver carta astral"
                         >
                           <Eye className="w-5 h-5" />
                         </button>
                       </div>
-                      <h3 className="text-white font-bold mb-2">{chart.name || 'Carta sin nombre'}</h3>
-                      <div className="text-sm text-gray-400 space-y-1">
+                      <h3 className="text-slate-900 font-semibold mb-2">{chart.name || 'Carta sin nombre'}</h3>
+                      <div className="text-sm text-slate-600 space-y-1">
                         <p>Fecha: {new Date(chart.birth_date).toLocaleDateString()}</p>
                         <p>Lugar: {chart.location}</p>
                         <p className="text-xs">Creada: {new Date(chart.created_at).toLocaleDateString()}</p>
@@ -570,14 +570,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                       <div className="mt-4 flex gap-2">
                         <button
                           type="button"
-                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all"
+                          className="flex-1 md-button md-button--secondary text-sm py-2 rounded-lg"
                         >
                           <Download className="w-4 h-4 inline mr-1" />
                           Descargar
                         </button>
                         <button
                           type="button"
-                          className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all"
+                          className="p-2 md-button md-button--danger rounded-lg"
                           title="Eliminar carta"
                           aria-label="Eliminar carta"
                           onClick={() => handleDeleteChart(chart)}
@@ -595,38 +595,38 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'reports' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Mis Informes</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Mis informes</h2>
 
               {reportSessions.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p>No has generado informes aún</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {reportSessions.map((s) => (
-                    <div key={s.session_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all border border-white/5 hover:border-purple-500/30">
+                    <div key={s.session_id} className="md-card rounded-xl p-6 hover:shadow-sm transition-all">
                       <div className="flex items-center justify-between mb-3">
-                        <div className="p-2 bg-purple-500/20 rounded-lg">
-                          <Sparkles className="w-6 h-6 text-purple-400" />
+                        <div className="p-2 bg-slate-100 rounded-lg border border-slate-200">
+                          <Sparkles className="w-6 h-6 text-slate-700" />
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full border ${
-                          (s.status === 'completed') ? 'bg-green-500/10 text-green-300 border-green-500/20' :
-                          (s.status === 'error') ? 'bg-red-500/10 text-red-300 border-red-500/20' :
-                          'bg-gray-500/10 text-gray-300 border-gray-500/20'
+                          (s.status === 'completed') ? 'bg-green-50 text-green-800 border-green-200' :
+                          (s.status === 'error') ? 'bg-red-50 text-red-800 border-red-200' :
+                          'bg-slate-50 text-slate-700 border-slate-200'
                         }`}>
                           {(s.status || 'in_progress').toUpperCase()}
                         </span>
                       </div>
 
-                      <h3 className="text-white font-bold mb-1">
+                      <h3 className="text-slate-900 font-semibold mb-1">
                         Informe {s.report_mode === 'light' ? 'Ligero' : 'Exhaustivo'}
                       </h3>
-                      <p className="text-xs text-gray-400 mb-3">
+                      <p className="text-xs text-slate-600 mb-3">
                         {s.created_at ? new Date(s.created_at).toLocaleString('es-ES') : ''}
                       </p>
 
-                      <div className="text-xs text-gray-400 space-y-1">
+                      <div className="text-xs text-slate-600 space-y-1">
                         <p>ID: <span className="font-mono">{s.session_id.substring(0, 8)}...</span></p>
                         <p>Longitud: {Number(s.full_report_length || 0).toLocaleString()} chars</p>
                       </div>
@@ -636,7 +636,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                           type="button"
                           onClick={() => handleDownloadReportPdf(s)}
                           disabled={downloadingReportSessionId === s.session_id || s.status !== 'completed'}
-                          className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full md-button text-sm py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                           title={s.status !== 'completed' ? 'El informe aún no está completado' : 'Descargar PDF'}
                         >
                           <Download className="w-4 h-4" />
@@ -652,15 +652,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'demos' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Mis Demos y PDFs</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Mis demos y PDFs</h2>
 
               {demoSessions.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   <History className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p>No has realizado ninguna demo aún</p>
                   <button
                     onClick={() => window.location.href = '/'}
-                    className="mt-4 text-purple-400 hover:text-purple-300 underline"
+                    className="mt-4 text-blue-700 hover:underline"
                   >
                     Ir al inicio para probar la demo
                   </button>
@@ -668,18 +668,18 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {demoSessions.map((session) => (
-                    <div key={session.session_id} className="bg-white/5 rounded-xl p-6 hover:bg-white/10 transition-all border border-white/5 hover:border-purple-500/30">
+                    <div key={session.session_id} className="md-card rounded-xl p-6 hover:shadow-sm transition-all">
                       <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-purple-500/20 rounded-lg">
-                          <Sparkles className="w-6 h-6 text-purple-400" />
+                        <div className="p-2 bg-slate-100 rounded-lg border border-slate-200">
+                          <Sparkles className="w-6 h-6 text-slate-700" />
                         </div>
-                        <span className="text-xs text-gray-400 bg-black/30 px-2 py-1 rounded-full">
+                        <span className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full">
                           {new Date(session.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       
-                      <h3 className="text-white font-bold mb-2">Sesión de Demo</h3>
-                      <p className="text-sm text-gray-400 mb-4">
+                      <h3 className="text-slate-900 font-semibold mb-2">Sesión de demo</h3>
+                      <p className="text-sm text-slate-600 mb-4">
                         ID: {session.session_id.substring(0, 8)}...
                       </p>
 
@@ -687,13 +687,13 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                         {session.pdf_generated ? (
                           <button
                             onClick={() => handleDownloadDemoPdf(session)}
-                            className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg transition-all"
+                            className="w-full md-button text-sm py-2 rounded-lg flex items-center justify-center gap-2"
                           >
                             <Download className="w-4 h-4" />
                             Descargar PDF
                           </button>
                         ) : (
-                          <div className="w-full flex items-center justify-center gap-2 bg-gray-700/50 text-gray-400 text-sm py-2 rounded-lg cursor-not-allowed">
+                          <div className="w-full flex items-center justify-center gap-2 bg-slate-100 text-slate-500 text-sm py-2 rounded-lg border border-slate-200 cursor-not-allowed">
                             <FileText className="w-4 h-4" />
                             PDF no disponible
                           </div>
@@ -702,7 +702,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                         <button
                           type="button"
                           onClick={() => handleViewDemoChat(session)}
-                          className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-all"
+                          className="w-full md-button md-button--secondary text-sm py-2 rounded-lg flex items-center justify-center gap-2"
                         >
                           <MessageCircle className="w-4 h-4" />
                           Ver chat
@@ -711,7 +711,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                         <button
                           type="button"
                           onClick={() => handleDeleteDemoSession(session)}
-                          className="w-full flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/40 text-red-300 text-sm py-2 rounded-lg transition-all"
+                          className="w-full md-button md-button--danger text-sm py-2 rounded-lg flex items-center justify-center gap-2"
                         >
                           <Trash2 className="w-4 h-4" />
                           Eliminar
@@ -726,20 +726,20 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'messages' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Mensajes y Comunicaciones</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Mensajes y comunicaciones</h2>
 
-              <div className="bg-linear-to-r from-green-500/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-6 mb-6">
+              <div className="md-card md-card--flat rounded-xl p-6 mb-6">
                 <div className="flex items-start gap-4">
-                  <Mail className="w-8 h-8 text-green-400 shrink-0" />
+                  <Mail className="w-8 h-8 text-slate-700 shrink-0" />
                   <div>
-                    <h3 className="text-white font-bold text-lg mb-2">Contacta con Jon Landeta</h3>
-                    <p className="text-gray-300 mb-4">
+                    <h3 className="text-slate-900 font-semibold text-lg mb-2">Contacta con Jon Landeta</h3>
+                    <p className="text-slate-700 mb-4">
                       ¿Tienes alguna pregunta? ¿Necesitas orientación personalizada?
                       Contacta directamente con Jon Landeta para recibir asesoramiento profesional.
                     </p>
                     <button
                       type="button"
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                      className="md-button px-6 py-3 rounded-lg"
                       onClick={() => {
                         // Redirigir a la sección de servicios profesionales con el servicio de contacto
                         window.location.href = '#/professional-services';
@@ -752,12 +752,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              <div className="bg-white/5 rounded-xl p-6">
-                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+              <div className="md-card rounded-xl p-6">
+                <h3 className="text-slate-900 font-semibold mb-4 flex items-center gap-2">
                   <History className="w-5 h-5" />
                   Historial de Comunicaciones
                 </h3>
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   <Mail className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p>No tienes comunicaciones previas</p>
                   <p className="text-sm mt-2">Inicia una conversación para recibir orientación personalizada</p>
@@ -768,8 +768,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'settings' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Configuración</h2>
-              <div className="text-center py-12 text-gray-400">
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Configuración</h2>
+              <div className="text-center py-12 text-slate-600">
                 Funcionalidad en desarrollo...
               </div>
             </div>
@@ -779,38 +779,38 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
       {/* Upsell Modal */}
       {showUpsellModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl p-8 max-w-md w-full shadow-2xl relative animate-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md-backdrop">
+          <div className="md-card rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
             <button 
               onClick={() => setShowUpsellModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-slate-500 hover:text-slate-900"
             >
               ✕
             </button>
             
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/50">
-                <Crown className="w-8 h-8 text-yellow-400" />
+              <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Crown className="w-8 h-8 text-amber-800" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Función Premium</h3>
-              <p className="text-gray-300">
-                La sección <span className="text-indigo-400 font-bold">{targetFeature}</span> está disponible exclusivamente para usuarios PRO.
+              <h3 className="text-2xl font-semibold text-slate-900 mb-2">Función Premium</h3>
+              <p className="text-slate-600">
+                La sección <span className="text-blue-700 font-semibold">{targetFeature}</span> está disponible exclusivamente para usuarios PRO.
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-                <ul className="space-y-2 text-sm text-gray-300 text-left">
+              <div className="md-card md-card--flat p-4 rounded-lg">
+                <ul className="space-y-2 text-sm text-slate-700 text-left">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <CheckCircle2 className="w-4 h-4 text-green-700" />
                     Acceso a historial completo
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <CheckCircle2 className="w-4 h-4 text-green-700" />
                     Mensajería prioritaria
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <CheckCircle2 className="w-4 h-4 text-green-700" />
                     Configuración avanzada
                   </li>
                 </ul>
@@ -821,14 +821,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                   setShowUpsellModal(false);
                   setActiveTab('subscription');
                 }}
-                className="w-full bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/25"
+                className="w-full md-button py-3 rounded-lg"
               >
                 Ver Planes Disponibles
               </button>
               
               <button
                 onClick={() => setShowUpsellModal(false)}
-                className="w-full text-gray-400 hover:text-white text-sm py-2"
+                className="w-full md-button md-button--secondary text-sm py-2"
               >
                 Quizás más tarde
               </button>
@@ -844,11 +844,11 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
         title={chatModalTitle}
       >
         {chatLoading ? (
-          <div className="text-gray-300">Cargando...</div>
+          <div className="text-slate-600">Cargando...</div>
         ) : chatError ? (
-          <div className="text-red-300">{chatError}</div>
+          <div className="text-red-700">{chatError}</div>
         ) : chatMessages.length === 0 ? (
-          <div className="text-gray-400">No hay mensajes en esta sesión.</div>
+          <div className="text-slate-600">No hay mensajes en esta sesión.</div>
         ) : (
           <div className="space-y-3">
             {chatMessages.map((m, idx) => (
@@ -856,16 +856,16 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                 key={idx}
                 className={
                   m.role === 'user'
-                    ? 'bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3'
+                    ? 'bg-blue-50 border border-blue-200 rounded-lg p-3'
                     : m.role === 'assistant'
-                      ? 'bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3'
-                      : 'bg-white/5 border border-white/10 rounded-lg p-3'
+                      ? 'bg-emerald-50 border border-emerald-200 rounded-lg p-3'
+                      : 'bg-slate-50 border border-slate-200 rounded-lg p-3'
                 }
               >
-                <div className="text-xs text-gray-400 mb-1">
+                <div className="text-xs text-slate-500 mb-1">
                   {m.role === 'user' ? 'Tú' : m.role === 'assistant' ? 'Asistente' : 'Sistema'}
                 </div>
-                <div className="text-gray-200 whitespace-pre-wrap">{m.content}</div>
+                <div className="text-slate-900 whitespace-pre-wrap">{m.content}</div>
               </div>
             ))}
           </div>

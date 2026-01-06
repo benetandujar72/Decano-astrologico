@@ -56,23 +56,15 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
 
   const getPlanIcon = (tier: string) => {
     switch (tier) {
-      case 'free': return <Zap className="w-8 h-8" />;
-      case 'pro': return <Crown className="w-8 h-8" />;
-      case 'premium': return <Crown className="w-8 h-8" />;
-      case 'enterprise': return <Building2 className="w-8 h-8" />;
-      default: return <Zap className="w-8 h-8" />;
+      case 'free': return <Zap />;
+      case 'pro': return <Crown />;
+      case 'premium': return <Crown />;
+      case 'enterprise': return <Building2 />;
+      default: return <Zap />;
     }
   };
 
-  const getPlanColor = (tier: string) => {
-    switch (tier) {
-      case 'free': return 'from-green-400 to-emerald-600';
-      case 'pro': return 'from-indigo-500 to-purple-600';
-      case 'premium': return 'from-yellow-500 to-orange-600';
-      case 'enterprise': return 'from-emerald-500 to-teal-600';
-      default: return 'from-gray-500 to-gray-700';
-    }
-  };
+  // (badge classes reserved for future use; keeping here for consistency across plan UIs)
 
   const getPrice = (plan: Plan) => {
     const price = billing === 'yearly' ? plan.price_yearly : plan.price_monthly;
@@ -92,38 +84,38 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 relative">
+    <div className="md-page relative">
       {/* Botón cerrar */}
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors"
+          className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-900 transition-colors"
           aria-label="Cerrar"
         >
           <X size={24} />
         </button>
       )}
 
-      <div className="max-w-7xl mx-auto">
+      <div className="md-container">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
-            Elige tu Plan
+          <h1 className="text-3xl md:text-5xl font-semibold mb-4 text-slate-900">
+            Planes de suscripción
           </h1>
-          <p className="text-xl text-gray-300">
-            Desbloquea todo el potencial del análisis astrológico
+          <p className="text-base md:text-xl text-slate-600">
+            Elige el plan que mejor encaja con tu uso.
           </p>
         </div>
 
         {/* Toggle billing */}
         <div className="flex justify-center mb-12">
-          <div className="bg-white/10 backdrop-blur-lg rounded-full p-1 inline-flex">
+          <div className="md-card md-card--flat rounded-full p-1 inline-flex">
             <button
               onClick={() => setBilling('monthly')}
               className={`px-8 py-3 rounded-full transition-all ${
                 billing === 'monthly'
-                  ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'bg-white text-slate-900 border border-slate-200 shadow-sm'
+                  : 'text-slate-700 hover:text-slate-900'
               }`}
             >
               Mensual
@@ -132,12 +124,12 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
               onClick={() => setBilling('yearly')}
               className={`px-8 py-3 rounded-full transition-all ${
                 billing === 'yearly'
-                  ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'bg-white text-slate-900 border border-slate-200 shadow-sm'
+                  : 'text-slate-700 hover:text-slate-900'
               }`}
             >
               Anual
-              <span className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+              <span className="ml-2 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 rounded-full">
                 -17%
               </span>
             </button>
@@ -163,62 +155,50 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                 {/* Popular badge */}
                 {isPopular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <div className="bg-linear-to-r from-yellow-400 to-orange-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                      ⭐ MÁS POPULAR
+                    <div className="bg-amber-100 text-amber-900 border border-amber-200 px-4 py-1 rounded-full text-sm font-bold shadow-sm">
+                      Recomendado
                     </div>
                   </div>
                 )}
                 {/* Free badge */}
                 {isFree && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <div className="bg-linear-to-r from-green-400 to-emerald-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                      🎁 COMIENZA AQUÍ
+                    <div className="bg-slate-100 text-slate-900 border border-slate-200 px-4 py-1 rounded-full text-sm font-bold shadow-sm">
+                      Inicio
                     </div>
                   </div>
                 )}
 
                 {/* Card */}
-                <div className={`
-                  relative h-full
-                  bg-linear-to-br ${getPlanColor(plan.tier)}
-                  p-0.5 rounded-2xl
-                  transform transition-all duration-300
-                  hover:scale-105 hover:shadow-2xl
-                  ${isPopular ? 'shadow-2xl shadow-indigo-500/50' : ''}
-                `}>
-                  <div className="bg-[#0a0e27] rounded-2xl p-8 h-full flex flex-col">
+                <div className={`md-card rounded-2xl p-8 h-full flex flex-col transform transition-all duration-200 hover:shadow-md ${isPopular ? 'ring-2 ring-blue-200' : ''}`}>
                     {/* Icon */}
-                    <div className={`
-                      w-16 h-16 rounded-xl flex items-center justify-center mb-4
-                      bg-linear-to-br ${getPlanColor(plan.tier)}
-                      text-white
-                    `}>
-                      {getPlanIcon(plan.tier)}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-slate-900 text-white">
+                      {React.cloneElement(getPlanIcon(plan.tier) as any, { className: 'w-6 h-6' })}
                     </div>
 
                     {/* Plan name */}
-                    <h3 className="text-2xl font-bold text-white mb-2">
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">
                       {plan.name}
                     </h3>
 
                     {/* Price */}
                     <div className="mb-6">
                       {plan.price_monthly === 0 ? (
-                        <div className="text-4xl font-bold text-white">
+                        <div className="text-3xl font-semibold text-slate-900">
                           Gratis
                         </div>
                       ) : (
                         <>
                           <div className="flex items-baseline">
-                            <span className="text-4xl font-bold text-white">
+                            <span className="text-3xl font-semibold text-slate-900">
                               €{priceInfo.price.toFixed(2)}
                             </span>
-                            <span className="text-gray-400 ml-2">
+                            <span className="text-slate-600 ml-2">
                               /{billing === 'yearly' ? 'año' : 'mes'}
                             </span>
                           </div>
                           {priceInfo.monthly && (
-                            <div className="text-sm text-gray-400 mt-1">
+                            <div className="text-sm text-slate-600 mt-1">
                               €{priceInfo.monthly}/mes
                             </div>
                           )}
@@ -230,8 +210,8 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                     <ul className="space-y-3 mb-8 grow">
                       {plan.features.map((feature, idx) => (
                         <li key={idx} className="flex items-start">
-                          <Check className="w-5 h-5 text-green-400 mr-2 shrink-0 mt-0.5" />
-                          <span className="text-gray-300 text-sm">{feature}</span>
+                          <Check className="w-5 h-5 text-green-700 mr-2 shrink-0 mt-0.5" />
+                          <span className="text-slate-700 text-sm">{feature}</span>
                         </li>
                       ))}
                     </ul>
@@ -247,18 +227,10 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
                         setSelectedPlan({...plan, id: plan.tier} as any);
                         setShowCheckoutWizard(true);
                       }}
-                      className={`
-                        w-full py-4 rounded-xl font-bold text-lg
-                        transition-all transform hover:scale-105
-                        ${plan.tier === 'free'
-                          ? 'bg-linear-to-r from-green-400 to-emerald-600 text-white shadow-lg hover:shadow-xl'
-                          : `bg-linear-to-r ${getPlanColor(plan.tier)} text-white shadow-lg hover:shadow-xl`
-                        }
-                      `}
+                      className={`w-full md-button px-6 py-3 rounded-xl ${plan.tier === 'free' ? 'md-button--secondary' : ''}`}
                     >
-                      {plan.tier === 'free' ? 'Comenzar Gratis' : 'Seleccionar Plan'}
+                      {plan.tier === 'free' ? 'Continuar' : 'Seleccionar plan'}
                     </button>
-                  </div>
                 </div>
               </div>
             );
@@ -266,9 +238,9 @@ const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ onSelectPlan, onC
         </div>
 
         {/* Footer note */}
-        <div className="text-center mt-12 text-gray-400">
+        <div className="text-center mt-12 text-slate-600">
           <p>Todos los planes incluyen soporte técnico • Cancela cuando quieras</p>
-          <p className="mt-2">¿Necesitas algo personalizado? <span className="text-indigo-400 cursor-pointer hover:underline">Contáctanos</span></p>
+          <p className="mt-2">¿Necesitas algo personalizado? <span className="text-blue-700 cursor-pointer hover:underline">Contáctanos</span></p>
         </div>
       </div>
 
