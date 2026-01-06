@@ -2,16 +2,14 @@
 @import "tailwindcss";
 
 body {
-  background-color: #020617; /* Slate 950 */
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.15), transparent 25%), 
-    radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.15), transparent 25%);
-  color: #e2e8f0;
+  background-color: #f8fafc; /* Material-ish background */
+  background-image: none;
+  color: #0f172a;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -19,19 +17,19 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: rgba(15, 23, 42, 0.26);
 }
 
 .glass-panel {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(255, 255, 255, 0.75);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 /* Progress bars (sin estilos inline) */
@@ -42,27 +40,27 @@ progress.mystic-progress-thin {
 }
 
 progress.mystic-progress {
-  @apply w-full h-4 rounded-full overflow-hidden border border-white/5 bg-slate-800;
+  @apply w-full h-4 rounded-full overflow-hidden border border-slate-200 bg-slate-100;
 }
 
 progress.mystic-progress-sm {
-  @apply w-full h-2 rounded-full overflow-hidden bg-white/10;
+  @apply w-full h-2 rounded-full overflow-hidden bg-slate-100;
 }
 
 progress.mystic-progress-thin {
-  @apply w-full h-0.5 bg-gray-800;
+  @apply w-full h-0.5 bg-slate-200;
 }
 
 progress.mystic-progress::-webkit-progress-bar {
-  @apply bg-slate-800;
+  @apply bg-slate-100;
 }
 
 progress.mystic-progress-sm::-webkit-progress-bar {
-  @apply bg-white/10;
+  @apply bg-slate-100;
 }
 
 progress.mystic-progress-thin::-webkit-progress-bar {
-  @apply bg-gray-800;
+  @apply bg-slate-200;
 }
 
 progress.mystic-progress::-webkit-progress-value,
@@ -80,7 +78,7 @@ progress.mystic-progress-thin::-moz-progress-bar {
 /* Variantes de color */
 progress.mystic-progress--indigo::-webkit-progress-value,
 progress.mystic-progress--indigo::-moz-progress-bar {
-  @apply bg-linear-to-r from-indigo-500 to-purple-600;
+  @apply bg-blue-600;
 }
 
 progress.mystic-progress--green::-webkit-progress-value,

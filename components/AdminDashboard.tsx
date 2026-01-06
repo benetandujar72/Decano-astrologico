@@ -780,8 +780,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   ];
 
   return (
-    <div className="min-h-screen py-8 px-4 bg-slate-50 text-slate-900">
-      <div className="max-w-7xl mx-auto">
+    <div className="md-page">
+      <div className="md-container">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -797,26 +797,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
             </h1>
             <p className="text-slate-600">Gestión y observabilidad del sistema</p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-semibold tracking-wide">
+          <div className="md-chip bg-slate-900 text-white border-transparent">
             ADMIN
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex overflow-x-auto mb-8 space-x-2">
+        <div className="md-tabs mb-8">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`
-                  flex items-center px-6 py-3 rounded-lg whitespace-nowrap transition-all
-                  ${activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                  }
-                `}
+                className={`md-tab ${activeTab === tab.id ? 'md-tab--active' : ''}`}
               >
                 <Icon className="w-5 h-5 mr-2" />
                 {tab.name}
@@ -826,7 +820,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
         </div>
 
         {/* Content */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+        <div className="md-card p-8">
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-semibold text-slate-900 mb-6">Estadísticas Generales</h2>
@@ -1044,13 +1038,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
           {activeTab === 'users' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Gestión de Usuarios</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-6">Gestión de Usuarios</h2>
 
               {message && (
                 <div className={`p-4 rounded-lg mb-4 ${
                   message.type === 'success'
-                    ? 'bg-green-500/20 border border-green-500/30 text-green-400'
-                    : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                    ? 'bg-green-50 border border-green-200 text-green-800'
+                    : 'bg-red-50 border border-red-200 text-red-800'
                 }`}>
                   {message.text}
                 </div>
@@ -1066,7 +1060,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && fetchUsers()}
                     aria-label="Buscar usuarios"
-                    className="mystic-input pl-10 pr-4 w-full"
+                    className="md-input pl-10 pr-4 w-full"
                   />
                   <Search className="absolute left-3 top-3 text-gray-400" size={18} />
                 </div>
@@ -1075,7 +1069,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   value={roleFilter}
                   onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
                   aria-label="Filtrar por rol"
-                  className="mystic-input"
+                  className="md-input"
                 >
                   <option value="">Todos los roles</option>
                   <option value="admin">Admin</option>
@@ -1086,7 +1080,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   value={activeFilter}
                   onChange={(e) => { setActiveFilter(e.target.value); setCurrentPage(1); }}
                   aria-label="Filtrar por estado"
-                  className="mystic-input"
+                  className="md-input"
                 >
                   <option value="">Todos los estados</option>
                   <option value="true">Activos</option>
@@ -1097,7 +1091,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   aria-label="Ordenar por"
-                  className="mystic-input"
+                  className="md-input"
                 >
                   <option value="created_at">Fecha creación</option>
                   <option value="username">Nombre usuario</option>
@@ -1107,7 +1101,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="px-3 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+                  className="md-button md-button--secondary px-3 py-2 rounded-lg"
                   title={`Orden: ${sortOrder === 'asc' ? 'Ascendente' : 'Descendente'}`}
                 >
                   {sortOrder === 'asc' ? '↑' : '↓'}
@@ -1115,7 +1109,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                 <button
                   onClick={() => setShowCreateUser(true)}
-                  className="mystic-button flex items-center gap-2"
+                  className="md-button flex items-center gap-2"
                 >
                   <Plus size={18} />
                   Nuevo Usuario
@@ -1123,15 +1117,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
               </div>
 
               {/* Stats */}
-              <div className="bg-white/5 rounded-lg p-4 mb-4">
-                <div className="text-sm text-gray-400">
+              <div className="md-card md-card--flat rounded-xl p-4 mb-4">
+                <div className="text-sm text-slate-600">
                   Mostrando {users.length} de {totalUsers} usuarios | Página {currentPage} de {totalPages}
                 </div>
               </div>
 
               {/* USER LIST */}
               {users.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   No se encontraron usuarios
                 </div>
               ) : (
@@ -1140,39 +1134,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     const subscription = user.subscription || { tier: 'free', status: 'inactive' };
                     const getTierColor = (tier: string) => {
                       switch (tier?.toLowerCase()) {
-                        case 'enterprise': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-                        case 'premium': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-                        case 'pro': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-                        default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+                        case 'enterprise': return 'bg-amber-50 text-amber-800 border-amber-200';
+                        case 'premium': return 'bg-violet-50 text-violet-800 border-violet-200';
+                        case 'pro': return 'bg-blue-50 text-blue-800 border-blue-200';
+                        default: return 'bg-slate-50 text-slate-700 border-slate-200';
                       }
                     };
                     
                     return (
-                    <div key={user._id} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
+                    <div key={user._id} className="bg-white rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-all">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold">
                             {user.username[0].toUpperCase()}
                           </div>
                           <div className="flex-1">
-                            <div className="text-white font-semibold flex items-center gap-2 flex-wrap">
+                            <div className="text-slate-900 font-semibold flex items-center gap-2 flex-wrap">
                               {user.username}
                               {!user.active && (
-                                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30">
+                                <span className="text-xs bg-red-50 text-red-800 px-2 py-0.5 rounded-full border border-red-200">
                                   INACTIVO
                                 </span>
                               )}
                             </div>
-                            <div className="text-gray-400 text-sm">{user.email}</div>
+                            <div className="text-slate-600 text-sm">{user.email}</div>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getTierColor(subscription.tier)}`}>
                                 {subscription.tier.toUpperCase()}
                               </span>
                               {subscription.status === 'active' && (
-                                <span className="text-xs text-green-400">● Activo</span>
+                                <span className="text-xs text-green-700">● Activo</span>
                               )}
                               {subscription.end_date && (
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-slate-500">
                                   Hasta: {new Date(subscription.end_date).toLocaleDateString('es-ES')}
                                 </span>
                               )}
@@ -1183,8 +1177,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                         <div className="flex items-center gap-2">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                             user.role === 'admin'
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                              : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              ? 'bg-slate-900 text-white'
+                              : 'bg-slate-100 text-slate-800 border border-slate-200'
                           }`}>
                             {user.role.toUpperCase()}
                           </span>
@@ -1202,7 +1196,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                           <button
                             onClick={() => handleViewAuditLogs(user)}
-                            className="p-2 text-gray-400 hover:text-purple-400 transition-colors"
+                            className="p-2 text-slate-500 hover:text-slate-900 transition-colors"
                             title="Ver historial"
                           >
                             <History size={18} />
@@ -1212,8 +1206,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                             onClick={() => handleToggleActive(user)}
                             className={`p-2 transition-colors ${
                               user.active
-                                ? 'text-gray-400 hover:text-orange-400'
-                                : 'text-gray-400 hover:text-green-400'
+                                ? 'text-slate-500 hover:text-amber-700'
+                                : 'text-slate-500 hover:text-green-700'
                             }`}
                             title={user.active ? 'Desactivar usuario' : 'Activar usuario'}
                           >
@@ -1222,7 +1216,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                           <button
                             onClick={() => handleResetPasswordClick(user)}
-                            className="p-2 text-gray-400 hover:text-yellow-400 transition-colors"
+                            className="p-2 text-slate-500 hover:text-amber-700 transition-colors"
                             title="Resetear contraseña"
                           >
                             <Key size={18} />
@@ -1230,7 +1224,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                           <button
                             onClick={() => handleEditUser(user)}
-                            className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"
+                            className="p-2 text-slate-500 hover:text-blue-700 transition-colors"
                             title="Editar usuario"
                           >
                             <Edit size={18} />
@@ -1238,7 +1232,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                           <button
                             onClick={() => handleDeleteUser(user)}
-                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                            className="p-2 text-slate-500 hover:text-red-700 transition-colors"
                             title="Eliminar usuario"
                           >
                             <Trash2 size={18} />
@@ -1257,7 +1251,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     <ChevronLeft size={18} />
                     Anterior
@@ -1282,8 +1276,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                           onClick={() => setCurrentPage(pageNum)}
                           className={`px-3 py-2 rounded-lg transition-all ${
                             currentPage === pageNum
-                              ? 'mystic-button'
-                              : 'bg-white/10 text-white hover:bg-white/20'
+                              ? 'md-button'
+                              : 'md-button md-button--secondary'
                           }`}
                         >
                           {pageNum}
@@ -1295,7 +1289,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     Siguiente
                     <ChevronRight size={18} />
@@ -1308,20 +1302,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
           {activeTab === 'prompts' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Gestión de Prompts</h2>
+                <h2 className="text-2xl font-semibold text-slate-900">Prompts</h2>
                 <button
                   onClick={onEditPrompt}
-                  className="mystic-button flex items-center gap-2"
+                  className="md-button inline-flex items-center gap-2"
                 >
                   <Settings size={18} />
                   Editar Prompt Principal
                 </button>
               </div>
 
-              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-6">
+              <div className="md-card p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-semibold">Prompts Especializados Disponibles</h3>
-                  <span className="text-sm text-gray-400">
+                  <h3 className="text-slate-900 font-semibold">Prompts especializados</h3>
+                  <span className="text-sm text-slate-600">
                     {specializedPrompts.length} prompts configurados
                   </span>
                 </div>
@@ -1348,10 +1342,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                         key={prompt.type}
                         onClick={() => handleViewPrompt(prompt.type)}
                         className={`
-                          bg-white/5 rounded-lg p-4 transition-all cursor-pointer border
+                          bg-white rounded-xl p-4 transition-all cursor-pointer border
                           ${existing
-                            ? 'border-indigo-500/50 hover:border-indigo-400 hover:bg-white/10'
-                            : 'border-gray-700/50 hover:border-gray-600 hover:bg-white/8'
+                            ? 'border-blue-200 hover:border-blue-300 hover:shadow-sm'
+                            : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
                           }
                         `}
                       >
@@ -1359,11 +1353,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                           <div className="flex items-center gap-2">
                             <span className="text-2xl">{prompt.icon}</span>
                             <div>
-                              <div className="text-white font-semibold text-sm">{prompt.name}</div>
+                              <div className="text-slate-900 font-semibold text-sm">{prompt.name}</div>
                               {existing && (
                                 <div className="flex items-center gap-2 mt-1">
-                                  <Star size={12} className="text-yellow-400" fill="currentColor" />
-                                  <span className="text-xs text-gray-400">
+                                  <Star size={12} className="text-amber-500" fill="currentColor" />
+                                  <span className="text-xs text-slate-600">
                                     {existing.usage_count} usos
                                   </span>
                                 </div>
@@ -1371,16 +1365,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                             </div>
                           </div>
                           {existing ? (
-                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full border border-green-500/30">
+                            <span className="md-chip" style={{ background: 'rgba(22,163,74,0.08)', borderColor: 'rgba(22,163,74,0.25)', color: '#166534' }}>
                               Activo
                             </span>
                           ) : (
-                            <span className="text-xs bg-gray-500/20 text-gray-400 px-2 py-1 rounded-full border border-gray-500/30">
+                            <span className="md-chip">
                               Default
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-400 mt-2">
+                        <p className="text-xs text-slate-600 mt-2">
                           {existing?.description || `Prompt predefinido para ${prompt.name.toLowerCase()}`}
                         </p>
                       </div>
@@ -1647,57 +1641,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
           {activeTab === 'subscriptions' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Gestión de Suscripciones</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-6">Gestión de Suscripciones</h2>
 
               {/* Revenue Stats */}
               {revenueStats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-linear-to-br from-blue-500/20 to-indigo-600/20 rounded-xl p-6 border border-blue-500/30">
-                    <div className="text-sm text-gray-400 mb-1">Total Suscriptores</div>
-                    <div className="text-3xl font-bold text-white">{revenueStats.total_subscribers}</div>
-                    <div className="text-xs text-green-400 mt-1">{revenueStats.active_subscribers} activos</div>
+                  <div className="md-card rounded-xl p-6">
+                    <div className="text-sm text-slate-600 mb-1">Total Suscriptores</div>
+                    <div className="text-3xl font-semibold text-slate-900">{revenueStats.total_subscribers}</div>
+                    <div className="text-xs text-green-700 mt-1">{revenueStats.active_subscribers} activos</div>
                   </div>
 
-                  <div className="bg-linear-to-br from-green-500/20 to-emerald-600/20 rounded-xl p-6 border border-green-500/30">
-                    <div className="text-sm text-gray-400 mb-1">Ingresos Mensuales</div>
-                    <div className="text-3xl font-bold text-white">€{revenueStats.monthly_revenue.toFixed(2)}</div>
-                    <div className="text-xs text-gray-400 mt-1">MRR (Monthly Recurring Revenue)</div>
+                  <div className="md-card rounded-xl p-6">
+                    <div className="text-sm text-slate-600 mb-1">Ingresos Mensuales</div>
+                    <div className="text-3xl font-semibold text-slate-900">€{revenueStats.monthly_revenue.toFixed(2)}</div>
+                    <div className="text-xs text-slate-500 mt-1">MRR (Monthly Recurring Revenue)</div>
                   </div>
 
-                  <div className="bg-linear-to-br from-purple-500/20 to-pink-600/20 rounded-xl p-6 border border-purple-500/30">
-                    <div className="text-sm text-gray-400 mb-1">Ingresos Anuales</div>
-                    <div className="text-3xl font-bold text-white">€{revenueStats.yearly_revenue.toFixed(2)}</div>
-                    <div className="text-xs text-gray-400 mt-1">ARR (Annual Recurring Revenue)</div>
+                  <div className="md-card rounded-xl p-6">
+                    <div className="text-sm text-slate-600 mb-1">Ingresos Anuales</div>
+                    <div className="text-3xl font-semibold text-slate-900">€{revenueStats.yearly_revenue.toFixed(2)}</div>
+                    <div className="text-xs text-slate-500 mt-1">ARR (Annual Recurring Revenue)</div>
                   </div>
 
-                  <div className="bg-linear-to-br from-yellow-500/20 to-orange-600/20 rounded-xl p-6 border border-yellow-500/30">
-                    <div className="text-sm text-gray-400 mb-1">Total Histórico</div>
-                    <div className="text-3xl font-bold text-white">€{revenueStats.total_revenue_all_time.toFixed(2)}</div>
-                    <div className="text-xs text-gray-400 mt-1">{revenueStats.total_payments} pagos</div>
+                  <div className="md-card rounded-xl p-6">
+                    <div className="text-sm text-slate-600 mb-1">Total Histórico</div>
+                    <div className="text-3xl font-semibold text-slate-900">€{revenueStats.total_revenue_all_time.toFixed(2)}</div>
+                    <div className="text-xs text-slate-500 mt-1">{revenueStats.total_payments} pagos</div>
                   </div>
                 </div>
               )}
 
               {/* Subscribers by Tier */}
               {revenueStats && (
-                <div className="bg-white/5 rounded-xl p-6 mb-6">
-                  <h3 className="text-lg font-bold text-white mb-4">Suscriptores por Plan</h3>
+                <div className="md-card md-card--flat rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Suscriptores por Plan</h3>
                   <div className="grid grid-cols-4 gap-4">
                     <div className="text-center">
-                      <div className="text-gray-400 text-sm mb-1">FREE</div>
-                      <div className="text-2xl font-bold text-gray-300">{revenueStats.subscribers_by_tier.free}</div>
+                      <div className="text-slate-600 text-sm mb-1">FREE</div>
+                      <div className="text-2xl font-semibold text-slate-900">{revenueStats.subscribers_by_tier.free}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-gray-400 text-sm mb-1">PRO</div>
-                      <div className="text-2xl font-bold text-blue-400">{revenueStats.subscribers_by_tier.pro}</div>
+                      <div className="text-slate-600 text-sm mb-1">PRO</div>
+                      <div className="text-2xl font-semibold text-blue-700">{revenueStats.subscribers_by_tier.pro}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-gray-400 text-sm mb-1">PREMIUM</div>
-                      <div className="text-2xl font-bold text-purple-400">{revenueStats.subscribers_by_tier.premium}</div>
+                      <div className="text-slate-600 text-sm mb-1">PREMIUM</div>
+                      <div className="text-2xl font-semibold text-violet-700">{revenueStats.subscribers_by_tier.premium}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-gray-400 text-sm mb-1">ENTERPRISE</div>
-                      <div className="text-2xl font-bold text-yellow-400">{revenueStats.subscribers_by_tier.enterprise}</div>
+                      <div className="text-slate-600 text-sm mb-1">ENTERPRISE</div>
+                      <div className="text-2xl font-semibold text-amber-700">{revenueStats.subscribers_by_tier.enterprise}</div>
                     </div>
                   </div>
                 </div>
@@ -1709,7 +1703,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   value={tierFilter}
                   onChange={(e) => { setTierFilter(e.target.value); setSubsPage(1); }}
                   aria-label="Filtrar por plan"
-                  className="mystic-input"
+                  className="md-input"
                 >
                   <option value="">Todos los planes</option>
                   <option value="free">FREE</option>
@@ -1722,7 +1716,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   value={statusFilter}
                   onChange={(e) => { setStatusFilter(e.target.value); setSubsPage(1); }}
                   aria-label="Filtrar por estado de suscripción"
-                  className="mystic-input"
+                  className="md-input"
                 >
                   <option value="">Todos los estados</option>
                   <option value="active">Activo</option>
@@ -1734,41 +1728,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
               {/* Subscribers List */}
               {subscribers.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   No se encontraron suscriptores
                 </div>
               ) : (
                 <div className="space-y-3">
                   {subscribers.map((sub) => (
-                    <div key={sub.user_id} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
+                    <div key={sub.user_id} className="bg-white rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-all">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="text-white font-semibold">{sub.username}</div>
+                            <div className="text-slate-900 font-semibold">{sub.username}</div>
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              sub.tier === 'enterprise' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                              sub.tier === 'premium' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                              sub.tier === 'pro' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                              'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                              sub.tier === 'enterprise' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                              sub.tier === 'premium' ? 'bg-violet-50 text-violet-800 border border-violet-200' :
+                              sub.tier === 'pro' ? 'bg-blue-50 text-blue-800 border border-blue-200' :
+                              'bg-slate-50 text-slate-700 border border-slate-200'
                             }`}>
                               {sub.tier.toUpperCase()}
                             </span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                              sub.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                              sub.status === 'cancelled' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                              sub.status === 'trial' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                              'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                              sub.status === 'active' ? 'bg-green-50 text-green-800 border border-green-200' :
+                              sub.status === 'cancelled' ? 'bg-red-50 text-red-800 border border-red-200' :
+                              sub.status === 'trial' ? 'bg-blue-50 text-blue-800 border border-blue-200' :
+                              'bg-slate-50 text-slate-700 border border-slate-200'
                             }`}>
                               {sub.status.toUpperCase()}
                             </span>
                             {sub.billing_cycle && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-slate-600">
                                 {sub.billing_cycle === 'monthly' ? '📅 Mensual' : '📅 Anual'}
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-400">{sub.email}</div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-sm text-slate-600">{sub.email}</div>
+                          <div className="text-xs text-slate-500 mt-1">
                             Inicio: {new Date(sub.start_date).toLocaleDateString('es-ES')} |
                             Fin: {new Date(sub.end_date).toLocaleDateString('es-ES')}
                             {sub.stripe_customer_id && (
@@ -1779,15 +1773,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
                         <div className="flex items-center gap-2">
                           {sub.auto_renew && (
-                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                            <span className="text-xs bg-green-50 text-green-800 px-2 py-1 rounded border border-green-200">
                               Auto-renovación
                             </span>
                           )}
                           {sub.payment_status && (
                             <span className={`text-xs px-2 py-1 rounded ${
-                              sub.payment_status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                              sub.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-red-500/20 text-red-400'
+                              sub.payment_status === 'completed' ? 'bg-green-50 text-green-800 border border-green-200' :
+                              sub.payment_status === 'pending' ? 'bg-amber-50 text-amber-900 border border-amber-200' :
+                              'bg-red-50 text-red-800 border border-red-200'
                             }`}>
                               {sub.payment_status}
                             </span>
@@ -1805,17 +1799,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   <button
                     onClick={() => setSubsPage(p => Math.max(1, p - 1))}
                     disabled={subsPage === 1}
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Página anterior"
                     aria-label="Página anterior"
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <span className="text-white px-4">Página {subsPage} de {subsTotalPages}</span>
+                  <span className="text-slate-700 px-4">Página {subsPage} de {subsTotalPages}</span>
                   <button
                     onClick={() => setSubsPage(p => Math.min(subsTotalPages, p + 1))}
                     disabled={subsPage === subsTotalPages}
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Página siguiente"
                     aria-label="Página siguiente"
                   >
@@ -1832,31 +1826,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
           {activeTab === 'invoices' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Historial de Pagos</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-6">Historial de Pagos</h2>
 
               {/* Payments List */}
               {payments.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   No se encontraron pagos
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Fecha</th>
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Usuario</th>
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Plan</th>
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Monto</th>
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Método</th>
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Estado</th>
-                        <th className="text-left text-gray-400 text-sm font-semibold py-3 px-4">Transaction ID</th>
+                      <tr className="border-b border-slate-200 text-slate-600 bg-slate-50">
+                        <th className="text-left font-semibold py-3 px-4">Fecha</th>
+                        <th className="text-left font-semibold py-3 px-4">Usuario</th>
+                        <th className="text-left font-semibold py-3 px-4">Plan</th>
+                        <th className="text-left font-semibold py-3 px-4">Monto</th>
+                        <th className="text-left font-semibold py-3 px-4">Método</th>
+                        <th className="text-left font-semibold py-3 px-4">Estado</th>
+                        <th className="text-left font-semibold py-3 px-4">Transaction ID</th>
                       </tr>
                     </thead>
                     <tbody>
                       {payments.map((payment) => (
-                        <tr key={payment.payment_id} className="border-b border-white/5 hover:bg-white/5 transition-all">
-                          <td className="py-3 px-4 text-gray-300 text-sm">
+                        <tr key={payment.payment_id} className="border-b border-slate-100 hover:bg-slate-50 transition-all">
+                          <td className="py-3 px-4 text-slate-700">
                             {new Date(payment.created_at).toLocaleDateString('es-ES', {
                               year: 'numeric',
                               month: 'short',
@@ -1865,31 +1859,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                               minute: '2-digit'
                             })}
                           </td>
-                          <td className="py-3 px-4 text-white text-sm">{payment.user_id}</td>
+                          <td className="py-3 px-4 text-slate-900">{payment.user_id}</td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${
-                              payment.subscription_tier === 'enterprise' ? 'bg-yellow-500/20 text-yellow-400' :
-                              payment.subscription_tier === 'premium' ? 'bg-purple-500/20 text-purple-400' :
-                              payment.subscription_tier === 'pro' ? 'bg-blue-500/20 text-blue-400' :
-                              'bg-gray-500/20 text-gray-400'
+                              payment.subscription_tier === 'enterprise' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                              payment.subscription_tier === 'premium' ? 'bg-violet-50 text-violet-800 border border-violet-200' :
+                              payment.subscription_tier === 'pro' ? 'bg-blue-50 text-blue-800 border border-blue-200' :
+                              'bg-slate-50 text-slate-700 border border-slate-200'
                             }`}>
                               {payment.subscription_tier.toUpperCase()}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-white font-semibold text-sm">
+                          <td className="py-3 px-4 text-slate-900 font-semibold">
                             {payment.amount.toFixed(2)} {payment.currency.toUpperCase()}
                           </td>
-                          <td className="py-3 px-4 text-gray-300 text-sm capitalize">{payment.method}</td>
+                          <td className="py-3 px-4 text-slate-700 capitalize">{payment.method}</td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${
-                              payment.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                              payment.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                              'bg-red-500/20 text-red-400 border border-red-500/30'
+                              payment.status === 'completed' ? 'bg-green-50 text-green-800 border border-green-200' :
+                              payment.status === 'pending' ? 'bg-amber-50 text-amber-900 border border-amber-200' :
+                              'bg-red-50 text-red-800 border border-red-200'
                             }`}>
                               {payment.status.toUpperCase()}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-gray-400 text-xs font-mono">
+                          <td className="py-3 px-4 text-slate-600 text-xs font-mono">
                             {payment.transaction_id || payment.stripe_session_id?.substring(0, 20) || 'N/A'}
                           </td>
                         </tr>
@@ -1905,17 +1899,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                   <button
                     onClick={() => setPaymentsPage(p => Math.max(1, p - 1))}
                     disabled={paymentsPage === 1}
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Página anterior"
                     aria-label="Página anterior"
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <span className="text-white px-4">Página {paymentsPage} de {paymentsTotalPages}</span>
+                  <span className="text-slate-700 px-4">Página {paymentsPage} de {paymentsTotalPages}</span>
                   <button
                     onClick={() => setPaymentsPage(p => Math.min(paymentsTotalPages, p + 1))}
                     disabled={paymentsPage === paymentsTotalPages}
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Página siguiente"
                     aria-label="Página siguiente"
                   >
@@ -2062,7 +2056,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="mystic-card max-w-md w-full">
+      <div className="md-card max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-bold text-white">Editar Usuario</h3>
@@ -2092,7 +2086,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 type="text"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
                 required
                 disabled={saving}
               />
@@ -2107,7 +2101,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
                 required
                 disabled={saving}
               />
@@ -2121,7 +2115,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 id="admin-edit-role"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
                 disabled={saving}
               >
                 <option value="user">Usuario</option>
@@ -2141,7 +2135,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
               <button
                 type="submit"
                 disabled={saving}
-                className="mystic-button disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="md-button disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {saving ? (
                   <>
@@ -2180,7 +2174,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="mystic-card max-w-md w-full">
+      <div className="md-card max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-bold text-white">Crear Nuevo Usuario</h3>
@@ -2204,7 +2198,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
                 type="text"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
                 required
                 placeholder="johndoe"
               />
@@ -2219,7 +2213,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
                 required
                 placeholder="usuario@ejemplo.com"
               />
@@ -2234,7 +2228,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
                 required
                 minLength={4}
                 placeholder="••••••••"
@@ -2249,7 +2243,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
                 id="admin-create-role"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="mystic-input w-full"
+                className="md-input w-full"
               >
                 <option value="user">Usuario</option>
                 <option value="admin">Administrador</option>
@@ -2266,7 +2260,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
               </button>
               <button
                 type="submit"
-                className="mystic-button"
+                className="md-button"
               >
                 Crear Usuario
               </button>
@@ -2287,7 +2281,7 @@ interface DeleteConfirmModalProps {
 const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ user, onClose, onConfirm }) => {
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="mystic-card max-w-md w-full">
+      <div className="md-card max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-bold text-red-400">Confirmar Eliminación</h3>

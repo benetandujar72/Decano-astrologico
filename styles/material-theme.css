@@ -1,0 +1,272 @@
+/* Material-ish (M3 inspired) theme for Motor Fraktal (light, clínico, data-lab) */
+
+:root {
+  /* Typography */
+  --md-font: Inter, Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+
+  /* Surfaces */
+  --md-sys-color-background: #f8fafc; /* slate-50 */
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-surface-variant: #f1f5f9; /* slate-100 */
+  --md-sys-color-outline: rgba(15, 23, 42, 0.12);
+  --md-sys-color-outline-strong: rgba(15, 23, 42, 0.18);
+
+  /* Primary/Secondary */
+  --md-sys-color-primary: #1d4ed8; /* blue-700 */
+  --md-sys-color-primary-container: #dbeafe; /* blue-100 */
+  --md-sys-color-secondary: #0f172a; /* slate-900 */
+  --md-sys-color-tertiary: #0ea5e9; /* sky-500 */
+
+  /* Text */
+  --md-sys-color-on-background: #0f172a;
+  --md-sys-color-on-surface: #0f172a;
+  --md-sys-color-on-surface-variant: #475569; /* slate-600 */
+  --md-sys-color-on-primary: #ffffff;
+
+  /* States */
+  --md-sys-color-error: #dc2626;
+  --md-sys-color-success: #16a34a;
+  --md-sys-color-warning: #d97706;
+
+  /* Elevation (subtle) */
+  --md-elevation-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --md-elevation-2: 0 6px 12px rgba(15, 23, 42, 0.08);
+
+  /* Radius */
+  --md-radius-sm: 10px;
+  --md-radius-md: 14px;
+  --md-radius-lg: 18px;
+}
+
+html, body {
+  font-family: var(--md-font);
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+}
+
+/* Base */
+* {
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Reusable components (CSS-first, Tailwind-friendly) */
+.md-card {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-radius-lg);
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-card--flat {
+  box-shadow: none;
+  background: var(--md-sys-color-surface-variant);
+}
+
+.md-title {
+  color: var(--md-sys-color-on-surface);
+  font-weight: 650;
+}
+
+.md-subtitle {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-button {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font-weight: 650;
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-button:hover {
+  filter: brightness(0.98);
+  box-shadow: var(--md-elevation-2);
+}
+
+.md-button--tonal {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-primary);
+  box-shadow: none;
+}
+
+.md-button--ghost {
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  box-shadow: none;
+  border: 1px solid var(--md-sys-color-outline);
+}
+
+.md-button--secondary {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--md-sys-color-secondary);
+  border: 1px solid var(--md-sys-color-outline);
+  box-shadow: none;
+}
+
+.md-button--secondary:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.md-button--danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  box-shadow: none;
+}
+
+.md-button--danger:hover {
+  background: rgba(220, 38, 38, 0.16);
+}
+
+.md-input {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-radius-md);
+  padding: 0.65rem 0.85rem;
+  color: var(--md-sys-color-on-surface);
+  outline: none;
+}
+
+.md-input:focus {
+  border-color: rgba(29, 78, 216, 0.55);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
+}
+
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Modal */
+.md-backdrop {
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.md-modal {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-radius-lg);
+  box-shadow: var(--md-elevation-2);
+}
+
+.md-divider {
+  border-top: 1px solid var(--md-sys-color-outline);
+}
+
+/* Layout */
+.md-page {
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+}
+
+.md-container {
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+/* Tabs (Material-ish) */
+.md-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem;
+  border-radius: var(--md-radius-lg);
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  color: var(--md-sys-color-on-surface-variant);
+  background: transparent;
+  border: 1px solid transparent;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.md-tab:hover {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.md-tab--active {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-primary);
+  border-color: rgba(29, 78, 216, 0.20);
+}
+
+/* Tables */
+.md-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+.md-table thead th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-variant);
+  border-bottom: 1px solid var(--md-sys-color-outline);
+  padding: 0.75rem;
+}
+
+.md-table tbody td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Alerts */
+.md-alert {
+  border-radius: var(--md-radius-lg);
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface);
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+}
+
+.md-alert--success {
+  border-color: rgba(22, 163, 74, 0.25);
+  background: rgba(22, 163, 74, 0.08);
+  color: #166534;
+}
+
+.md-alert--error {
+  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.08);
+  color: #7f1d1d;
+}
+
+.md-alert--warning {
+  border-color: rgba(217, 119, 6, 0.28);
+  background: rgba(217, 119, 6, 0.10);
+  color: #7c2d12;
+}
+
+
+/* Scrollbar (subtle) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.18); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.26); }
+
+

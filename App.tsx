@@ -44,7 +44,7 @@ import AdminPanel from './components/AdminPanel';
 import AdminDashboard from './components/AdminDashboard'; // 🆕 Dashboard admin mejorado
 import ExportSelector from './components/ExportSelector';
 import ReportGenerationWizard from './components/ReportGenerationWizard';
-import MysticBackground from './components/MysticBackground'; // 🆕 Fondo místico
+import MaterialBackground from './components/MaterialBackground';
 import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
 import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
 import SubscriptionSuccess from './components/SubscriptionSuccess'; // 🆕 Confirmación de pago
@@ -54,7 +54,7 @@ import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualizac
 import LandingPage from './components/LandingPage';
 import { calculateChartData } from './astrologyEngine';
 import { api } from './services/api';
-import './styles/mystic-theme.css'; // Estilos base (SaaS/Clínico)
+import './styles/material-theme.css';
 import './components/PlanetaryOrbit.css'; // 🆕 Animaciones 
 
 // Symbol Dictionaries for Legend
@@ -1982,7 +1982,7 @@ ${analysisText}
   };
 
   return (
-    <MysticBackground>
+    <MaterialBackground>
       {/* Contenido con scroll tipo móvil */}
       <div className={`min-h-screen ${isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.SUBSCRIPTION_SUCCESS && mode !== AppMode.LANDING ? 'pb-20' : ''}`}>
         {mode === AppMode.LANDING && (
@@ -2007,14 +2007,14 @@ ${analysisText}
             />
           ) : (
             <div className="min-h-screen flex items-center justify-center">
-              <div className="bg-red-900/30 border border-red-500 rounded-xl p-8 max-w-md">
-                <h2 className="text-2xl font-bold text-red-400 mb-4">Acceso Denegado</h2>
-                <p className="text-gray-300 mb-6">
+              <div className="md-card p-8 max-w-md">
+                <h2 className="text-2xl font-semibold text-red-700 mb-4">Acceso denegado</h2>
+                <p className="text-slate-600 mb-6">
                   No tienes permisos de administrador para acceder a este panel.
                 </p>
                 <button
                   onClick={() => setMode(AppMode.INPUT)}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+                  className="w-full md-button"
                 >
                   Volver
                 </button>
@@ -2193,7 +2193,7 @@ ${analysisText}
           </div>
         </div>
       )}
-    </MysticBackground>
+    </MaterialBackground>
   );
 };
 

@@ -1,0 +1,8 @@
+{
+  "source": "swisseph",
+  "house_system": "placidus",
+  "zodiac": "tropical",
+  "notes": "Config base de efemérides para el Motor Fraktal. Puedes reemplazar/expandir este archivo según tu pipeline."
+}
+
+

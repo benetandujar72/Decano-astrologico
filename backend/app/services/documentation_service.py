@@ -340,15 +340,22 @@ class DocumentationService:
         *,
         docs_version: Optional[str] = None,
         docs_topic: Optional[str] = None,
+        docs_topics: Optional[List[str]] = None,
         strict_topic: bool = False,
     ) -> str:
         """
         Obtiene contexto específico para un módulo del informe.
         Mapea módulos a temas específicos para búsqueda más precisa.
         """
-        topic = (docs_topic or MODULE_TO_TOPIC.get(module_id, "general") or "general").lower().strip()
+        topics: List[str] = []
+        if isinstance(docs_topics, list) and docs_topics:
+            topics = [str(t).replace("\\", "/").lower().strip() for t in docs_topics if str(t).strip()]
+        if not topics:
+            topic = (docs_topic or MODULE_TO_TOPIC.get(module_id, "general") or "general").lower().strip()
+            topics = [topic]
+        topic = topics[0]
         version = (docs_version or self.docs_version or "default").strip()
-        cache_key = ("module", module_id, topic, version, int(max_chars), bool(strict_topic))
+        cache_key = ("module", module_id, tuple(topics), version, int(max_chars), bool(strict_topic))
         cached = self._context_cache.get(cache_key)
         if cached:
             return cached
@@ -363,6 +370,7 @@ class DocumentationService:
                     module_id,
                     version=version,
                     topic_override=topic,
+                    topics_override=topics,
                     strict_topic=bool(strict_topic),
                     max_chars=int(max_chars),
                 )
@@ -397,7 +405,8 @@ class DocumentationService:
             try:
                 # Primero intentar por topic+version. En strict_topic NO relajar a version-only.
                 proj = {"_id": 0, "text": 1, "source_file": 1, "doc_id": 1, "page_start": 1, "page_end": 1, "topic": 1}
-                chunks = list(self._col_chunks.find({"version": version, "topic": topic}, proj).limit(10))
+                topic_filter = {"$in": topics} if len(topics) > 1 else topic
+                chunks = list(self._col_chunks.find({"version": version, "topic": topic_filter}, proj).limit(10))
                 if (not chunks) and (not strict_topic):
                     chunks = list(self._col_chunks.find({"version": version}, proj).limit(10))
                 if chunks:
@@ -420,7 +429,7 @@ class DocumentationService:
                     if ctx.strip():
                         try:
                             print(
-                                f"[DOCS] module={module_id} source=db_direct_fallback version={version} topic={topic} chars={len(ctx)}",
+                                f"[DOCS] module={module_id} source=db_direct_fallback version={version} topic={topic} topics={topics} chars={len(ctx)}",
                                 file=sys.stderr,
                             )
                         except Exception:

@@ -35,15 +35,27 @@ class DocsRetrievalService:
         *,
         version: str,
         topic_override: Optional[str] = None,
+        topics_override: Optional[List[str]] = None,
         strict_topic: bool = False,
         max_chars: int = 10000,
         limit: int = 12,
         num_candidates: int = 120,
     ) -> Tuple[str, Dict[str, Any]]:
         derived_topic, query = module_topic_and_query(module_id)
-        topic = (topic_override or derived_topic or "").lower().strip() or derived_topic
+        # topic(s) resolution:
+        # - topics_override has priority (multi-topic / knowledge base folders)
+        # - else topic_override
+        # - else derived_topic (module)
+        topics: List[str] = []
+        if isinstance(topics_override, list) and topics_override:
+            topics = [str(t).replace("\\", "/").lower().strip() for t in topics_override if str(t).strip()]
+        if not topics:
+            topic = (topic_override or derived_topic or "").lower().strip() or derived_topic
+            topics = [topic]
+        topic = topics[0]
+
         # En modo strict_topic, NO se relaja a version-only (aislamiento de contexto).
-        filter_q_topic: Dict[str, Any] = {"version": version, "topic": topic}
+        filter_q_topic: Dict[str, Any] = {"version": version, "topic": {"$in": topics}} if len(topics) > 1 else {"version": version, "topic": topic}
         filter_q_version: Dict[str, Any] = {"version": version}
 
         qvec = self._get_module_query_vector(module_id=module_id, version=version)
@@ -72,6 +84,7 @@ class DocsRetrievalService:
                     return ctx, meta
 
                 meta.update({"mode": "atlas_vector", "topic": topic, "version": version})
+                meta.update({"topics": topics})
                 return ctx, meta
             except Exception as e:
                 print(f"[DocsRetrieval] ⚠️ vector search failed: {type(e).__name__}: {e}", file=sys.stderr)
@@ -88,7 +101,7 @@ class DocsRetrievalService:
             meta.update({"mode": "keyword_fallback_strict_empty", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
             return ctx, meta
 
-        meta.update({"mode": "keyword_fallback", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
+        meta.update({"mode": "keyword_fallback", "topic": topic, "topics": topics, "version": version, "has_query_vector": bool(qvec)})
         return ctx, meta
 
     def _get_module_query_vector(self, *, module_id: str, version: str) -> Optional[List[float]]:
@@ -157,6 +170,8 @@ class DocsRetrievalService:
             )
         else:
             # Alternate stage: Atlas Search ($search + knnBeta)
+            # NOTE: For multi-topic, we use `in` filter for Atlas Search where available.
+            # If the deployment uses $search with knnBeta and does not support `in`, prefer ATLAS_VECTOR_STAGE=$vectorSearch.
             pipeline.append(
                 {
                     "$search": {
@@ -169,7 +184,11 @@ class DocsRetrievalService:
                                 "compound": {
                                     "must": [
                                         {"equals": {"path": "version", "value": filter_q["version"]}},
-                                        {"equals": {"path": "topic", "value": filter_q["topic"]}},
+                                        (
+                                            {"in": {"path": "topic", "value": filter_q["topic"]["$in"]}}
+                                            if isinstance(filter_q.get("topic"), dict) and "$in" in filter_q["topic"]
+                                            else {"equals": {"path": "topic", "value": filter_q["topic"]}}
+                                        ),
                                     ]
                                 }
                             },

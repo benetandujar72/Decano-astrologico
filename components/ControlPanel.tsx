@@ -14,16 +14,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ lang, onTimeShift, onAction
   const [timeUnit, setTimeUnit] = useState<'minute' | 'hour' | 'day' | 'month' | 'year'>('minute');
   const [timeAmount, setTimeAmount] = useState<number>(1);
 
-  // Estilos de botones para imitar la imagen (Borde azul/morado, texto uppercase)
-  const btnBase = "border transition-all text-xs font-bold uppercase tracking-tight px-3 py-2 rounded shadow-sm hover:bg-white/10 active:scale-95 whitespace-nowrap";
-  const btnPrimary = `${btnBase} border-blue-600 text-blue-300`;
-  const btnSecondary = `${btnBase} border-purple-600 text-purple-300`;
-  const btnDanger = `${btnBase} border-red-600 text-red-300`;
-
-  const sectionTitle = "text-[11px] font-semibold uppercase tracking-wider text-white/70 text-center";
+  const btnBase = "md-button md-button--secondary text-xs font-semibold uppercase tracking-wide px-3 py-2 whitespace-nowrap";
+  const btnPrimary = "md-button text-xs font-semibold uppercase tracking-wide px-3 py-2 whitespace-nowrap";
+  const btnDanger = "md-button md-button--danger text-xs font-semibold uppercase tracking-wide px-3 py-2 whitespace-nowrap";
+  const sectionTitle = "text-[11px] font-semibold uppercase tracking-wider text-slate-600 text-center";
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 bg-slate-900/50 rounded-xl border border-white/5 backdrop-blur-sm mt-8">
+    <div className="w-full max-w-5xl mx-auto p-4 md-card mt-8">
       <div className="space-y-4">
         {/* SECCIÓN: CONTROL DE TIEMPO */}
         <div className="space-y-2">
@@ -33,7 +30,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ lang, onTimeShift, onAction
               {t.cmdBack}
             </button>
 
-            <div className="flex border border-slate-600 rounded overflow-hidden">
+            <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-white">
               <input
                 type="number"
                 min="1"
@@ -41,14 +38,14 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ lang, onTimeShift, onAction
                 onChange={(e) => setTimeAmount(parseInt(e.target.value) || 1)}
                 aria-label="Cantidad"
                 title="Cantidad"
-                className="w-12 bg-slate-800 text-white text-center text-xs font-mono outline-none border-r border-slate-600 py-2"
+                className="w-14 text-slate-900 text-center text-xs font-mono outline-none border-r border-slate-200 py-2"
               />
               <select
                 value={timeUnit}
                 onChange={(e) => setTimeUnit(e.target.value as any)}
                 aria-label="Unidad"
                 title="Unidad"
-                className="bg-slate-800 text-white text-xs font-bold uppercase outline-none px-2 py-2 appearance-none cursor-pointer hover:bg-slate-700"
+                className="text-slate-900 text-xs font-semibold uppercase outline-none px-3 py-2 appearance-none cursor-pointer hover:bg-slate-50"
               >
                 <option value="minute">{t.cmdMinute}</option>
                 <option value="hour">{t.cmdHour}</option>
@@ -68,9 +65,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ lang, onTimeShift, onAction
         <div className="space-y-2">
           <div className={sectionTitle}>Vistes</div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button onClick={() => onAction('legend')} className={`${btnSecondary} w-full`}>{t.cmdLegend}</button>
-            <button onClick={() => onAction('stats')} className={`${btnSecondary} w-full`}>{t.cmdStats}</button>
-            <button onClick={() => onAction('details')} className={`${btnSecondary} w-full`}>{t.cmdDetails}</button>
+            <button onClick={() => onAction('legend')} className={`${btnBase} w-full`}>{t.cmdLegend}</button>
+            <button onClick={() => onAction('stats')} className={`${btnBase} w-full`}>{t.cmdStats}</button>
+            <button onClick={() => onAction('details')} className={`${btnBase} w-full`}>{t.cmdDetails}</button>
           </div>
         </div>
 
@@ -90,15 +87,15 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ lang, onTimeShift, onAction
         </div>
 
         {/* SECCIÓN: TÉCNIQUES */}
-        <div className="space-y-2 pt-2 border-t border-white/5">
+        <div className="space-y-2 pt-2 border-t border-slate-200">
           <div className={sectionTitle}>Tècniques</div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            <button onClick={() => onAction('solar')} className={`${btnDanger} w-full`}>{t.techSolar}</button>
-            <button onClick={() => onAction('transits')} className={`${btnDanger} w-full`}>{t.techTransit}</button>
-            <button onClick={() => onAction('directions')} className={`${btnDanger} w-full`}>{t.techDirect}</button>
-            <button onClick={() => onAction('progressions')} className={`${btnDanger} w-full`}>{t.techProg}</button>
-            <button onClick={() => onAction('synastry')} className={`${btnDanger} w-full`}>{t.techSynastry}</button>
-            <button onClick={() => onAction('composite')} className={`${btnDanger} w-full`}>{t.techComposite}</button>
+            <button onClick={() => onAction('solar')} className={`${btnBase} w-full`}>{t.techSolar}</button>
+            <button onClick={() => onAction('transits')} className={`${btnBase} w-full`}>{t.techTransit}</button>
+            <button onClick={() => onAction('directions')} className={`${btnBase} w-full`}>{t.techDirect}</button>
+            <button onClick={() => onAction('progressions')} className={`${btnBase} w-full`}>{t.techProg}</button>
+            <button onClick={() => onAction('synastry')} className={`${btnBase} w-full`}>{t.techSynastry}</button>
+            <button onClick={() => onAction('composite')} className={`${btnBase} w-full`}>{t.techComposite}</button>
           </div>
         </div>
       </div>

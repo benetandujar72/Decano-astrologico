@@ -1,0 +1,30 @@
+{
+  "informe_tipo": {
+    "adulto_completo": {
+      "folders": ["00_core_astrologia", "01_individual_adulto"],
+      "tone": "Profundo, empático, psicológico"
+    },
+    "infantil_evolutivo": {
+      "folders": ["00_core_astrologia", "02_infantil_neurodesarrollo"],
+      "tone": "Orientativo para padres, pedagógico, científico-divulgativo"
+    },
+    "sinastria_pareja": {
+      "folders": ["00_core_astrologia", "03_sistemico_relacional/sinastria_pareja"],
+      "tone": "Mediador, analítico, relacional"
+    },
+    "constelacion_familiar": {
+      "folders": ["00_core_astrologia", "03_sistemico_relacional/constelacion_familiar"],
+      "tone": "Sistémico, integrador, orientado a vínculos"
+    },
+    "equipos_trabajo": {
+      "folders": ["00_core_astrologia", "03_sistemico_relacional/equipos_trabajo"],
+      "tone": "Organizacional, roles, liderazgo, dinámicas de poder"
+    },
+    "clinico_terapeutas": {
+      "folders": ["00_core_astrologia", "04_clinico_terapeutas"],
+      "tone": "Clínico, técnico, aplicable a intervención"
+    }
+  }
+}
+
+

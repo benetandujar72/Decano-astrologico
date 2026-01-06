@@ -8,6 +8,25 @@ except Exception:  # pragma: no cover
     MongoClient = None  # type: ignore
 
 
+def _load_context_map() -> Dict[str, Any]:
+    """
+    Load optional knowledge base context map from repo root.
+    Path: data_knowledge_base/config/context_map.json
+    """
+    import json
+    from pathlib import Path
+
+    kb_root = os.getenv("KB_ROOT") or "data_knowledge_base"
+    cfg_path = Path(kb_root) / "config" / "context_map.json"
+    try:
+        if cfg_path.exists():
+            with cfg_path.open("r", encoding="utf-8") as f:
+                return json.load(f) or {}
+    except Exception:
+        return {}
+    return {}
+
+
 class RagRouter:
     """
     Router de RAG: report_type -> (prompt_type/system prompt) + (docs_version + docs_topic)
@@ -50,23 +69,74 @@ class RagRouter:
             "report_type": rt,
             "docs_version": docs_version,
             "docs_topic": "adultos",
+            "docs_topics": ["adultos"],
             "prompt_type": "carutti",
         }
 
         if self._col_mappings is None:
-            return default
+            cfg = _load_context_map()
+            resolved = self._resolve_from_context_map(rt, cfg) or {}
+            return {**default, **resolved}
 
         doc = self._col_mappings.find_one({"report_type": rt}, projection={"_id": 0})
         if isinstance(doc, dict):
             out = {**default, **doc}
         else:
-            out = default
+            cfg = _load_context_map()
+            resolved = self._resolve_from_context_map(rt, cfg) or {}
+            out = {**default, **resolved}
 
         # Normalizar
         out["docs_version"] = str(out.get("docs_version") or docs_version)
-        out["docs_topic"] = str(out.get("docs_topic") or "adultos").lower()
+        topics = out.get("docs_topics")
+        if isinstance(topics, list) and topics:
+            norm_topics = [str(t).replace("\\", "/").lower().strip() for t in topics if str(t).strip()]
+        else:
+            legacy = str(out.get("docs_topic") or "adultos").strip()
+            norm_topics = [legacy] if legacy else ["adultos"]
+        norm_topics = [t for t in norm_topics if t]
+        out["docs_topics"] = norm_topics
+        out["docs_topic"] = norm_topics[0] if norm_topics else "adultos"
         out["prompt_type"] = str(out.get("prompt_type") or "carutti").lower()
         return out
+
+    @staticmethod
+    def _resolve_from_context_map(rt: str, cfg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Resolve mapping using `data_knowledge_base/config/context_map.json`.
+        Supports canonical keys from the IA taxonomy and maps current rt values:
+          - individual/adultos -> adulto_completo
+          - infantil -> infantil_evolutivo
+          - pareja -> sinastria_pareja
+          - familiar -> constelacion_familiar
+          - equipo -> equipos_trabajo
+          - profesional -> clinico_terapeutas
+        """
+        if not isinstance(cfg, dict):
+            return None
+        informe_tipo = cfg.get("informe_tipo") if isinstance(cfg.get("informe_tipo"), dict) else {}
+
+        key_map = {
+            "individual": "adulto_completo",
+            "adultos": "adulto_completo",
+            "infantil": "infantil_evolutivo",
+            "pareja": "sinastria_pareja",
+            "familiar": "constelacion_familiar",
+            "equipo": "equipos_trabajo",
+            "profesional": "clinico_terapeutas",
+        }
+
+        for k in [rt, key_map.get(rt, "")]:
+            if not k:
+                continue
+            node = informe_tipo.get(k)
+            if isinstance(node, dict):
+                folders = node.get("folders")
+                if isinstance(folders, list) and folders:
+                    folders_norm = [str(f).replace("\\", "/").strip() for f in folders if str(f).strip()]
+                    if folders_norm:
+                        return {"docs_topics": folders_norm}
+        return None
 
     def get_prompt_content(self, prompt_type: str) -> Optional[str]:
         """

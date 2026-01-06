@@ -237,15 +237,17 @@ def main() -> None:
         filename = os.path.basename(path)
         sha = _sha256_file(path)
         doc_id = f"{os.path.splitext(filename)[0]}:{sha[:12]}"
-        # topic: override > folder > heurística filename
+        # topic: override > folder (relative path) > heurística filename
         topic = topic_override
         if not topic:
             rel_dir = os.path.relpath(os.path.dirname(path), docs_path)
             if rel_dir and rel_dir != ".":
-                topic = rel_dir.split(os.sep)[0].lower().strip()
+                # allow nested topics (e.g. 03_sistemico_relacional/sinastria_pareja)
+                topic = rel_dir.replace(os.sep, "/").lower().strip()
         if not topic:
             topic = _infer_topic(filename)
-        if topic not in DOC_TOPICS:
+        # Only enforce taxonomy for heuristic topics; folder-driven topics are allowed (knowledge base).
+        if (not topic_override) and (topic == _infer_topic(filename)) and (topic not in DOC_TOPICS):
             topic = "general"
 
         pages_text = _extract_pages_text(path)
