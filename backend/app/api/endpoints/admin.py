@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta
 from typing import List, Optional
 import os
+import re
 import uuid
 import asyncio
 import glob
@@ -53,6 +54,65 @@ def require_admin(current_user: dict = Depends(get_current_user)):
             detail="Se requieren permisos de administrador"
         )
     return current_user
+
+
+# ==================== DOCS DIAGNÓSTICO (ATLAS/BD) ====================
+
+@router.get("/docs/topics")
+async def docs_topics(
+    version: Optional[str] = Query(None, description="Versión lógica de docs (ej: atlas_v1). Si se omite, usa DOCS_VERSION."),
+    limit: int = Query(300, description="Máximo de topics a devolver."),
+    admin: dict = Depends(require_admin),
+):
+    """
+    Devuelve los topics disponibles en `documentation_chunks` para una versión.
+    Útil para diagnosticar errores de RAG strict_topic (ej: profesional/infantil sin ingesta).
+    """
+    v = (version or os.getenv("DOCS_VERSION") or "").strip()
+    if not v:
+        raise HTTPException(status_code=400, detail="Falta version y DOCS_VERSION no está configurada.")
+
+    topics = await doc_chunks_collection.distinct("topic", {"version": v})
+    topics = [t for t in topics if isinstance(t, str) and t.strip()]
+    topics = sorted(set([t.replace("\\", "/").lower().strip() for t in topics]))
+    if limit and len(topics) > int(limit):
+        topics = topics[: int(limit)]
+    return {"version": v, "topics": topics, "count": len(topics)}
+
+
+@router.get("/docs/topic-counts")
+async def docs_topic_counts(
+    version: Optional[str] = Query(None, description="Versión lógica de docs (ej: atlas_v1). Si se omite, usa DOCS_VERSION."),
+    prefix: Optional[str] = Query(None, description="Filtrar por prefijo (ej: 00_core_astrologia)."),
+    limit: int = Query(200, description="Máximo de filas."),
+    admin: dict = Depends(require_admin),
+):
+    """
+    Devuelve conteos por topic en `documentation_chunks` para una versión.
+    """
+    v = (version or os.getenv("DOCS_VERSION") or "").strip()
+    if not v:
+        raise HTTPException(status_code=400, detail="Falta version y DOCS_VERSION no está configurada.")
+
+    match: Dict[str, Any] = {"version": v}
+    if prefix and prefix.strip():
+        # match exact or nested topics
+        px = prefix.replace("\\", "/").lower().strip()
+        match["$or"] = [{"topic": px}, {"topic": {"$regex": f"^{re.escape(px)}/"}}]
+
+    pipeline: List[Dict[str, Any]] = [
+        {"$match": match},
+        {"$group": {"_id": "$topic", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": int(limit)},
+    ]
+    rows = []
+    async for r in doc_chunks_collection.aggregate(pipeline, allowDiskUse=False):
+        topic = r.get("_id")
+        if not isinstance(topic, str):
+            continue
+        rows.append({"topic": topic, "count": int(r.get("count") or 0)})
+    return {"version": v, "rows": rows, "returned": len(rows)}
 
 
 # ==================== DOCUMENTACIÓN (INGESTA A BD) ====================
