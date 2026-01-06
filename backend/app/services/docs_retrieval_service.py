@@ -28,6 +28,47 @@ class DocsRetrievalService:
         self.vector_path = os.getenv("ATLAS_VECTOR_PATH", "embedding")
         # Allow switching pipeline type if needed
         self.vector_stage = os.getenv("ATLAS_VECTOR_STAGE", "$vectorSearch")  # or "$search"
+        # Cache for prefix topic expansion: (version, tuple(prefixes)) -> [topics...]
+        self._topics_expand_cache: Dict[Tuple[str, Tuple[str, ...]], List[str]] = {}
+
+    def _expand_topics_by_prefix(self, *, version: str, topics: List[str]) -> List[str]:
+        """
+        Expande topics base (ej: '01_individual_adulto') para que también matchee subfolders
+        guardados como '01_individual_adulto/natal_base', etc.
+
+        Atlas Vector Search no soporta regex/prefix en filter, así que pre-expandimos a un $in
+        con valores reales encontrados en la colección para esa versión.
+        """
+        norm = [str(t).replace("\\", "/").lower().strip() for t in (topics or []) if str(t).strip()]
+        if not norm:
+            return []
+        key = (str(version), tuple(sorted(set(norm))))
+        cached = self._topics_expand_cache.get(key)
+        if cached is not None:
+            return cached
+
+        expanded: List[str] = list(dict.fromkeys(norm))  # preserve order + unique
+        for prefix in norm:
+            try:
+                # match nested topics (prefix + '/...')
+                rx = f"^{re.escape(prefix)}/"
+                found = self.col.distinct("topic", {"version": version, "topic": {"$regex": rx}})
+                if isinstance(found, list) and found:
+                    for t in found:
+                        if isinstance(t, str) and t:
+                            tv = t.replace("\\", "/").lower().strip()
+                            if tv and tv not in expanded:
+                                expanded.append(tv)
+            except Exception:
+                # Best-effort: if distinct fails, continue with base topics
+                continue
+
+        # Cap defensivo (evitar filtros gigantes)
+        if len(expanded) > 200:
+            expanded = expanded[:200]
+
+        self._topics_expand_cache[key] = expanded
+        return expanded
 
     def retrieve_context_for_module(
         self,
@@ -52,6 +93,7 @@ class DocsRetrievalService:
         if not topics:
             topic = (topic_override or derived_topic or "").lower().strip() or derived_topic
             topics = [topic]
+        topics = self._expand_topics_by_prefix(version=version, topics=topics) or topics
         topic = topics[0]
 
         # En modo strict_topic, NO se relaja a version-only (aislamiento de contexto).

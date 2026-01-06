@@ -81,6 +81,17 @@ class RagRouter:
         doc = self._col_mappings.find_one({"report_type": rt}, projection={"_id": 0})
         if isinstance(doc, dict):
             out = {**default, **doc}
+            # Si el mapping en BD es legacy (sin docs_topics), intentar completar desde context_map local.
+            try:
+                cfg = _load_context_map()
+                from_cfg = self._resolve_from_context_map(rt, cfg) or {}
+                # Solo aplicar si no hay docs_topics explícitos o si parecen ser los defaults legacy.
+                if isinstance(from_cfg.get("docs_topics"), list) and from_cfg.get("docs_topics"):
+                    existing_topics = out.get("docs_topics")
+                    if (not isinstance(existing_topics, list)) or (not existing_topics) or (existing_topics == ["adultos"]):
+                        out.update(from_cfg)
+            except Exception:
+                pass
         else:
             cfg = _load_context_map()
             resolved = self._resolve_from_context_map(rt, cfg) or {}

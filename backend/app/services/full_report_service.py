@@ -314,6 +314,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         routing = rag_router.resolve(report_type)
         docs_version = routing.get("docs_version")
         docs_topic = routing.get("docs_topic")
+        docs_topics = routing.get("docs_topics")
         prompt_type = routing.get("prompt_type")
 
         # Evitar bloquear el event loop: get_context_for_module usa pymongo (sync).
@@ -323,6 +324,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             max_context_chars,
             docs_version=docs_version,
             docs_topic=docs_topic,
+            docs_topics=docs_topics,
             strict_topic=True,
         )
         await _progress("context_fetch_done", {"context_chars": len(context)})
