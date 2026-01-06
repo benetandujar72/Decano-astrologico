@@ -6,6 +6,7 @@ import json
 from typing import Dict, List, Optional, Callable, Awaitable
 from app.services.documentation_service import documentation_service
 from app.services.ai_expert_service import get_ai_expert_service
+from app.services.rag_router import rag_router
 
 class FullReportService:
     """
@@ -264,6 +265,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         user_name: str, 
         module_id: str,
         report_mode: str = "full",
+        report_type: str = "individual",
         previous_modules: List[str] = None,
         progress_cb: Optional[Callable[[str, Optional[Dict]], Awaitable[None]]] = None,
         chart_facts: Optional[Dict] = None,
@@ -289,6 +291,8 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         if report_mode not in {"full", "light"}:
             report_mode = "full"
 
+        report_type = (report_type or "individual").lower().strip()
+
         # Obtener la sección correspondiente (antes de cualquier uso de `section`)
         sections = self._get_sections_definition(report_mode=report_mode)
         section = next((s for s in sections if s['id'] == module_id), None)
@@ -307,8 +311,20 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         # Obtener contexto de documentación
         max_context_chars = 10000 if section['requires_template'] else 8000
         await _progress("context_fetch_start", {"max_chars": max_context_chars})
-        # Evitar bloquear el event loop: get_context_for_module usa pymongo (sync) y/o puede hacer trabajo no-trivial.
-        context = await asyncio.to_thread(self.doc_service.get_context_for_module, section['id'], max_context_chars)
+        routing = rag_router.resolve(report_type)
+        docs_version = routing.get("docs_version")
+        docs_topic = routing.get("docs_topic")
+        prompt_type = routing.get("prompt_type")
+
+        # Evitar bloquear el event loop: get_context_for_module usa pymongo (sync).
+        context = await asyncio.to_thread(
+            self.doc_service.get_context_for_module,
+            section['id'],
+            max_context_chars,
+            docs_version=docs_version,
+            docs_topic=docs_topic,
+            strict_topic=True,
+        )
         await _progress("context_fetch_done", {"context_chars": len(context)})
 
         # Facts compactos (reduce tokens y latencia manteniendo rigor)
@@ -339,13 +355,15 @@ MODO LIGHT (6–8 PÁGINAS):
         )
 
         base_prompt = f"""
+TIPO DE INFORME (RAG ROUTER): {report_type}
+
 PROTOCOLO DE INGESTA DE DOCUMENTACIÓN (DEEP SCAN & SÍNTESIS):
 - Lee TODA la documentación provista antes de escribir
 - Prioriza párrafos conceptuales densos sobre tablas resumen
 - Integra múltiples fuentes en una sola narrativa
 - NO digas "El libro dice...", simplemente explica la mecánica
 
-CONTEXTO DE DOCUMENTACIÓN (Base de Conocimiento Carutti):
+CONTEXTO DE DOCUMENTACIÓN (Base de Conocimiento aislada por topic/version):
 {context}
 
 DATOS DE LA CARTA:
@@ -367,6 +385,14 @@ DIRECTRIZ DE EXTENSIÓN Y HOMOGENEIDAD:
 INSTRUCCIÓN DE COMANDO:
 {section['prompt']}
 """
+
+        # Inyectar system prompt específico (si existe) en el prompt (workaround: Gemini system_instruction es estático)
+        try:
+            prompt_content = rag_router.get_prompt_content(prompt_type)
+            if isinstance(prompt_content, str) and prompt_content.strip():
+                base_prompt = f"SYSTEM PROMPT (INSTRUCCIÓN SUPERIOR):\n{prompt_content}\n\n" + base_prompt
+        except Exception:
+            pass
         
         # Si requiere plantilla (MÓDULO 2-VII), agregar instrucciones específicas
         if section['requires_template']:

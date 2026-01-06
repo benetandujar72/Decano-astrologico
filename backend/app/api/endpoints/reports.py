@@ -140,6 +140,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             return
 
         report_mode = (session.get("report_mode") or "full").lower().strip()
+        report_type = (session.get("report_type") or "individual").lower().strip()
         sections = full_report_service._get_sections_definition(report_mode=report_mode)
         module_index = next((i for i, s in enumerate(sections) if s["id"] == module_id), -1)
         if module_index == -1:
@@ -172,11 +173,12 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
         # Aumentado a 40 minutos para módulos complejos que pueden tardar más
         content, is_last, usage_metadata = await asyncio.wait_for(
             full_report_service.generate_single_module(
-                session["carta_data"],
-                session["user_name"],
-                module_id,
-                report_mode,
-                previous_modules,
+                chart_data=session.get("carta_data", {}) or {},
+                user_name=session.get("user_name", "Consultante"),
+                module_id=module_id,
+                report_mode=report_mode,
+                report_type=report_type,
+                previous_modules=previous_modules,
                 progress_cb=progress_cb,
                 chart_facts=session.get("chart_facts"),
             ),
@@ -890,12 +892,16 @@ async def generate_module(
         from app.services.ai_usage_tracker import track_ai_usage
         
         try:
+            report_mode = (session.get("report_mode") or "full").lower().strip()
+            report_type = (session.get("report_type") or "individual").lower().strip()
             content, is_last, usage_metadata = await asyncio.wait_for(
                 full_report_service.generate_single_module(
-                    session["carta_data"],
-                    session["user_name"],
-                    request.module_id,
-                    previous_modules,
+                    chart_data=session.get("carta_data", {}) or {},
+                    user_name=session.get("user_name", "Consultante"),
+                    module_id=request.module_id,
+                    report_mode=report_mode,
+                    report_type=report_type,
+                    previous_modules=previous_modules,
                     chart_facts=session.get("chart_facts"),
                 ),
                 timeout=600.0  # 10 minutos máximo por módulo

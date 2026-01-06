@@ -34,13 +34,15 @@ class DocsRetrievalService:
         module_id: str,
         *,
         version: str,
+        topic_override: Optional[str] = None,
+        strict_topic: bool = False,
         max_chars: int = 10000,
         limit: int = 12,
         num_candidates: int = 120,
     ) -> Tuple[str, Dict[str, Any]]:
-        topic, query = module_topic_and_query(module_id)
-        # Prefer topic-filtered retrieval, but be resilient: if topic tagging is imperfect,
-        # we relax to version-only to avoid empty context (critical for production reliability).
+        derived_topic, query = module_topic_and_query(module_id)
+        topic = (topic_override or derived_topic or "").lower().strip() or derived_topic
+        # En modo strict_topic, NO se relaja a version-only (aislamiento de contexto).
         filter_q_topic: Dict[str, Any] = {"version": version, "topic": topic}
         filter_q_version: Dict[str, Any] = {"version": version}
 
@@ -55,15 +57,18 @@ class DocsRetrievalService:
                 )
                 ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
                 if not ctx.strip():
-                    # Retry without topic filter
-                    chunks = self._vector_search(
-                        query_vector=qvec,
-                        filter_q=filter_q_version,
-                        limit=limit,
-                        num_candidates=num_candidates,
-                    )
-                    ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
-                    meta.update({"mode": "atlas_vector_relaxed", "topic": topic, "version": version})
+                    if not strict_topic:
+                        # Retry without topic filter
+                        chunks = self._vector_search(
+                            query_vector=qvec,
+                            filter_q=filter_q_version,
+                            limit=limit,
+                            num_candidates=num_candidates,
+                        )
+                        ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+                        meta.update({"mode": "atlas_vector_relaxed", "topic": topic, "version": version})
+                        return ctx, meta
+                    meta.update({"mode": "atlas_vector_strict_empty", "topic": topic, "version": version})
                     return ctx, meta
 
                 meta.update({"mode": "atlas_vector", "topic": topic, "version": version})
@@ -75,9 +80,12 @@ class DocsRetrievalService:
         chunks = self._keyword_fallback(query=query, filter_q=filter_q_topic, limit=limit)
         ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
         if not ctx.strip():
-            chunks = self._keyword_fallback(query=query, filter_q=filter_q_version, limit=limit)
-            ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
-            meta.update({"mode": "keyword_fallback_relaxed", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
+            if not strict_topic:
+                chunks = self._keyword_fallback(query=query, filter_q=filter_q_version, limit=limit)
+                ctx, meta = self._assemble_context(chunks=chunks, max_chars=max_chars)
+                meta.update({"mode": "keyword_fallback_relaxed", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
+                return ctx, meta
+            meta.update({"mode": "keyword_fallback_strict_empty", "topic": topic, "version": version, "has_query_vector": bool(qvec)})
             return ctx, meta
 
         meta.update({"mode": "keyword_fallback", "topic": topic, "version": version, "has_query_vector": bool(qvec)})

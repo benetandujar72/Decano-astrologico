@@ -333,13 +333,22 @@ class DocumentationService:
         self._context_cache[cache_key] = context
         return context
 
-    def get_context_for_module(self, module_id: str, max_chars: int = 10000) -> str:
+    def get_context_for_module(
+        self,
+        module_id: str,
+        max_chars: int = 10000,
+        *,
+        docs_version: Optional[str] = None,
+        docs_topic: Optional[str] = None,
+        strict_topic: bool = False,
+    ) -> str:
         """
         Obtiene contexto específico para un módulo del informe.
         Mapea módulos a temas específicos para búsqueda más precisa.
         """
-        topic = MODULE_TO_TOPIC.get(module_id, "general")
-        cache_key = ("module", module_id, int(max_chars))
+        topic = (docs_topic or MODULE_TO_TOPIC.get(module_id, "general") or "general").lower().strip()
+        version = (docs_version or self.docs_version or "default").strip()
+        cache_key = ("module", module_id, topic, version, int(max_chars), bool(strict_topic))
         cached = self._context_cache.get(cache_key)
         if cached:
             return cached
@@ -348,11 +357,13 @@ class DocumentationService:
         force_no_pdfs = retrieval_mode in {"atlas_vector", "vector", "atlas"}
 
         # Intento 0: Atlas Vector Search (si está activado y hay dataset de chunks en Atlas).
-        if self.mongo_enabled and self._retrieval and self.docs_version:
+        if self.mongo_enabled and self._retrieval and version:
             try:
                 ctx, meta = self._retrieval.retrieve_context_for_module(
                     module_id,
-                    version=self.docs_version,
+                    version=version,
+                    topic_override=topic,
+                    strict_topic=bool(strict_topic),
                     max_chars=int(max_chars),
                 )
                 if ctx:
@@ -361,7 +372,7 @@ class DocumentationService:
 
                         print(
                             f"[DOCS] module={module_id} source={meta.get('mode')} "
-                            f"version={self.docs_version} topic={meta.get('topic')} "
+                            f"version={version} topic={meta.get('topic')} "
                             f"chars={meta.get('context_chars')} chunks={meta.get('chunks')}",
                             file=_sys.stderr,
                         )
@@ -382,13 +393,13 @@ class DocumentationService:
 
         # Intento 0.5 (BD directa): si Atlas/Vector Search no devolvió contexto, intentar leer chunks directamente
         # desde MongoDB (sin PDFs) para evitar bloqueos por filtros/topic/índice.
-        if force_no_pdfs and self.mongo_enabled and (self._col_chunks is not None) and self.docs_version:
+        if force_no_pdfs and self.mongo_enabled and (self._col_chunks is not None) and version:
             try:
-                # Primero intentar por topic+version, luego relajar a version-only.
+                # Primero intentar por topic+version. En strict_topic NO relajar a version-only.
                 proj = {"_id": 0, "text": 1, "source_file": 1, "doc_id": 1, "page_start": 1, "page_end": 1, "topic": 1}
-                chunks = list(self._col_chunks.find({"version": self.docs_version, "topic": topic}, proj).limit(10))
-                if not chunks:
-                    chunks = list(self._col_chunks.find({"version": self.docs_version}, proj).limit(10))
+                chunks = list(self._col_chunks.find({"version": version, "topic": topic}, proj).limit(10))
+                if (not chunks) and (not strict_topic):
+                    chunks = list(self._col_chunks.find({"version": version}, proj).limit(10))
                 if chunks:
                     used = 0
                     parts = []
@@ -409,7 +420,7 @@ class DocumentationService:
                     if ctx.strip():
                         try:
                             print(
-                                f"[DOCS] module={module_id} source=db_direct_fallback version={self.docs_version} topic={topic} chars={len(ctx)}",
+                                f"[DOCS] module={module_id} source=db_direct_fallback version={version} topic={topic} chars={len(ctx)}",
                                 file=sys.stderr,
                             )
                         except Exception:
@@ -420,11 +431,12 @@ class DocumentationService:
                 print(f"⚠️ Error fallback BD directa (module {module_id}): {type(e).__name__}: {e}", file=sys.stderr)
 
         # Intento 1: contexto precomputado en BD (rápido, sin leer PDFs)
-        cached_ctx = self._get_cached_module_context(module_id, max_chars)
+        # Contexto precomputado: en despliegues antiguos se guarda por module_id/version sin topic estricto
+        cached_ctx = self._get_cached_module_context(module_id, max_chars) if not strict_topic else None
         if cached_ctx:
             try:
                 print(
-                    f"[DOCS] module={module_id} source=precomputed version={self.docs_version} topic={topic} chars={len(cached_ctx)}",
+                    f"[DOCS] module={module_id} source=precomputed version={version} topic={topic} chars={len(cached_ctx)}",
                     file=sys.stderr,
                 )
             except Exception:
@@ -436,7 +448,7 @@ class DocumentationService:
         if force_no_pdfs:
             raise RuntimeError(
                 f"PDFs deshabilitados por DOCS_RETRIEVAL_MODE={retrieval_mode}. "
-                f"No hay contexto en BD para module {module_id} (version={self.docs_version})."
+                f"No hay contexto en BD para module {module_id} (version={version}, topic={topic}, strict={bool(strict_topic)})."
             )
         if not self.is_loaded:
             self.load_documentation()
