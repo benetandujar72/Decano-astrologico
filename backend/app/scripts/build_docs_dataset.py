@@ -155,6 +155,8 @@ def main() -> None:
     parser.add_argument("--embed-device", default="auto", help="auto|cpu|cuda")
     parser.add_argument("--embed-batch-size", type=int, default=64)
     parser.add_argument("--no-embeddings", action="store_true", help="No generar embeddings (solo chunks).")
+    parser.add_argument("--copyright-safe", action="store_true", help="No guardar texto crudo: reescribir/resumir chunks antes de guardar y vectorizar.")
+    parser.add_argument("--summary-max-chars", type=int, default=1200, help="Máximo de caracteres por chunk resumido (copyright-safe).")
     args = parser.parse_args()
 
     mongo_url = os.getenv("MONGODB_URI") or os.getenv("MONGODB_URL")
@@ -252,6 +254,17 @@ def main() -> None:
         docs: List[Dict[str, Any]] = []
         texts: List[str] = []
         for idx, (ps, pe, text) in enumerate(chunks):
+            original_text = text
+            if args.copyright_safe:
+                from app.services.docs_summarizer import summarize_for_rag
+
+                summarized = summarize_for_rag(original_text, max_chars=int(args.summary_max_chars))
+                # Guardar SOLO el resumen (copyright-safe) y un hash del original para trazabilidad
+                text = summarized
+                raw_sha = hashlib.sha256(original_text.encode("utf-8", errors="ignore")).hexdigest()
+            else:
+                raw_sha = None
+
             texts.append(text)
             docs.append(
                 {
@@ -265,6 +278,7 @@ def main() -> None:
                     "chunk_id": idx,
                     "text": text,
                     "len": len(text),
+                    **({"raw_text_sha256": raw_sha} if raw_sha else {}),
                     "ingested_at": ingested_at,
                 }
             )
