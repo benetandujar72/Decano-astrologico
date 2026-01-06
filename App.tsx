@@ -143,6 +143,10 @@ const App: React.FC = () => {
   const [isLoadingSavedProfiles, setIsLoadingSavedProfiles] = useState(false);
   const [savingProfileIdx, setSavingProfileIdx] = useState<number | null>(null);
   const [selectedSavedProfileId, setSelectedSavedProfileId] = useState<string>('');
+  const [applyProfileTarget, setApplyProfileTarget] = useState<'auto' | 'new' | number>('auto');
+  const [editingProfileDraft, setEditingProfileDraft] = useState<{ profile_id: string; name: string; birth_date: string; birth_time: string; birth_place: string } | null>(null);
+  const [isSavingEditedProfile, setIsSavingEditedProfile] = useState(false);
+  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
 
   const geoCacheRef = useRef<Map<string, { lat: number; lon: number; timezone: string }>>(new Map());
   const [reportReadySessionId, setReportReadySessionId] = useState<string | null>(null);
@@ -1207,6 +1211,9 @@ ${analysisText}
     if (activeModal === 'report_setup') {
       // Best-effort: no bloquear UI si falla
       loadSavedProfiles();
+      setSelectedSavedProfileId('');
+      setEditingProfileDraft(null);
+      setApplyProfileTarget('auto');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeModal]);
@@ -2057,13 +2064,42 @@ ${analysisText}
                   <select
                     className="md-input"
                     value={selectedSavedProfileId}
-                    onChange={(e) => setSelectedSavedProfileId(e.target.value)}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedSavedProfileId(id);
+                      const prof = savedProfiles.find((p) => p.profile_id === id);
+                      setEditingProfileDraft(prof ? { ...prof } : null);
+                    }}
                     disabled={isPreparingReportProfiles || isLoadingSavedProfiles}
                   >
                     <option value="">{savedProfiles.length ? '— Elige un perfil —' : 'No hay perfiles guardados'}</option>
                     {savedProfiles.map((p) => (
                       <option key={p.profile_id} value={p.profile_id}>
                         {p.name} — {p.birth_date} {p.birth_time} — {p.birth_place}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Aplicar a</label>
+                  <select
+                    className="md-input"
+                    value={String(applyProfileTarget)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === 'auto') return setApplyProfileTarget('auto');
+                      if (v === 'new') return setApplyProfileTarget('new');
+                      const n = Number(v);
+                      setApplyProfileTarget(Number.isFinite(n) ? n : 'auto');
+                    }}
+                    disabled={isPreparingReportProfiles || isLoadingSavedProfiles}
+                    title="Elige a qué persona aplicar el perfil"
+                  >
+                    <option value="auto">Automático (fila vacía o Persona 1)</option>
+                    <option value="new">Nueva fila</option>
+                    {reportProfilesInput.map((_, idx) => (
+                      <option key={idx} value={String(idx)}>
+                        Persona {idx + 1}
                       </option>
                     ))}
                   </select>
@@ -2075,12 +2111,22 @@ ${analysisText}
                   onClick={() => {
                     const prof = savedProfiles.find((p) => p.profile_id === selectedSavedProfileId);
                     if (!prof) return;
+                    const applyTo = applyProfileTarget;
                     setReportProfilesInput((prev) => {
-                      if (!prev || prev.length === 0) return [{ name: prof.name, date: prof.birth_date, time: prof.birth_time, place: prof.birth_place }];
-                      // aplicar en la fila "más vacía"; si todas tienen nombre, aplicar a la primera fila.
-                      const idx = prev.findIndex((x) => !(x?.name || '').trim());
-                      const targetIdx = idx >= 0 ? idx : 0;
-                      return prev.map((x, i) => i === targetIdx ? ({ ...x, name: prof.name, date: prof.birth_date, time: prof.birth_time, place: prof.birth_place }) : x);
+                      const base = (prev && prev.length > 0) ? prev : [{ name: '', date: '', time: '', place: '' }];
+                      const filled = { name: prof.name, date: prof.birth_date, time: prof.birth_time, place: prof.birth_place };
+
+                      if (applyTo === 'new') {
+                        return [...base, filled];
+                      }
+                      if (typeof applyTo === 'number' && applyTo >= 0 && applyTo < base.length) {
+                        return base.map((x, i) => i === applyTo ? ({ ...x, ...filled }) : x);
+                      }
+
+                      // auto: aplicar en la fila "más vacía"; si todas tienen nombre, aplicar a la Persona 1.
+                      const emptyIdx = base.findIndex((x) => !(x?.name || '').trim());
+                      const targetIdx = emptyIdx >= 0 ? emptyIdx : 0;
+                      return base.map((x, i) => i === targetIdx ? ({ ...x, ...filled }) : x);
                     });
                   }}
                   title="Rellenar una fila con este perfil"
@@ -2088,6 +2134,109 @@ ${analysisText}
                   Usar perfil
                 </button>
               </div>
+
+              {editingProfileDraft && (
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-slate-900 font-semibold">Editar perfil</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="md-button md-button--secondary"
+                        disabled={isPreparingReportProfiles || isSavingEditedProfile || isDeletingProfile}
+                        onClick={async () => {
+                          try {
+                            setIsSavingEditedProfile(true);
+                            setReportSetupError(null);
+                            const d = editingProfileDraft;
+                            const name = (d?.name || '').trim();
+                            const birth_date = (d?.birth_date || '').trim();
+                            const birth_time = (d?.birth_time || '').trim();
+                            const birth_place = (d?.birth_place || '').trim();
+                            if (!name || !birth_date || !birth_time || !birth_place) {
+                              throw new Error('Completa Nombre/Fecha/Hora/Lugar antes de guardar.');
+                            }
+                            await api.upsertProfile({ profile_id: d.profile_id, name, birth_date, birth_time, birth_place });
+                            await loadSavedProfiles();
+                          } catch (e: any) {
+                            setReportSetupError(e?.message || 'Error guardando cambios del perfil');
+                          } finally {
+                            setIsSavingEditedProfile(false);
+                          }
+                        }}
+                        title="Guardar cambios"
+                      >
+                        {isSavingEditedProfile ? 'Guardando…' : 'Guardar cambios'}
+                      </button>
+                      <button
+                        type="button"
+                        className="md-button md-button--secondary"
+                        disabled={isPreparingReportProfiles || isSavingEditedProfile || isDeletingProfile}
+                        onClick={async () => {
+                          const ok = window.confirm('¿Eliminar este perfil?');
+                          if (!ok) return;
+                          try {
+                            setIsDeletingProfile(true);
+                            setReportSetupError(null);
+                            await api.deleteProfile(editingProfileDraft.profile_id);
+                            setSelectedSavedProfileId('');
+                            setEditingProfileDraft(null);
+                            await loadSavedProfiles();
+                          } catch (e: any) {
+                            setReportSetupError(e?.message || 'Error eliminando perfil');
+                          } finally {
+                            setIsDeletingProfile(false);
+                          }
+                        }}
+                        title="Eliminar perfil"
+                      >
+                        {isDeletingProfile ? 'Eliminando…' : 'Eliminar perfil'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre</label>
+                      <input
+                        className="md-input"
+                        value={editingProfileDraft.name}
+                        onChange={(e) => setEditingProfileDraft((prev) => prev ? ({ ...prev, name: e.target.value }) : prev)}
+                        disabled={isPreparingReportProfiles || isSavingEditedProfile || isDeletingProfile}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha</label>
+                      <input
+                        className="md-input"
+                        type="date"
+                        value={editingProfileDraft.birth_date}
+                        onChange={(e) => setEditingProfileDraft((prev) => prev ? ({ ...prev, birth_date: e.target.value }) : prev)}
+                        disabled={isPreparingReportProfiles || isSavingEditedProfile || isDeletingProfile}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Hora</label>
+                      <input
+                        className="md-input"
+                        type="time"
+                        value={editingProfileDraft.birth_time}
+                        onChange={(e) => setEditingProfileDraft((prev) => prev ? ({ ...prev, birth_time: e.target.value }) : prev)}
+                        disabled={isPreparingReportProfiles || isSavingEditedProfile || isDeletingProfile}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Lugar</label>
+                      <input
+                        className="md-input"
+                        value={editingProfileDraft.birth_place}
+                        onChange={(e) => setEditingProfileDraft((prev) => prev ? ({ ...prev, birth_place: e.target.value }) : prev)}
+                        disabled={isPreparingReportProfiles || isSavingEditedProfile || isDeletingProfile}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
