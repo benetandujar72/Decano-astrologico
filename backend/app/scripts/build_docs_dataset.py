@@ -145,6 +145,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--docs-path", required=True, help="Directorio con PDFs (local).")
     parser.add_argument("--version", required=True, help="Versionado lógico de docs (ej: atlas_v1).")
+    parser.add_argument("--topic", default="", help="Override topic para toda la ingesta (ej: adultos|infantil|profesional).")
     parser.add_argument("--db", default="fraktal", help="DB name in MongoDB Atlas.")
     parser.add_argument("--chunks-collection", default="documentation_chunks", help="Collection for chunks.")
     parser.add_argument("--sources-collection", default="documentation_sources", help="Collection for sources.")
@@ -167,8 +168,14 @@ def main() -> None:
     if not os.path.isdir(docs_path):
         raise SystemExit(f"Directorio no encontrado: {docs_path}")
 
-    pdfs = sorted([p for p in os.listdir(docs_path) if p.lower().endswith(".pdf")])
-    if not pdfs:
+    # Recorrer recursivo para soportar carpetas (ej: docs/adultos/*.pdf, docs/infantil/*.pdf)
+    pdf_paths: List[str] = []
+    for root, _, files in os.walk(docs_path):
+        for f in files:
+            if f.lower().endswith(".pdf"):
+                pdf_paths.append(os.path.join(root, f))
+    pdf_paths = sorted(pdf_paths)
+    if not pdf_paths:
         raise SystemExit(f"No se encontraron PDFs en {docs_path}")
 
     client = MongoClient(mongo_url, serverSelectionTimeoutMS=5000, connectTimeoutMS=10000)
@@ -225,11 +232,19 @@ def main() -> None:
         print(f"[OK] query_vectors: modules={len(qv_docs)} model={args.embed_model}")
 
     total_chunks = 0
-    for filename in pdfs:
-        path = os.path.join(docs_path, filename)
+    topic_override = (args.topic or "").lower().strip()
+    for path in pdf_paths:
+        filename = os.path.basename(path)
         sha = _sha256_file(path)
         doc_id = f"{os.path.splitext(filename)[0]}:{sha[:12]}"
-        topic = _infer_topic(filename)
+        # topic: override > folder > heurística filename
+        topic = topic_override
+        if not topic:
+            rel_dir = os.path.relpath(os.path.dirname(path), docs_path)
+            if rel_dir and rel_dir != ".":
+                topic = rel_dir.split(os.sep)[0].lower().strip()
+        if not topic:
+            topic = _infer_topic(filename)
         if topic not in DOC_TOPICS:
             topic = "general"
 
