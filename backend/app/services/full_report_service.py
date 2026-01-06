@@ -324,6 +324,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         docs_topic = routing.get("docs_topic")
         docs_topics = routing.get("docs_topics")
         prompt_type = routing.get("prompt_type")
+        strict_topic = bool(routing.get("strict_topic", True))
 
         # Evitar bloquear el event loop: get_context_for_module usa pymongo (sync).
         context = await asyncio.to_thread(
@@ -333,7 +334,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             docs_version=docs_version,
             docs_topic=docs_topic,
             docs_topics=docs_topics,
-            strict_topic=True,
+            strict_topic=strict_topic,
         )
         await _progress("context_fetch_done", {"context_chars": len(context)})
 

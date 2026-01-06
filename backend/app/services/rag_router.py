@@ -65,12 +65,17 @@ class RagRouter:
             rt = "individual"
 
         docs_version = os.getenv("DOCS_VERSION", "default")
+        # Por defecto:
+        # - individual/adultos: permitir relajación (si el dataset Atlas usa topics "legacy" como general/fundamentos, etc.)
+        # - demás tipos: aislamiento estricto
+        default_strict = rt not in {"individual", "adultos"}
         default = {
             "report_type": rt,
             "docs_version": docs_version,
             "docs_topic": "adultos",
             "docs_topics": ["adultos"],
             "prompt_type": "carutti",
+            "strict_topic": default_strict,
         }
 
         if self._col_mappings is None:
@@ -109,6 +114,7 @@ class RagRouter:
         out["docs_topics"] = norm_topics
         out["docs_topic"] = norm_topics[0] if norm_topics else "adultos"
         out["prompt_type"] = str(out.get("prompt_type") or "carutti").lower()
+        out["strict_topic"] = bool(out.get("strict_topic", default_strict))
 
         # Hard fallback: si no hay mappings en BD o context_map disponible en runtime,
         # evitamos que el sistema se quede en un topic genérico "adultos" que NO existe
@@ -125,7 +131,9 @@ class RagRouter:
         }
         try:
             topics = out.get("docs_topics")
-            if (not isinstance(topics, list)) or (not topics) or (topics == ["adultos"]):
+            # Solo aplicar este fallback si estamos en modo estricto; en modo no-estricto preferimos
+            # no forzar folders nuevos para no romper datasets legacy.
+            if bool(out.get("strict_topic")) and ((not isinstance(topics, list)) or (not topics) or (topics == ["adultos"])):
                 fallback = default_topics_by_rt.get(rt)
                 if fallback:
                     out["docs_topics"] = [str(t).replace("\\", "/").strip() for t in fallback]
