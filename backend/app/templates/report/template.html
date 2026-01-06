@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+</head>
+<body>
+  <header class="report-header" id="reportHeader">
+    <div class="header-left">
+      <div class="brand">{{ brand }}</div>
+      <div class="subtitle">{{ subtitle }}</div>
+    </div>
+    <div class="header-right">
+      <div class="user">{{ nombre }}</div>
+      <div class="meta">{{ fecha_local }} {{ hora_local }} · {{ zona_horaria }}</div>
+    </div>
+  </header>
+
+  <main class="report">
+    <section class="chapter">
+      <h1 class="h1">{{ title }}</h1>
+      <div class="muted">{{ generated_at }}</div>
+    </section>
+
+    <section class="chapter">
+      <h2 class="h2">{{ texts.personal_data_title }}</h2>
+      <div class="card">
+        <div class="grid2">
+          <div><span class="label">Fecha</span><div class="value">{{ fecha_local }}</div></div>
+          <div><span class="label">Hora</span><div class="value">{{ hora_local }}</div></div>
+          <div><span class="label">Latitud</span><div class="value">{{ latitud }}</div></div>
+          <div><span class="label">Longitud</span><div class="value">{{ longitud }}</div></div>
+          <div><span class="label">Zona horaria</span><div class="value">{{ zona_horaria }}</div></div>
+          <div><span class="label">UTC</span><div class="value">{{ fecha_utc }}</div></div>
+        </div>
+      </div>
+    </section>
+
+    {% if chart_image_data_uri %}
+    <section class="chapter">
+      <h2 class="h2">{{ texts.chart_title }}</h2>
+      <div class="center">
+        <img class="chart-image" src="{{ chart_image_data_uri }}" alt="Carta astral" />
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="chapter">
+      <h2 class="h2">{{ texts.planets_title }}</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Planeta</th>
+            <th>Posición</th>
+            <th>Casa</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in planetas %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.texto }}</td>
+            <td>Casa {{ p.casa }}</td>
+            <td>{% if p.retrogrado %}Retrógrado{% endif %}</td>
+          </tr>
+          {% endfor %}
+          {% if parte_fortuna %}
+          <tr>
+            <td>Parte de Fortuna</td>
+            <td>{{ parte_fortuna.texto }}</td>
+            <td>-</td>
+            <td>-</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="chapter">
+      <h2 class="h2">{{ texts.houses_title }}</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Casa</th>
+            <th>Cúspide</th>
+            <th>Etiqueta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in casas %}
+          <tr>
+            <td>Casa {{ c.numero }}</td>
+            <td>{{ c.texto }}</td>
+            <td>{{ c.etiqueta }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="chapter">
+      <h2 class="h2">{{ texts.analysis_title }}</h2>
+      <div class="analysis">
+        {# analysis_html ya viene sanitizado/convertido desde markdown básico #}
+        {{ analysis_html | safe }}
+      </div>
+    </section>
+  </main>
+
+  <footer class="report-footer" id="reportFooter">
+    <div class="muted">{{ footer_left }}</div>
+    <div class="muted">{{ footer_right }}</div>
+  </footer>
+</body>
+</html>
+
+

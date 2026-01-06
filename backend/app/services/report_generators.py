@@ -8,6 +8,7 @@ import json
 import re
 from datetime import datetime
 import base64
+import os
 
 # Generador de imágenes de carta astral
 try:
@@ -180,203 +181,119 @@ class ReportGenerator:
     # ===================== GENERADOR HTML =====================
     
     def generate_html(self) -> str:
-        """Genera informe en formato HTML con estilos"""
-        html = f"""<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carta Astral Completa</title>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-        }}
-        .container {{
-            background: white;
-            border-radius: 15px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }}
-        h1 {{
-            color: #667eea;
-            text-align: center;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }}
-        h2 {{
-            color: #764ba2;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-            margin-top: 30px;
-        }}
-        .data-section {{
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 5px solid #667eea;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }}
-        th, td {{
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }}
-        th {{
-            background: #667eea;
-            color: white;
-            font-weight: bold;
-        }}
-        tr:hover {{
-            background: #f5f5f5;
-        }}
-        .retrograde {{
-            color: #e74c3c;
-            font-weight: bold;
-        }}
-        .analysis {{
-            background: #fffef8;
-            padding: 25px;
-            border-radius: 10px;
-            border: 2px solid #ffd700;
-            margin: 20px 0;
-            line-height: 1.8;
-        }}
-        .footer {{
-            text-align: center;
-            color: #888;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-        }}
-        .highlight {{
-            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
-            padding: 2px 6px;
-            border-radius: 3px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🌟 Carta Astral Completa</h1>
-        
-        <div class="data-section">
-            <h2>📋 Datos Personales</h2>
-            <p><strong>Fecha:</strong> {self.fecha_local} {self.hora_local}</p>
-            <p><strong>Ubicación:</strong> Lat {self.datos.get('latitud', 0)}, Lon {self.datos.get('longitud', 0)}</p>
-            <p><strong>Zona Horaria:</strong> {self.zona_horaria}</p>
-            <p><strong>Fecha UTC:</strong> {self.fecha_utc}</p>
-        </div>
-        """
-        
-        # Añadir carta astral visual si está disponible
+        """Genera informe HTML usando plantillas editables (Jinja2)."""
+        return self._render_template_html()
+
+    def _render_template_html(self) -> str:
+        """Renderiza HTML usando `backend/app/templates/report/` (template.html + styles.css)."""
+        try:
+            from jinja2 import Environment, FileSystemLoader, select_autoescape
+        except Exception:
+            # Fallback: HTML simple (sin plantillas) basado en markdown
+            return f"<pre>{self.generate_markdown()}</pre>"
+
+        template_dir = os.getenv("REPORT_TEMPLATE_DIR") or os.path.join(os.path.dirname(__file__), "..", "templates", "report")
+        template_dir = os.path.abspath(template_dir)
+
+        env = Environment(
+            loader=FileSystemLoader(template_dir),
+            autoescape=select_autoescape(["html", "xml"]),
+        )
+        tpl = env.get_template("template.html")
+
+        # Textos editables (archivo opcional)
+        texts = {
+            "personal_data_title": "Datos Personales",
+            "chart_title": "Carta Astral",
+            "planets_title": "Posiciones Planetarias",
+            "houses_title": "Cúspides de Casas (Placidus)",
+            "analysis_title": "Análisis Psico-Astrológico",
+            "brand": "Motor Fraktal",
+            "subtitle": "Informe técnico de astropsicología",
+            "footer_left": "Informe generado por Motor Fraktal",
+            "footer_right": datetime.now().strftime("%d/%m/%Y"),
+            "title": "Informe Astrológico",
+        }
+        try:
+            texts_path = os.getenv("REPORT_TEXTS_PATH") or os.path.join(template_dir, "config_texts.json")
+            if os.path.exists(texts_path):
+                with open(texts_path, "r", encoding="utf-8") as f:
+                    texts.update(json.load(f) or {})
+        except Exception:
+            pass
+
+        planetas = []
+        for nombre, pos in (self.planetas or {}).items():
+            if not pos:
+                continue
+            planetas.append(
+                {
+                    "name": nombre,
+                    "texto": pos.get("texto", ""),
+                    "casa": pos.get("casa", "?"),
+                    "retrogrado": bool(pos.get("retrogrado", False)),
+                }
+            )
+
+        etiquetas_casas = {"1": "Ascendente (AC)", "4": "Fondo Cielo (IC)", "7": "Descendente (DC)", "10": "Medio Cielo (MC)"}
+        casas = []
+        for casa in (self.casas or []):
+            num = str(casa.get("numero"))
+            casas.append({"numero": num, "texto": casa.get("texto", ""), "etiqueta": etiquetas_casas.get(num, "-")})
+
+        pf = self.angulos.get("parte_fortuna", {}) if isinstance(self.angulos, dict) else {}
+
+        # Markdown -> HTML básico (párrafos + headers)
+        analysis_html = ""
+        try:
+            parts = (self.analysis or "").split("\n\n")
+            html_parts = []
+            for p in parts:
+                p = p.strip()
+                if not p:
+                    continue
+                if p.startswith("### "):
+                    html_parts.append(f"<h3>{self._format_inline(p[4:])}</h3>")
+                elif p.startswith("## "):
+                    html_parts.append(f"<h2>{self._format_inline(p[3:])}</h2>")
+                elif p.startswith("# "):
+                    html_parts.append(f"<h1>{self._format_inline(p[2:])}</h1>")
+                else:
+                    html_parts.append(f"<p>{self._format_inline(p)}</p>")
+            analysis_html = "\n".join(html_parts)
+        except Exception:
+            analysis_html = f"<p>{(self.analysis or '').replace(chr(10), '<br/>')}</p>"
+
+        chart_data_uri = None
         if self.chart_image:
             try:
                 self.chart_image.seek(0)
-                img_base64 = base64.b64encode(self.chart_image.read()).decode('utf-8')
-                html += f"""
-        <h2>🌟 Carta Astral Visual</h2>
-        <div style="text-align: center; margin: 30px 0;">
-            <img src="data:image/png;base64,{img_base64}" 
-                 alt="Carta Astral" 
-                 style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-        </div>
-        """
-            except Exception as e:
-                print(f"⚠️ Error añadiendo imagen al HTML: {e}")
-        
-        html += """
-        <h2>🪐 Posiciones Planetarias</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Planeta</th>
-                    <th>Posición</th>
-                    <th>Casa</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody>
-"""
-        
-        for nombre, pos in self.planetas.items():
-            if pos:
-                retro = '<span class="retrograde">⟲ Retrógrado</span>' if pos.get('retrogrado', False) else ''
-                casa = pos.get('casa', '?')
-                html += f"""
-                <tr>
-                    <td><strong>{nombre}</strong></td>
-                    <td>{pos['texto']}</td>
-                    <td>Casa {casa}</td>
-                    <td>{retro}</td>
-                </tr>
-"""
-        
-        # Parte de Fortuna
-        pf = self.angulos.get('parte_fortuna', {})
-        html += f"""
-                <tr>
-                    <td><strong>Parte de Fortuna</strong></td>
-                    <td>{pf.get('texto', 'N/A')}</td>
-                    <td>-</td>
-                    <td>-</td>
-                </tr>
-            </tbody>
-        </table>
-        
-        <h2>🔺 Ángulos Principales</h2>
-        <div class="data-section">
-            <p><strong>Ascendente:</strong> <span class="highlight">{self.angulos.get('ascendente', {}).get('texto', 'N/A')}</span></p>
-            <p><strong>Medio Cielo:</strong> <span class="highlight">{self.angulos.get('medio_cielo', {}).get('texto', 'N/A')}</span></p>
-        </div>
-        
-        <h2>🏠 Cúspides de Casas (Placidus)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Casa</th>
-                    <th>Cúspide</th>
-                </tr>
-            </thead>
-            <tbody>
-"""
-        
-        for casa in self.casas:
-            html += f"""
-                <tr>
-                    <td><strong>Casa {casa['numero']}</strong></td>
-                    <td>{casa['texto']}</td>
-                </tr>
-"""
-        
-        html += f"""
-            </tbody>
-        </table>
-        
-        <h2>📖 Análisis Psico-Astrológico</h2>
-        <div class="analysis">
-            {self.analysis.replace(chr(10), '<br>')}
-        </div>
-        
-        <div class="footer">
-            <p><em>Informe generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}</em></p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-        
-        return html
+                img_base64 = base64.b64encode(self.chart_image.read()).decode("utf-8")
+                chart_data_uri = f"data:image/png;base64,{img_base64}"
+            except Exception:
+                chart_data_uri = None
+
+        return tpl.render(
+            title=texts.get("title", "Informe Astrológico"),
+            brand=texts.get("brand", "Motor Fraktal"),
+            subtitle=texts.get("subtitle", ""),
+            nombre=self.nombre or (self.datos.get("nombre") if isinstance(self.datos, dict) else "") or "Consultante",
+            fecha_local=self.fecha_local,
+            hora_local=self.hora_local,
+            zona_horaria=self.zona_horaria,
+            fecha_utc=self.fecha_utc,
+            latitud=self.datos.get("latitud", ""),
+            longitud=self.datos.get("longitud", ""),
+            generated_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
+            footer_left=texts.get("footer_left", ""),
+            footer_right=texts.get("footer_right", ""),
+            planetas=planetas,
+            casas=casas,
+            parte_fortuna={"texto": pf.get("texto", "")} if pf else None,
+            analysis_html=analysis_html,
+            chart_image_data_uri=chart_data_uri,
+            texts=texts,
+        )
     
     # ===================== GENERADOR PDF =====================
     
@@ -503,6 +420,20 @@ class ReportGenerator:
             raise ImportError("ReportLab no está instalado. Instala con: pip install reportlab")
         
         try:
+            # Motor preferido: HTML + CSS (WeasyPrint) si está disponible
+            if (os.getenv("PDF_ENGINE") or "").lower().strip() in {"html", "weasyprint"}:
+                try:
+                    from weasyprint import HTML, CSS  # type: ignore
+                    template_dir = os.getenv("REPORT_TEMPLATE_DIR") or os.path.join(os.path.dirname(__file__), "..", "templates", "report")
+                    template_dir = os.path.abspath(template_dir)
+                    css_path = os.getenv("REPORT_STYLES_PATH") or os.path.join(template_dir, "styles.css")
+                    html_str = self._render_template_html()
+                    stylesheets = [CSS(filename=css_path)] if os.path.exists(css_path) else None
+                    pdf_bytes = HTML(string=html_str, base_url=template_dir).write_pdf(stylesheets=stylesheets)
+                    return BytesIO(pdf_bytes)
+                except Exception as e:
+                    print(f"⚠️ PDF_ENGINE=html falló, usando ReportLab: {type(e).__name__}: {e}", file=sys.stderr)
+
             buffer = BytesIO()
             doc = SimpleDocTemplate(buffer, pagesize=A4, 
                                     topMargin=0.75*inch, bottomMargin=0.75*inch)
