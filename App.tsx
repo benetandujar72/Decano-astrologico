@@ -1721,7 +1721,12 @@ ${analysisText}
             </div>
           </div>
           <div className="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center relative min-h-125">
-            <NatalChart positions={analysisResult.positions} lang={lang} />
+            <NatalChart
+              positions={analysisResult.positions}
+              lang={lang}
+              houses={cartaCompleta?.casas}
+              ascLongitude={cartaCompleta?.angulos?.ascendente?.longitud}
+            />
           </div>
         </div>
         <ControlPanel lang={lang} onTimeShift={handleTimeShift} onAction={handleToolbarAction} />
