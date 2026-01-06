@@ -201,19 +201,23 @@ class ReportGenerator:
         )
         tpl = env.get_template("template.html")
 
-        # Textos editables (archivo opcional)
-        texts = {
-            "personal_data_title": "Datos Personales",
-            "chart_title": "Carta Astral",
-            "planets_title": "Posiciones Planetarias",
-            "houses_title": "Cúspides de Casas (Placidus)",
-            "analysis_title": "Análisis Psico-Astrológico",
-            "brand": "Motor Fraktal",
-            "subtitle": "Informe técnico de astropsicología",
-            "footer_left": "Informe generado por Motor Fraktal",
-            "footer_right": datetime.now().strftime("%d/%m/%Y"),
-            "title": "Informe Astrológico",
-        }
+        # Textos editables (prefer DB si REPORT_TEXTS_MODE=db; fallback a archivo y defaults)
+        try:
+            from app.services.report_texts_service import load_report_texts
+            texts = load_report_texts()
+        except Exception:
+            texts = {
+                "personal_data_title": "Datos Personales",
+                "chart_title": "Carta Astral",
+                "planets_title": "Posiciones Planetarias",
+                "houses_title": "Cúspides de Casas (Placidus)",
+                "analysis_title": "Análisis Psico-Astrológico",
+                "brand": "Motor Fraktal",
+                "subtitle": "Informe técnico de astropsicología",
+                "footer_left": "Informe generado por Motor Fraktal",
+                "footer_right": datetime.now().strftime("%d/%m/%Y"),
+                "title": "Informe Astrológico",
+            }
         try:
             texts_path = os.getenv("REPORT_TEXTS_PATH") or os.path.join(template_dir, "config_texts.json")
             if os.path.exists(texts_path):
