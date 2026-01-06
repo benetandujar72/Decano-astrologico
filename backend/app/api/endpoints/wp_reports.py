@@ -29,6 +29,7 @@ client = AsyncIOMotorClient(MONGODB_URL, **mongodb_options)
 db = client.fraktal
 report_sessions_collection = db.report_generation_sessions
 users_collection = db.users
+orders_collection = db.wp_orders
 
 
 class WPStartReportRequest(BaseModel):
@@ -38,6 +39,15 @@ class WPStartReportRequest(BaseModel):
     carta_data: dict = Field(..., description="Carta completa (salida de /charts/generate)")
     nombre: str = Field(default="", description="Nombre consultante (para portada)")
     report_mode: str = Field(default="full", description="full|light")
+
+
+class WPOrderPaidRequest(BaseModel):
+    wp_user_id: str = Field(..., description="ID del usuario en WordPress")
+    order_id: str = Field(..., description="ID del pedido WooCommerce")
+    product_id: Optional[str] = Field(None, description="ID del producto comprado")
+    total: Optional[float] = Field(None, description="Total pagado")
+    currency: Optional[str] = Field(None, description="Moneda")
+    email: Optional[str] = Field(None, description="Email del comprador")
 
 
 def _safe_slug(s: str) -> str:
@@ -320,5 +330,36 @@ async def wp_download_pdf(
     filename = f"{_safe_slug(str(user_name))}_{_birth_stamp(carta_data)}.pdf"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
+
+
+@router.post("/woocommerce/order-paid")
+async def wp_woocommerce_order_paid(
+    payload: WPOrderPaidRequest,
+    auth: Dict[str, Any] = Depends(verify_wp_hmac),
+):
+    """
+    Llamado desde WordPress cuando un pedido WooCommerce se marca como completed.
+    Guarda un registro simple en Mongo para auditoría / futura lógica de entitlements.
+    """
+    header_wp_user_id = str(auth.get("wp_user_id"))
+    if str(payload.wp_user_id) != header_wp_user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="wp_user_id no coincide con header")
+
+    doc = {
+        "wp_user_id": header_wp_user_id,
+        "order_id": str(payload.order_id),
+        "product_id": str(payload.product_id or ""),
+        "total": payload.total,
+        "currency": payload.currency,
+        "email": payload.email,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    await orders_collection.update_one(
+        {"order_id": doc["order_id"]},
+        {"$set": doc},
+        upsert=True,
+    )
+    return {"ok": True, "order_id": doc["order_id"]}
 
 
