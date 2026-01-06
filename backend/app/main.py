@@ -12,6 +12,7 @@ from app.api.endpoints import (
     rag_admin,
     subscriptions,
     admin,
+    profiles,
     geolocation,
     expert_chat,
     professional_services,
@@ -25,6 +26,7 @@ router = APIRouter()
 # Incluir routers de endpoints
 router.include_router(auth.router, prefix="/auth", tags=["auth"])
 router.include_router(charts.router, prefix="/charts", tags=["charts"])
+router.include_router(profiles.router, prefix="/profiles", tags=["profiles"])
 router.include_router(config.router, prefix="/config", tags=["config"])
 router.include_router(ephemeris.router, prefix="/ephemeris", tags=["ephemeris"])
 router.include_router(geolocation.router, prefix="/geolocation", tags=["geolocation"])

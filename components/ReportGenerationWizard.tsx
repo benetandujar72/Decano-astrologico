@@ -11,6 +11,8 @@ import {
 interface ReportGenerationWizardProps {
   cartaData: any;
   nombre: string;
+  reportType?: string;
+  profiles?: any[];
   onComplete: (fullReport: string) => void;
   onClose: () => void;
   onSessionComplete?: (sessionId: string) => void; // Para flujo automático (cerrar wizard y delegar descarga)
@@ -55,6 +57,8 @@ interface GenerationStatus {
 const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   cartaData,
   nombre,
+  reportType = 'individual',
+  profiles,
   onComplete,
   onClose,
   onSessionComplete,
@@ -148,7 +152,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         body: JSON.stringify({
           carta_data: cartaData,
           nombre: nombre,
-          report_mode: "full"
+          report_mode: "full",
+          report_type: reportType,
+          profiles: Array.isArray(profiles) && profiles.length > 0 ? profiles : undefined
         })
       });
 
@@ -658,7 +664,9 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
             <Sparkles className="w-6 h-6 text-slate-700" />
             <div>
               <h2 className="text-2xl font-semibold text-slate-900">Generación de informe exhaustivo</h2>
-              <p className="text-slate-600 text-sm">Proceso paso a paso según CORE CARUTTI v5.3</p>
+              <p className="text-slate-600 text-sm">
+                Router: <span className="font-semibold text-slate-800">{String(reportType || 'individual')}</span>
+              </p>
             </div>
           </div>
           <button

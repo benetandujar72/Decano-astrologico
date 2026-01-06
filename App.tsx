@@ -132,6 +132,19 @@ const App: React.FC = () => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [showReportWizard, setShowReportWizard] = useState(false);
   const [generatedFullReport, setGeneratedFullReport] = useState<string | null>(null);
+  type ReportType = 'individual' | 'infantil' | 'pareja' | 'familiar' | 'equipo' | 'profesional';
+  type ProfileInput = { name: string; date: string; time: string; place: string };
+  const [reportType, setReportType] = useState<ReportType>('individual');
+  const [reportProfilesInput, setReportProfilesInput] = useState<ProfileInput[]>([]);
+  const [reportProfilesPrepared, setReportProfilesPrepared] = useState<any[] | undefined>(undefined);
+  const [isPreparingReportProfiles, setIsPreparingReportProfiles] = useState(false);
+  const [reportSetupError, setReportSetupError] = useState<string | null>(null);
+  const [savedProfiles, setSavedProfiles] = useState<Array<{ profile_id: string; name: string; birth_date: string; birth_time: string; birth_place: string }>>([]);
+  const [isLoadingSavedProfiles, setIsLoadingSavedProfiles] = useState(false);
+  const [savingProfileIdx, setSavingProfileIdx] = useState<number | null>(null);
+  const [selectedSavedProfileId, setSelectedSavedProfileId] = useState<string>('');
+
+  const geoCacheRef = useRef<Map<string, { lat: number; lon: number; timezone: string }>>(new Map());
   const [reportReadySessionId, setReportReadySessionId] = useState<string | null>(null);
   const [isDownloadingSessionPdf, setIsDownloadingSessionPdf] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -652,6 +665,10 @@ const App: React.FC = () => {
           lat = geocoded.lat;
           lon = geocoded.lon;
           timezone = geocoded.timezone;
+          try {
+            const key = (inputToUse.place || '').trim().toLowerCase();
+            if (key) geoCacheRef.current.set(key, { lat, lon, timezone });
+          } catch {}
           console.log(`✅ Geocodificado: Lat ${lat}, Lon ${lon}, TZ: ${timezone}`);
         } catch (error: any) {
           console.error('❌ Error geocodificando lugar:', error);
@@ -1078,10 +1095,121 @@ ${analysisText}
   };
 
   const downloadHTML = () => {
-    // Abrir wizard de generación paso a paso primero
-    setShowReportWizard(true);
+    // Abrir modal de configuración de informe (tipo + perfiles). El wizard se abre después.
     setGeneratedFullReport(null);
+    setReportSetupError(null);
+    const base = activeChartParams || userInput;
+    const initialProfiles: ProfileInput[] = [{
+      name: analysisResult?.metadata?.name || base.name || '',
+      date: base.date || '',
+      time: base.time || '',
+      place: base.place || ''
+    }];
+    setReportProfilesInput(initialProfiles);
+    setReportProfilesPrepared(undefined);
+    setReportType('individual');
+    setActiveModal('report_setup');
   };
+
+  const prepareReportProfiles = async () => {
+    setIsPreparingReportProfiles(true);
+    setReportSetupError(null);
+    try {
+      const token = getValidToken();
+      if (!token) throw new Error('Necesitas iniciar sesión para generar un informe.');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      const inputs = reportProfilesInput.filter((p) => (p?.name || '').trim() && (p?.date || '').trim() && (p?.time || '').trim() && (p?.place || '').trim());
+      if (inputs.length === 0) throw new Error('Añade al menos 1 persona con datos completos.');
+      if (reportType === 'pareja' && inputs.length < 2) throw new Error('Pareja requiere al menos 2 personas.');
+      if ((reportType === 'familiar' || reportType === 'equipo') && inputs.length < 2) throw new Error('Este tipo requiere al menos 2 personas.');
+
+      const prepared: any[] = [];
+      for (const p of inputs) {
+        // Resolver coords/tz (reutiliza utilidades del flujo principal)
+        let lat = 40.4168, lon = -3.7038, timezone = 'UTC';
+        if (esCoordenadas(p.place)) {
+          const parsed = parseLatLonFromPlace(p.place);
+          if (parsed) {
+            lat = parsed.lat;
+            lon = parsed.lon;
+            timezone = parsed.timezone || 'UTC';
+          }
+        } else {
+          const key = (p.place || '').trim().toLowerCase();
+          const cached = key ? geoCacheRef.current.get(key) : undefined;
+          if (cached) {
+            lat = cached.lat;
+            lon = cached.lon;
+            timezone = cached.timezone;
+          } else {
+            const geocoded = await geocodificarLugar(p.place);
+            lat = geocoded.lat;
+            lon = geocoded.lon;
+            timezone = geocoded.timezone;
+            if (key) geoCacheRef.current.set(key, { lat, lon, timezone });
+          }
+        }
+
+        const ephemerisResponse = await fetch(`${API_URL}/ephemeris/calculate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fecha: p.date,
+            hora: p.time,
+            latitud: lat,
+            longitud: lon,
+            zona_horaria: timezone
+          }),
+        });
+
+        if (!ephemerisResponse.ok) {
+          const err = await ephemerisResponse.json().catch(() => ({}));
+          throw new Error(err?.detail || `No se pudieron calcular efemérides para ${p.name}`);
+        }
+        const ephemerisData = await ephemerisResponse.json();
+        if (!ephemerisData?.data) throw new Error(`Respuesta inválida de efemérides para ${p.name}`);
+
+        prepared.push({
+          nombre: p.name,
+          carta_data: ephemerisData.data
+        });
+      }
+
+      setReportProfilesPrepared(prepared);
+      setActiveModal(null);
+      setShowReportWizard(true);
+    } catch (e: any) {
+      setReportSetupError(e?.message || 'Error preparando perfiles del informe');
+    } finally {
+      setIsPreparingReportProfiles(false);
+    }
+  };
+
+  const loadSavedProfiles = async () => {
+    setIsLoadingSavedProfiles(true);
+    try {
+      const profiles = await api.getMyProfiles();
+      setSavedProfiles(profiles || []);
+    } catch (e) {
+      // Silencioso: si backend aún no está desplegado, no romper UI
+      setSavedProfiles([]);
+    } finally {
+      setIsLoadingSavedProfiles(false);
+    }
+  };
+
+  // Cargar perfiles guardados cuando se abre el modal de configuración
+  useEffect(() => {
+    if (activeModal === 'report_setup') {
+      // Best-effort: no bloquear UI si falla
+      loadSavedProfiles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeModal]);
 
   const handleWizardComplete = (fullReport: string) => {
     setGeneratedFullReport(fullReport);
@@ -1890,6 +2018,289 @@ ${analysisText}
         </GenericModal>
 
         <GenericModal
+          isOpen={activeModal === 'report_setup'}
+          onClose={() => {
+            if (!isPreparingReportProfiles) {
+              setActiveModal(null);
+              setReportSetupError(null);
+            }
+          }}
+          title="Configurar informe"
+        >
+          <div className="space-y-5">
+            <div className="md-alert md-alert--info">
+              <p className="text-sm">
+                Selecciona el <span className="font-semibold">tipo de informe</span> y, si es sistémico (Pareja/Familiar/Equipo),
+                añade varias personas con datos distintos. El sistema calculará una carta para cada perfil.
+              </p>
+            </div>
+
+            <div className="md-card md-card--flat rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-slate-900 font-semibold">Mis perfiles</p>
+                  <p className="text-slate-600 text-xs">Reutiliza personas guardadas en tu cuenta.</p>
+                </div>
+                <button
+                  type="button"
+                  className="md-button md-button--secondary"
+                  onClick={loadSavedProfiles}
+                  disabled={isPreparingReportProfiles || isLoadingSavedProfiles}
+                  title="Recargar"
+                >
+                  {isLoadingSavedProfiles ? 'Cargando…' : 'Recargar'}
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Seleccionar perfil</label>
+                  <select
+                    className="md-input"
+                    value={selectedSavedProfileId}
+                    onChange={(e) => setSelectedSavedProfileId(e.target.value)}
+                    disabled={isPreparingReportProfiles || isLoadingSavedProfiles}
+                  >
+                    <option value="">{savedProfiles.length ? '— Elige un perfil —' : 'No hay perfiles guardados'}</option>
+                    {savedProfiles.map((p) => (
+                      <option key={p.profile_id} value={p.profile_id}>
+                        {p.name} — {p.birth_date} {p.birth_time} — {p.birth_place}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="md-button md-button--primary"
+                  disabled={!selectedSavedProfileId || isPreparingReportProfiles || isLoadingSavedProfiles}
+                  onClick={() => {
+                    const prof = savedProfiles.find((p) => p.profile_id === selectedSavedProfileId);
+                    if (!prof) return;
+                    setReportProfilesInput((prev) => {
+                      if (!prev || prev.length === 0) return [{ name: prof.name, date: prof.birth_date, time: prof.birth_time, place: prof.birth_place }];
+                      // aplicar en la fila "más vacía"; si todas tienen nombre, aplicar a la primera fila.
+                      const idx = prev.findIndex((x) => !(x?.name || '').trim());
+                      const targetIdx = idx >= 0 ? idx : 0;
+                      return prev.map((x, i) => i === targetIdx ? ({ ...x, name: prof.name, date: prof.birth_date, time: prof.birth_time, place: prof.birth_place }) : x);
+                    });
+                  }}
+                  title="Rellenar una fila con este perfil"
+                >
+                  Usar perfil
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Tipo de informe</label>
+                <select
+                  className="md-input"
+                  value={reportType}
+                  onChange={(e) => {
+                    const v = (e.target.value || 'individual') as any;
+                    setReportType(v);
+                    setReportSetupError(null);
+                    // Si cambia a individual/infantil/profesional, mantener solo 1 fila
+                    if (v === 'individual' || v === 'infantil' || v === 'profesional') {
+                      setReportProfilesInput((prev) => (prev && prev.length > 0 ? [prev[0]] : prev));
+                    } else {
+                      // Sistémico: asegurar mínimo 2 filas si solo había 1
+                      setReportProfilesInput((prev) => {
+                        const base = prev && prev.length > 0 ? prev : [];
+                        if (base.length >= 2) return base;
+                        const second = { name: '', date: '', time: '', place: '' };
+                        return base.length === 1 ? [base[0], second] : [second, second];
+                      });
+                    }
+                  }}
+                  disabled={isPreparingReportProfiles}
+                >
+                  <option value="individual">Individual (Adulto)</option>
+                  <option value="infantil">Infantil (Evolutivo)</option>
+                  <option value="pareja">Pareja (Sinastría)</option>
+                  <option value="familiar">Familiar</option>
+                  <option value="equipo">Equipo</option>
+                  <option value="profesional">Profesional (Clínico)</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  Esto controla qué documentación y prompt se usan (aislamiento RAG).
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Personas</label>
+                <p className="text-sm text-slate-600">
+                  {reportType === 'pareja' ? 'Mínimo 2 personas.' : null}
+                  {(reportType === 'familiar' || reportType === 'equipo') ? 'Mínimo 2 personas (puedes añadir más).' : null}
+                  {(reportType === 'individual' || reportType === 'infantil' || reportType === 'profesional') ? '1 persona.' : null}
+                </p>
+              </div>
+            </div>
+
+            <div className="md-card md-card--flat rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-slate-900 font-semibold">Datos por persona</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="md-button md-button--secondary"
+                    disabled={isPreparingReportProfiles || (reportType === 'individual' || reportType === 'infantil' || reportType === 'profesional')}
+                    onClick={() => {
+                      setReportProfilesInput((prev) => ([...(prev || []), { name: '', date: '', time: '', place: '' }]));
+                    }}
+                    title={(reportType === 'individual' || reportType === 'infantil' || reportType === 'profesional') ? 'Solo aplica a informes sistémicos' : 'Añadir persona'}
+                  >
+                    Añadir persona
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {reportProfilesInput.map((p, idx) => (
+                  <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-white">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <p className="text-slate-800 font-semibold text-sm">Persona {idx + 1}</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="md-button md-button--secondary"
+                          disabled={isPreparingReportProfiles || savingProfileIdx === idx}
+                          onClick={async () => {
+                            try {
+                              setSavingProfileIdx(idx);
+                              setReportSetupError(null);
+                              const name = (p?.name || '').trim();
+                              const birth_date = (p?.date || '').trim();
+                              const birth_time = (p?.time || '').trim();
+                              const birth_place = (p?.place || '').trim();
+                              if (!name || !birth_date || !birth_time || !birth_place) {
+                                throw new Error('Completa Nombre/Fecha/Hora/Lugar antes de guardar el perfil.');
+                              }
+                              await api.upsertProfile({ name, birth_date, birth_time, birth_place });
+                              await loadSavedProfiles();
+                            } catch (e: any) {
+                              setReportSetupError(e?.message || 'Error guardando perfil');
+                            } finally {
+                              setSavingProfileIdx(null);
+                            }
+                          }}
+                          title="Guardar esta persona en 'Mis perfiles'"
+                        >
+                          {savingProfileIdx === idx ? 'Guardando…' : 'Guardar perfil'}
+                        </button>
+                        <button
+                          type="button"
+                          className="md-button md-button--secondary"
+                          disabled={isPreparingReportProfiles || reportProfilesInput.length <= 1 || (idx === 0 && (reportType === 'individual' || reportType === 'infantil' || reportType === 'profesional'))}
+                          onClick={() => {
+                            setReportProfilesInput((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          title="Eliminar persona"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre</label>
+                        <input
+                          className="md-input"
+                          value={p.name}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReportProfilesInput((prev) => prev.map((x, i) => (i === idx ? { ...x, name: v } : x)));
+                          }}
+                          placeholder="Nombre"
+                          disabled={isPreparingReportProfiles}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha</label>
+                        <input
+                          className="md-input"
+                          type="date"
+                          value={p.date}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReportProfilesInput((prev) => prev.map((x, i) => (i === idx ? { ...x, date: v } : x)));
+                          }}
+                          disabled={isPreparingReportProfiles}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Hora</label>
+                        <input
+                          className="md-input"
+                          type="time"
+                          value={p.time}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReportProfilesInput((prev) => prev.map((x, i) => (i === idx ? { ...x, time: v } : x)));
+                          }}
+                          disabled={isPreparingReportProfiles}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Lugar</label>
+                        <input
+                          className="md-input"
+                          value={p.place}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReportProfilesInput((prev) => prev.map((x, i) => (i === idx ? { ...x, place: v } : x)));
+                          }}
+                          placeholder="Ej: Morón de la Frontera o 37.12, -5.45"
+                          disabled={isPreparingReportProfiles}
+                        />
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Puedes usar texto o coordenadas. Se geocodifica y se calcula la zona horaria.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {reportSetupError && (
+              <div className="md-alert md-alert--error">
+                {reportSetupError}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3 justify-end">
+              <button
+                type="button"
+                className="md-button md-button--secondary"
+                onClick={() => setActiveModal(null)}
+                disabled={isPreparingReportProfiles}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="md-button md-button--primary"
+                onClick={async () => {
+                  // Individual/Infantil/Profesional: no necesitamos profiles[]; usamos cartaCompleta actual
+                  if (reportType === 'individual' || reportType === 'infantil' || reportType === 'profesional') {
+                    setReportProfilesPrepared(undefined);
+                    setActiveModal(null);
+                    setShowReportWizard(true);
+                    return;
+                  }
+                  // Sistémicos: preparar perfiles con carta_data por persona y abrir wizard
+                  await prepareReportProfiles();
+                }}
+                disabled={isPreparingReportProfiles}
+              >
+                {isPreparingReportProfiles ? 'Preparando…' : 'Continuar'}
+              </button>
+            </div>
+          </div>
+        </GenericModal>
+
+        <GenericModal
           isOpen={activeModal === 'report_ready'}
           onClose={() => { setActiveModal(null); setReportReadySessionId(null); }}
           title="Informe listo"
@@ -1935,8 +2346,14 @@ ${analysisText}
         {/* Wizard de Generación Paso a Paso */}
         {showReportWizard && analysisResult && (
           <ReportGenerationWizard
-            cartaData={cartaCompleta}
-            nombre={analysisResult.metadata.name}
+            cartaData={(reportProfilesPrepared && reportProfilesPrepared[0]?.carta_data) ? reportProfilesPrepared[0].carta_data : cartaCompleta}
+            nombre={
+              (reportProfilesPrepared && reportProfilesPrepared.length > 1)
+                ? reportProfilesPrepared.map((p: any) => p?.nombre || p?.name || '').filter(Boolean).join(' + ')
+                : analysisResult.metadata.name
+            }
+            reportType={reportType}
+            profiles={reportProfilesPrepared}
             onComplete={handleWizardComplete}
             onClose={() => {
               setShowReportWizard(false);

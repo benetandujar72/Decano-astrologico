@@ -89,7 +89,7 @@ class StartReportGenerationRequest(BaseModel):
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
-    report_type: str = Field(default="individual", description="Tipo de informe: individual | pareja | familiar | equipo")
+    report_type: str = Field(default="individual", description="Tipo de informe: individual | infantil | pareja | familiar | equipo | profesional")
     profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
 
 class QueueFullReportRequest(BaseModel):
@@ -97,7 +97,7 @@ class QueueFullReportRequest(BaseModel):
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
-    report_type: str = Field(default="individual", description="Tipo de informe: individual | pareja | familiar | equipo")
+    report_type: str = Field(default="individual", description="Tipo de informe: individual | infantil | pareja | familiar | equipo | profesional")
     profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
 
 
@@ -585,8 +585,11 @@ async def start_report_generation(
     if report_mode not in {"full", "light"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
     report_type = (request.report_type or "individual").lower().strip()
-    if report_type not in {"individual", "pareja", "familiar", "equipo"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_type no válido. Usa: individual | pareja | familiar | equipo")
+    if report_type not in {"individual", "adultos", "infantil", "pareja", "familiar", "equipo", "profesional"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="report_type no válido. Usa: individual | infantil | pareja | familiar | equipo | profesional",
+        )
     
     # Obtener lista de módulos
     sections = full_report_service._get_sections_definition(report_mode=report_mode)
@@ -662,8 +665,11 @@ async def queue_full_report(
     if report_mode not in {"full", "light"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
     report_type = (request.report_type or "individual").lower().strip()
-    if report_type not in {"individual", "pareja", "familiar", "equipo"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_type no válido. Usa: individual | pareja | familiar | equipo")
+    if report_type not in {"individual", "adultos", "infantil", "pareja", "familiar", "equipo", "profesional"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="report_type no válido. Usa: individual | infantil | pareja | familiar | equipo | profesional",
+        )
 
     profiles = request.profiles if isinstance(request.profiles, list) and request.profiles else None
     multi_facts = None

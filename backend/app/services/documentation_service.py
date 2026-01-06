@@ -1,5 +1,6 @@
 
 import os
+import re
 import glob
 import hashlib
 from datetime import datetime
@@ -405,8 +406,21 @@ class DocumentationService:
             try:
                 # Primero intentar por topic+version. En strict_topic NO relajar a version-only.
                 proj = {"_id": 0, "text": 1, "source_file": 1, "doc_id": 1, "page_start": 1, "page_end": 1, "topic": 1}
-                topic_filter = {"$in": topics} if len(topics) > 1 else topic
-                chunks = list(self._col_chunks.find({"version": version, "topic": topic_filter}, proj).limit(10))
+                # Importante: los topics suelen estar guardados como subfolders (ej: "01_individual_adulto/natal_base").
+                # En fallback directo (sin vector), permitimos match por prefijo.
+                if len(topics) > 1:
+                    or_filters: List[Dict[str, Any]] = [{"topic": {"$in": topics}}]
+                    for t in topics:
+                        if not isinstance(t, str) or not t:
+                            continue
+                        rx = f"^{re.escape(t)}/"
+                        or_filters.append({"topic": {"$regex": rx}})
+                    topic_q: Dict[str, Any] = {"$or": or_filters}
+                else:
+                    rx = f"^{re.escape(topic)}/"
+                    topic_q = {"$or": [{"topic": topic}, {"topic": {"$regex": rx}}]}
+
+                chunks = list(self._col_chunks.find({"version": version, **topic_q}, proj).limit(10))
                 if (not chunks) and (not strict_topic):
                     chunks = list(self._col_chunks.find({"version": version}, proj).limit(10))
                 if chunks:

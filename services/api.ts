@@ -224,5 +224,33 @@ export const api = {
     });
     if (!res.ok) throw new Error('Error enviando mensaje');
     return res.json();
-  }
+  },
+
+  // PROFILES (saved persons for systemic reports)
+  getMyProfiles: async (): Promise<Array<{ profile_id: string; name: string; birth_date: string; birth_time: string; birth_place: string }>> => {
+    const res = await fetch(`${API_URL}/profiles/my`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Error obteniendo perfiles');
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data?.profiles) ? data.profiles : [];
+  },
+
+  upsertProfile: async (profile: { profile_id?: string; name: string; birth_date: string; birth_time: string; birth_place: string }): Promise<{ profile: any }> => {
+    const res = await fetch(`${API_URL}/profiles/`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(profile)
+    });
+    if (!res.ok) throw new Error('Error guardando perfil');
+    return res.json();
+  },
+
+  deleteProfile: async (profileId: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/profiles/${profileId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Error eliminando perfil');
+  },
 };

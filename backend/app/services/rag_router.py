@@ -109,6 +109,29 @@ class RagRouter:
         out["docs_topics"] = norm_topics
         out["docs_topic"] = norm_topics[0] if norm_topics else "adultos"
         out["prompt_type"] = str(out.get("prompt_type") or "carutti").lower()
+
+        # Hard fallback: si no hay mappings en BD o context_map disponible en runtime,
+        # evitamos que el sistema se quede en un topic genérico "adultos" que NO existe
+        # en la taxonomía real del knowledge base (carpetas).
+        # Esto es crítico cuando strict_topic=True (no hay relajación).
+        default_topics_by_rt: Dict[str, List[str]] = {
+            "individual": ["00_core_astrologia", "01_individual_adulto"],
+            "adultos": ["00_core_astrologia", "01_individual_adulto"],
+            "infantil": ["00_core_astrologia", "02_infantil_neurodesarrollo"],
+            "pareja": ["00_core_astrologia", "03_sistemico_relacional/sinastria_pareja"],
+            "familiar": ["00_core_astrologia", "03_sistemico_relacional/constelacion_familiar"],
+            "equipo": ["00_core_astrologia", "03_sistemico_relacional/equipos_trabajo"],
+            "profesional": ["00_core_astrologia", "04_clinico_terapeutas"],
+        }
+        try:
+            topics = out.get("docs_topics")
+            if (not isinstance(topics, list)) or (not topics) or (topics == ["adultos"]):
+                fallback = default_topics_by_rt.get(rt)
+                if fallback:
+                    out["docs_topics"] = [str(t).replace("\\", "/").strip() for t in fallback]
+                    out["docs_topic"] = out["docs_topics"][0]
+        except Exception:
+            pass
         return out
 
     @staticmethod

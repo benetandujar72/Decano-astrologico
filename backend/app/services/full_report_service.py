@@ -212,6 +212,14 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         """
         Devuelve un subconjunto de facts relevante por módulo para recortar tokens.
         """
+        # Multi-input: si vienen profiles[] ya pre-compactados desde el endpoint (chart_facts={"report_type":..,"profiles":[{name,facts},...]}),
+        # NO debemos "podar" los facts porque perderíamos personas. Devolvemos el paquete completo y dejamos el recorte al límite de chars.
+        try:
+            if isinstance(chart_facts, dict) and isinstance(chart_facts.get("profiles"), list) and chart_facts.get("profiles"):
+                return chart_facts
+        except Exception:
+            pass
+
         datos = chart_facts.get("datos_entrada", {})
         planetas = chart_facts.get("planetas", {}) or {}
         casas = chart_facts.get("casas", []) or []
