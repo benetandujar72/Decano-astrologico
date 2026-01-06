@@ -10,6 +10,7 @@ from app.api.endpoints import (
     ephemeris,
     reports,
     rag_admin,
+    wp_reports,
     subscriptions,
     admin,
     profiles,
@@ -31,6 +32,7 @@ router.include_router(config.router, prefix="/config", tags=["config"])
 router.include_router(ephemeris.router, prefix="/ephemeris", tags=["ephemeris"])
 router.include_router(geolocation.router, prefix="/geolocation", tags=["geolocation"])
 router.include_router(reports.router, prefix="/reports", tags=["reports"])
+router.include_router(wp_reports.router, prefix="/wp", tags=["wp"])
 router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 router.include_router(admin.router, prefix="/admin", tags=["admin"])
 router.include_router(rag_admin.router, prefix="/admin", tags=["admin-rag"])
