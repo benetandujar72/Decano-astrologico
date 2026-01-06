@@ -54,7 +54,7 @@ import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualizac
 import LandingPage from './components/LandingPage';
 import { calculateChartData } from './astrologyEngine';
 import { api } from './services/api';
-import './styles/mystic-theme.css'; // 🆕 Estilos místicos
+import './styles/mystic-theme.css'; // Estilos base (SaaS/Clínico)
 import './components/PlanetaryOrbit.css'; // 🆕 Animaciones 
 
 // Symbol Dictionaries for Legend
