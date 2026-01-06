@@ -14,6 +14,7 @@ import argparse
 import glob
 import hashlib
 import os
+import re
 import multiprocessing as mp
 from datetime import datetime
 from typing import Dict, List, Tuple, Any, Optional
@@ -173,6 +174,8 @@ def run_ingest(
     max_files: Optional[int] = None,
     timeout_s: int = 120,
     continue_on_error: bool = True,
+    recursive: bool = True,
+    topic_override: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Ejecuta la ingesta programáticamente (usable desde endpoints admin sin Shell).
@@ -189,7 +192,16 @@ def run_ingest(
     col_module_contexts = db.documentation_module_contexts
     col_jobs = db.documentation_ingest_jobs
 
-    pdf_files = sorted(glob.glob(os.path.join(docs_path, "*.pdf")))
+    # Descubrir PDFs (recursivo para soportar knowledge base por carpetas)
+    pdf_files: List[str] = []
+    if bool(recursive):
+        for root, _, files in os.walk(docs_path):
+            for f in files:
+                if f.lower().endswith(".pdf"):
+                    pdf_files.append(os.path.join(root, f))
+    else:
+        pdf_files = glob.glob(os.path.join(docs_path, "*.pdf"))
+    pdf_files = sorted(pdf_files)
     if not pdf_files:
         raise RuntimeError(f"No se encontraron PDFs en {docs_path}")
 
@@ -249,6 +261,15 @@ def run_ingest(
             }
         )
         file_hash = sha256_file(path)
+        doc_id = f"{os.path.splitext(filename)[0]}:{file_hash[:12]}"
+        # topic por carpeta relativa (ej: 00_core_astrologia, 04_clinico_terapeutas/mecanismos_defensa)
+        topic = (topic_override or "").strip().lower()
+        if not topic:
+            rel_dir = os.path.relpath(os.path.dirname(path), docs_path)
+            if rel_dir and rel_dir != ".":
+                topic = rel_dir.replace(os.sep, "/").lower().strip()
+        if not topic:
+            topic = "general"
         try:
             text, pages = extract_text_from_pdf_with_timeout(path, timeout_s=timeout_s)
         except Exception as e:
@@ -270,28 +291,39 @@ def run_ingest(
 
         now = datetime.utcnow().isoformat()
         src_doc = {
-            "filename": filename,
+            "version": version,
+            "doc_id": doc_id,
+            "source_file": filename,
+            "filename": filename,  # compat
             "sha256": file_hash,
-            "extracted_text": text,
-            "pages": pages,
+            "page_count": pages,
+            "topic": topic,
+            "extracted_text": text,  # legacy (si quieres copyright-safe, usa build_docs_dataset --copyright-safe)
             "extracted_at": now,
             "version": version,
         }
-        col_sources.update_one({"filename": filename, "version": version}, {"$set": src_doc}, upsert=True)
+        col_sources.update_one({"doc_id": doc_id, "version": version}, {"$set": src_doc}, upsert=True)
 
-        col_chunks.delete_many({"filename": filename, "version": version})
+        col_chunks.delete_many({"doc_id": doc_id, "version": version})
         chunks = chunk_text(text, chunk_size=chunk_size, overlap=overlap)
         if chunks:
             bulk = []
             for i, ch in enumerate(chunks):
                 bulk.append(
                     {
-                        "filename": filename,
+                        "version": version,
+                        "doc_id": doc_id,
+                        "source_file": filename,
+                        "title": os.path.splitext(filename)[0],
+                        "topic": topic,
+                        "page_start": 1,
+                        "page_end": int(pages or 0) or 1,
+                        "filename": filename,  # compat
                         "chunk_id": i,
                         "text": ch,
                         "len": len(ch),
-                        "version": version,
                         "created_at": now,
+                        "ingested_at": now,
                     }
                 )
             col_chunks.insert_many(bulk)
@@ -361,6 +393,8 @@ def main() -> None:
     parser.add_argument("--version", default=None, help="Versión de docs (default: DOCS_VERSION o hash combinado)")
     parser.add_argument("--chunk-size", type=int, default=1400)
     parser.add_argument("--overlap", type=int, default=250)
+    parser.add_argument("--no-recursive", action="store_true", help="No recorrer subcarpetas (por defecto es recursivo).")
+    parser.add_argument("--topic", default=None, help="Override de topic para toda la ingesta (opcional).")
     args = parser.parse_args()
 
     mongo_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI")
@@ -390,7 +424,16 @@ def main() -> None:
             candidate_2 = os.path.join(os.path.dirname(app_dir), "documentacion")  # repo root/documentacion (dev)
             docs_path = candidate_1 if os.path.exists(candidate_1) else candidate_2
 
-    pdf_files = sorted(glob.glob(os.path.join(docs_path, "*.pdf")))
+    # Preview/validación rápida (solo a nivel CLI)
+    pdf_files: List[str] = []
+    if not args.no_recursive:
+        for root, _, files in os.walk(docs_path):
+            for f in files:
+                if f.lower().endswith(".pdf"):
+                    pdf_files.append(os.path.join(root, f))
+    else:
+        pdf_files = glob.glob(os.path.join(docs_path, "*.pdf"))
+    pdf_files = sorted(pdf_files)
     if not pdf_files:
         raise SystemExit(f"No se encontraron PDFs en {docs_path}")
 
@@ -410,6 +453,8 @@ def main() -> None:
         version=version,
         chunk_size=args.chunk_size,
         overlap=args.overlap,
+        recursive=(not args.no_recursive),
+        topic_override=args.topic,
     )
 
     print("[INGEST] ✅ Terminado.")
