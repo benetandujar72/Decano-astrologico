@@ -666,24 +666,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
   ];
 
   return (
-    <div className="min-h-screen py-8 px-4">
+    <div className="min-h-screen py-8 px-4 bg-slate-50 text-slate-900">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <button
               onClick={onBack}
-              className="text-gray-400 hover:text-white mb-4 transition-colors flex items-center gap-2"
+              className="text-slate-600 hover:text-slate-900 mb-4 transition-colors flex items-center gap-2"
             >
               <ArrowLeft size={20} />
               Volver
             </button>
-            <h1 className="text-4xl font-bold mystic-text-gradient mb-2">
+            <h1 className="text-3xl md:text-4xl font-semibold mb-2">
               Panel de Administración
             </h1>
-            <p className="text-gray-400">Gestión completa del sistema Fraktal</p>
+            <p className="text-slate-600">Gestión y observabilidad del sistema</p>
           </div>
-          <div className="mystic-badge">
+          <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-semibold tracking-wide">
             ADMIN
           </div>
         </div>
@@ -699,8 +699,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 className={`
                   flex items-center px-6 py-3 rounded-lg whitespace-nowrap transition-all
                   ${activeTab === tab.id
-                    ? 'mystic-button text-white'
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                   }
                 `}
               >
@@ -712,59 +712,59 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
         </div>
 
         {/* Content */}
-        <div className="mystic-card p-8">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Estadísticas Generales</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-6">Estadísticas Generales</h2>
               
               {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Total Usuarios */}
-                  <div className="bg-linear-to-br from-indigo-500/20 to-purple-600/20 rounded-xl p-6 border border-indigo-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <Users className="w-8 h-8 text-indigo-400" />
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <Users className="w-8 h-8 text-slate-700" />
+                      <TrendingUp className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       {stats.total_users}
                     </div>
-                    <div className="text-gray-400 text-sm">Total Usuarios</div>
+                    <div className="text-slate-600 text-sm">Total Usuarios</div>
                   </div>
 
                   {/* Suscripciones Activas */}
-                  <div className="bg-linear-to-br from-yellow-500/20 to-orange-600/20 rounded-xl p-6 border border-yellow-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <Crown className="w-8 h-8 text-yellow-400" />
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <Crown className="w-8 h-8 text-slate-700" />
+                      <TrendingUp className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       {stats.active_subscriptions}
                     </div>
-                    <div className="text-gray-400 text-sm">Suscripciones Activas</div>
+                    <div className="text-slate-600 text-sm">Suscripciones Activas</div>
                   </div>
 
                   {/* Total Cartas */}
-                  <div className="bg-linear-to-br from-emerald-500/20 to-teal-600/20 rounded-xl p-6 border border-emerald-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <FileText className="w-8 h-8 text-emerald-400" />
-                      <Activity className="w-5 h-5 text-emerald-400" />
+                      <FileText className="w-8 h-8 text-slate-700" />
+                      <Activity className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       {stats.total_charts}
                     </div>
-                    <div className="text-gray-400 text-sm">Cartas Generadas</div>
+                    <div className="text-slate-600 text-sm">Cartas Generadas</div>
                   </div>
 
                   {/* Ingresos Mensuales */}
-                  <div className="bg-linear-to-br from-green-500/20 to-emerald-600/20 rounded-xl p-6 border border-green-500/30">
+                  <div className="rounded-xl p-6 border border-slate-200 bg-white">
                     <div className="flex items-center justify-between mb-4">
-                      <DollarSign className="w-8 h-8 text-green-400" />
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <DollarSign className="w-8 h-8 text-slate-700" />
+                      <TrendingUp className="w-5 h-5 text-slate-400" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-1">
+                    <div className="text-3xl font-semibold text-slate-900 mb-1">
                       €{stats.monthly_revenue.toFixed(2)}
                     </div>
-                    <div className="text-gray-400 text-sm">Ingresos del Mes</div>
+                    <div className="text-slate-600 text-sm">Ingresos del Mes</div>
                   </div>
                 </div>
               )}
@@ -774,8 +774,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
           {activeTab === 'admin-plans' && (
             <div className="space-y-6">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white mb-2">Mi Plan de Administrador</h2>
-                <p className="text-gray-400">Como administrador, tienes acceso a todos los planes sin necesidad de pagar</p>
+                <h2 className="text-2xl font-semibold text-slate-900 mb-2">Mi Plan de Administrador</h2>
+                <p className="text-slate-600">Como administrador, tienes acceso a todos los planes sin necesidad de pagar</p>
               </div>
 
               {adminPlanMessage && (
