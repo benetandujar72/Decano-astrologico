@@ -887,10 +887,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
               </div>
 
               {adminPlanMessage && (
-                <div className={`p-4 rounded-lg mb-4 border ${
+                <div className={`md-alert mb-4 ${
                   adminPlanMessage.type === 'success'
-                    ? 'bg-green-500/20 border-green-500/30 text-green-400'
-                    : 'bg-red-500/20 border-red-500/30 text-red-400'
+                    ? 'md-alert--success'
+                    : 'md-alert--error'
                 }`}>
                   {adminPlanMessage.text}
                 </div>
@@ -898,24 +898,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* PRO Plan */}
-                <div className="bg-linear-to-br from-blue-600/20 to-blue-900/20 rounded-xl p-8 border border-blue-500/30 hover:border-blue-400/50 transition-all">
+                <div className="md-card rounded-xl p-8 hover:shadow-sm transition-all">
                   <div className="mb-6">
-                    <div className="text-blue-400 font-bold mb-2 text-sm">PLAN PRO</div>
-                    <div className="text-white text-3xl font-bold">Gratis</div>
-                    <p className="text-gray-400 text-sm mt-2">Para administrador</p>
+                    <div className="text-blue-700 font-bold mb-2 text-sm">PLAN PRO</div>
+                    <div className="text-slate-900 text-3xl font-semibold">Gratis</div>
+                    <p className="text-slate-600 text-sm mt-2">Para administrador</p>
                   </div>
 
                   <ul className="space-y-3 mb-8">
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Cartas ilimitadas</span>
                     </li>
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Exportar PDF</span>
                     </li>
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Técnicas avanzadas</span>
                     </li>
                   </ul>
@@ -925,10 +925,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     disabled={adminPlanLoading || selectedAdminPlan === 'pro'}
                     className={`w-full py-3 rounded-lg font-bold transition-all ${
                       selectedAdminPlan === 'pro'
-                        ? 'bg-green-500/30 text-green-400 border border-green-500/50 cursor-default'
+                        ? 'bg-green-50 text-green-800 border border-green-200 cursor-default'
                         : adminPlanLoading
-                        ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-500/30 text-blue-400 border border-blue-500/50 hover:bg-blue-500/40'
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
                     {selectedAdminPlan === 'pro' ? '✓ Activo' : 'Activar Plan'}
@@ -936,28 +936,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 </div>
 
                 {/* PREMIUM Plan */}
-                <div className="bg-linear-to-br from-purple-600/20 to-purple-900/20 rounded-xl p-8 border border-purple-500/30 hover:border-purple-400/50 transition-all relative">
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500/80 text-black px-3 py-1 rounded-full text-xs font-bold">
-                    ⭐ RECOMENDADO
+                <div className="md-card rounded-xl p-8 hover:shadow-sm transition-all relative">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
+                    Recomendado
                   </div>
 
                   <div className="mb-6 mt-2">
-                    <div className="text-purple-400 font-bold mb-2 text-sm">PLAN PREMIUM</div>
-                    <div className="text-white text-3xl font-bold">Gratis</div>
-                    <p className="text-gray-400 text-sm mt-2">Para administrador</p>
+                    <div className="text-violet-700 font-bold mb-2 text-sm">PLAN PREMIUM</div>
+                    <div className="text-slate-900 text-3xl font-semibold">Gratis</div>
+                    <p className="text-slate-600 text-sm mt-2">Para administrador</p>
                   </div>
 
                   <ul className="space-y-3 mb-8">
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Todo del Pro</span>
                     </li>
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Sinastría + Compuesta</span>
                     </li>
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Análisis psicológico</span>
                     </li>
                   </ul>
@@ -967,10 +967,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     disabled={adminPlanLoading || selectedAdminPlan === 'premium'}
                     className={`w-full py-3 rounded-lg font-bold transition-all ${
                       selectedAdminPlan === 'premium'
-                        ? 'bg-green-500/30 text-green-400 border border-green-500/50 cursor-default'
+                        ? 'bg-green-50 text-green-800 border border-green-200 cursor-default'
                         : adminPlanLoading
-                        ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
-                        : 'bg-purple-500/30 text-purple-400 border border-purple-500/50 hover:bg-purple-500/40'
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
                     {selectedAdminPlan === 'premium' ? '✓ Activo' : 'Activar Plan'}
@@ -978,24 +978,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 </div>
 
                 {/* ENTERPRISE Plan */}
-                <div className="bg-linear-to-br from-yellow-600/20 to-orange-900/20 rounded-xl p-8 border border-yellow-500/30 hover:border-yellow-400/50 transition-all">
+                <div className="md-card rounded-xl p-8 hover:shadow-sm transition-all">
                   <div className="mb-6">
-                    <div className="text-yellow-400 font-bold mb-2 text-sm">PLAN ENTERPRISE</div>
-                    <div className="text-white text-3xl font-bold">Gratis</div>
-                    <p className="text-gray-400 text-sm mt-2">Para administrador</p>
+                    <div className="text-amber-800 font-bold mb-2 text-sm">PLAN ENTERPRISE</div>
+                    <div className="text-slate-900 text-3xl font-semibold">Gratis</div>
+                    <p className="text-slate-600 text-sm mt-2">Para administrador</p>
                   </div>
 
                   <ul className="space-y-3 mb-8">
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Todo de Premium</span>
                     </li>
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Predicciones avanzadas</span>
                     </li>
-                    <li className="flex items-center text-gray-300">
-                      <Check className="w-5 h-5 text-green-400 mr-3 shrink-0" />
+                    <li className="flex items-center text-slate-700">
+                      <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
                       <span>Análisis vocacional</span>
                     </li>
                   </ul>
@@ -1005,10 +1005,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     disabled={adminPlanLoading || selectedAdminPlan === 'enterprise'}
                     className={`w-full py-3 rounded-lg font-bold transition-all ${
                       selectedAdminPlan === 'enterprise'
-                        ? 'bg-green-500/30 text-green-400 border border-green-500/50 cursor-default'
+                        ? 'bg-green-50 text-green-800 border border-green-200 cursor-default'
                         : adminPlanLoading
-                        ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
-                        : 'bg-yellow-500/30 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/40'
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
                     {selectedAdminPlan === 'enterprise' ? '✓ Activo' : 'Activar Plan'}
@@ -1016,15 +1016,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                 </div>
               </div>
 
-              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-6">
+              <div className="md-alert md-alert--warning">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" />
+                  <AlertCircle className="w-5 h-5 text-amber-800 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-indigo-400 font-semibold mb-1">💡 Nota importante</p>
-                    <p className="text-gray-300 text-sm">
+                    <p className="text-amber-900 font-semibold mb-1">Nota</p>
+                    <p className="text-amber-900/80 text-sm">
                       Como administrador, tienes acceso a todos los planes de forma gratuita. Esto te permite:
                     </p>
-                    <ul className="mt-3 space-y-1 text-gray-300 text-sm ml-4">
+                    <ul className="mt-3 space-y-1 text-amber-900/80 text-sm ml-4 list-disc">
                       <li>✓ Generar cartas astrologicas ilimitadas</li>
                       <li>✓ Probar todas las características antes de ofrecerlas a usuarios</li>
                       <li>✓ Acceso completo a herramientas avanzadas</li>
@@ -1062,7 +1062,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                     aria-label="Buscar usuarios"
                     className="md-input pl-10 pr-4 w-full"
                   />
-                  <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                  <Search className="absolute left-3 top-3 text-slate-400" size={18} />
                 </div>
 
                 <select
@@ -1188,7 +1188,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                               setSelectedUserId(user._id);
                               setShowUserDetail(true);
                             }}
-                            className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                            className="p-2 text-slate-500 hover:text-blue-700 transition-colors"
                             title="Ver detalles completos"
                           >
                             <Eye size={18} />
@@ -1463,7 +1463,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                       ...prev,
                     ]);
                   }}
-                  className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors inline-flex items-center gap-2"
+                  className="md-button md-button--secondary px-4 py-2 rounded-lg text-sm font-semibold inline-flex items-center gap-2"
                 >
                   <Plus size={16} />
                   Nuevo mapping
@@ -1551,7 +1551,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                                       setMessage({ type: 'error', text: e?.message || 'Error guardando mapping' });
                                     }
                                   }}
-                                  className="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"
+                                  className="md-button px-3 py-2 rounded-lg text-xs font-semibold"
                                 >
                                   Guardar
                                 </button>
@@ -1610,7 +1610,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onEditPrompt })
                         setMessage({ type: 'error', text: e?.message || 'Error guardando report-texts' });
                       }
                     }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    className="md-button px-4 py-2 rounded-lg text-sm font-semibold"
                     disabled={reportTextsLoading}
                   >
                     Guardar
@@ -2055,14 +2055,14 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 md-backdrop flex items-center justify-center z-50 p-4">
       <div className="md-card max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-white">Editar Usuario</h3>
+            <h3 className="text-xl font-semibold text-slate-900">Editar usuario</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-slate-500 hover:text-slate-900 transition-colors"
               title="Cerrar"
               aria-label="Cerrar"
             >
@@ -2072,13 +2072,13 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-900/30 border border-red-500 rounded-lg p-3 text-red-300 text-sm">
+              <div className="md-alert md-alert--error">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="admin-edit-username" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-edit-username" className="block text-sm font-semibold text-slate-700 mb-2">
                 Nombre de Usuario
               </label>
               <input
@@ -2093,7 +2093,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
             </div>
 
             <div>
-              <label htmlFor="admin-edit-email" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-edit-email" className="block text-sm font-semibold text-slate-700 mb-2">
                 Email
               </label>
               <input
@@ -2108,7 +2108,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
             </div>
 
             <div>
-              <label htmlFor="admin-edit-role" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-edit-role" className="block text-sm font-semibold text-slate-700 mb-2">
                 Rol
               </label>
               <select
@@ -2128,7 +2128,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) 
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="md-button md-button--secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
@@ -2173,14 +2173,14 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 md-backdrop flex items-center justify-center z-50 p-4">
       <div className="md-card max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-white">Crear Nuevo Usuario</h3>
+            <h3 className="text-xl font-semibold text-slate-900">Crear nuevo usuario</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-slate-500 hover:text-slate-900 transition-colors"
               title="Cerrar"
               aria-label="Cerrar"
             >
@@ -2190,7 +2190,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="admin-create-username" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-create-username" className="block text-sm font-semibold text-slate-700 mb-2">
                 Nombre de Usuario
               </label>
               <input
@@ -2205,7 +2205,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
             </div>
 
             <div>
-              <label htmlFor="admin-create-email" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-create-email" className="block text-sm font-semibold text-slate-700 mb-2">
                 Email
               </label>
               <input
@@ -2220,7 +2220,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
             </div>
 
             <div>
-              <label htmlFor="admin-create-password" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-create-password" className="block text-sm font-semibold text-slate-700 mb-2">
                 Contraseña
               </label>
               <input
@@ -2236,7 +2236,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
             </div>
 
             <div>
-              <label htmlFor="admin-create-role" className="block text-sm font-semibold text-white mb-2">
+              <label htmlFor="admin-create-role" className="block text-sm font-semibold text-slate-700 mb-2">
                 Rol
               </label>
               <select
@@ -2254,7 +2254,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({ onClose, onCreate }) 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+                className="md-button md-button--secondary"
               >
                 Cancelar
               </button>
@@ -2280,25 +2280,25 @@ interface DeleteConfirmModalProps {
 
 const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ user, onClose, onConfirm }) => {
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 md-backdrop flex items-center justify-center z-50 p-4">
       <div className="md-card max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-red-400">Confirmar Eliminación</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <h3 className="text-xl font-semibold text-red-700">Confirmar eliminación</h3>
+            <button onClick={onClose} className="text-slate-500 hover:text-slate-900 transition-colors">
               ✕
             </button>
           </div>
 
           <div className="space-y-4">
-            <p className="text-gray-300">
+            <p className="text-slate-700">
               ¿Estás seguro de que quieres eliminar este usuario?
             </p>
 
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-              <div className="text-white font-semibold">{user.username}</div>
-              <div className="text-gray-400 text-sm">{user.email}</div>
-              <div className="text-xs text-red-400 mt-2">
+            <div className="border border-red-200 bg-red-50 rounded-lg p-4">
+              <div className="text-slate-900 font-semibold">{user.username}</div>
+              <div className="text-slate-600 text-sm">{user.email}</div>
+              <div className="text-xs text-red-700 mt-2">
                 ⚠️ Esta acción eliminará también todas las cartas, suscripciones y pagos asociados
               </div>
             </div>
@@ -2306,13 +2306,13 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ user, onClose, 
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+                className="md-button md-button--secondary"
               >
                 Cancelar
               </button>
               <button
                 onClick={onConfirm}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+                className="md-button md-button--danger"
               >
                 Eliminar Usuario
               </button>

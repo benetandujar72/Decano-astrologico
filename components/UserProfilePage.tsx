@@ -239,12 +239,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
   const getTierBadge = (tier: string) => {
     const colors = {
-      free: 'bg-gray-500',
-      pro: 'bg-indigo-500',
-      premium: 'bg-yellow-500',
-      enterprise: 'bg-emerald-500'
+      free: 'bg-slate-50 text-slate-700 border-slate-200',
+      pro: 'bg-blue-50 text-blue-800 border-blue-200',
+      premium: 'bg-violet-50 text-violet-800 border-violet-200',
+      enterprise: 'bg-amber-50 text-amber-900 border-amber-200'
     };
-    return colors[tier as keyof typeof colors] || 'bg-gray-500';
+    return colors[tier as keyof typeof colors] || colors.free;
   };
 
   const handleTabClick = (tabId: string, tabName: string) => {
@@ -315,35 +315,29 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="md-page">
+      <div className="md-container">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={onBack}
-            className="text-gray-400 hover:text-white mb-4 transition-colors"
+            className="text-slate-600 hover:text-slate-900 mb-4 transition-colors"
           >
             ← Volver
           </button>
-          <h1 className="text-4xl font-bold text-white mb-2">Mi Perfil</h1>
-          <p className="text-gray-400">Gestiona tu cuenta y suscripción</p>
+          <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-2">Mi perfil</h1>
+          <p className="text-slate-600">Gestiona tu cuenta y suscripción</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex overflow-x-auto mb-8 space-x-2">
+        <div className="md-tabs mb-8">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id, tab.name)}
-                className={`
-                  flex items-center px-6 py-3 rounded-lg whitespace-nowrap transition-all
-                  ${activeTab === tab.id
-                    ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                  }
-                `}
+                className={`md-tab ${activeTab === tab.id ? 'md-tab--active' : ''}`}
               >
                 <Icon className="w-5 h-5 mr-2" />
                 {tab.name}
@@ -356,25 +350,25 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
         </div>
 
         {/* Content */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8">
+        <div className="md-card p-8">
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Plan actual */}
-              <div className="bg-linear-to-r from-indigo-500/20 to-purple-600/20 rounded-xl p-6 border border-indigo-500/30">
+              <div className="md-card md-card--flat rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center">
-                    <Crown className="w-6 h-6 text-yellow-400 mr-3" />
+                    <Crown className="w-6 h-6 text-amber-700 mr-3" />
                     <div>
-                      <h3 className="text-white font-bold text-lg">Plan Actual</h3>
-                      <p className="text-gray-300 text-sm">{subscription?.tier.toUpperCase() || 'Free'}</p>
+                      <h3 className="text-slate-900 font-semibold text-lg">Plan actual</h3>
+                      <p className="text-slate-600 text-sm">{subscription?.tier.toUpperCase() || 'FREE'}</p>
                     </div>
                   </div>
-                  <span className={`px-4 py-2 rounded-full text-white text-sm ${getTierBadge(subscription?.tier || 'free')}`}>
+                  <span className={`md-chip border ${getTierBadge(subscription?.tier || 'free')}`}>
                     {subscription?.status === 'active' ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
                 {subscription?.end_date && (
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-slate-600 text-sm">
                     Válido hasta: {new Date(subscription.end_date).toLocaleDateString()}
                   </p>
                 )}
@@ -384,15 +378,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
               {usage && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Cartas */}
-                  <div className="bg-white/5 rounded-xl p-6">
+                  <div className="md-card md-card--flat rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-white font-semibold">Cartas Generadas</h4>
-                      <FileText className="w-5 h-5 text-indigo-400" />
+                      <h4 className="text-slate-900 font-semibold">Cartas generadas</h4>
+                      <FileText className="w-5 h-5 text-slate-600" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-2">
+                    <div className="text-3xl font-semibold text-slate-900 mb-2">
                       {usage.charts_count}
                       {usage.charts_limit > 0 && (
-                        <span className="text-lg text-gray-400">/{usage.charts_limit}</span>
+                        <span className="text-lg text-slate-500">/{usage.charts_limit}</span>
                       )}
                     </div>
                     {usage.charts_limit > 0 && (
@@ -406,14 +400,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
                   </div>
 
                   {/* Almacenamiento */}
-                  <div className="bg-white/5 rounded-xl p-6">
+                  <div className="md-card md-card--flat rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-white font-semibold">Almacenamiento</h4>
-                      <TrendingUp className="w-5 h-5 text-green-400" />
+                      <h4 className="text-slate-900 font-semibold">Almacenamiento</h4>
+                      <TrendingUp className="w-5 h-5 text-slate-600" />
                     </div>
-                    <div className="text-3xl font-bold text-white mb-2">
+                    <div className="text-3xl font-semibold text-slate-900 mb-2">
                       {usage.storage_used_mb.toFixed(1)} MB
-                      <span className="text-lg text-gray-400">
+                      <span className="text-lg text-slate-500">
                         /{usage.storage_limit_mb} MB
                       </span>
                     </div>
@@ -431,27 +425,27 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'subscription' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Gestión de Suscripción</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Gestión de suscripción</h2>
               
               {subscription && (
-                <div className="bg-white/5 rounded-xl p-6">
+                <div className="md-card rounded-xl p-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h3 className="text-xl font-bold text-white mb-2">
+                      <h3 className="text-xl font-semibold text-slate-900 mb-2">
                         Plan {subscription.tier.toUpperCase()}
                       </h3>
-                      <p className="text-gray-400">
-                        Estado: <span className="text-green-400">{subscription.status}</span>
+                      <p className="text-slate-600">
+                        Estado: <span className="text-green-700 font-medium">{subscription.status}</span>
                       </p>
                     </div>
-                    <button className="bg-linear-to-r from-indigo-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all">
+                    <button className="md-button px-6 py-3 rounded-lg">
                       Mejorar Plan
                     </button>
                   </div>
                   
                   {subscription.end_date && (
-                    <div className="border-t border-white/10 pt-4">
-                      <p className="text-gray-300">
+                    <div className="border-t border-slate-200 pt-4">
+                      <p className="text-slate-700">
                         <strong>Próxima renovación:</strong> {new Date(subscription.end_date).toLocaleDateString()}
                       </p>
                     </div>
@@ -463,28 +457,28 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ onBack }) => {
 
           {activeTab === 'billing' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-4">Historial de Facturación</h2>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-4">Historial de facturación</h2>
               
               {payments.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-slate-600">
                   No hay pagos registrados
                 </div>
               ) : (
                 <div className="space-y-4">
                   {payments.map((payment, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-xl p-6 flex items-center justify-between">
+                    <div key={idx} className="md-card rounded-xl p-6 flex items-center justify-between">
                       <div>
-                        <h4 className="text-white font-semibold mb-1">{payment.description}</h4>
-                        <p className="text-gray-400 text-sm">
+                        <h4 className="text-slate-900 font-semibold mb-1">{payment.description}</h4>
+                        <p className="text-slate-600 text-sm">
                           {new Date(payment.created_at).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-2xl font-semibold text-slate-900">
                           €{payment.amount.toFixed(2)}
                         </p>
                         <span className={`text-sm ${
-                          payment.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
+                          payment.status === 'completed' ? 'text-green-700' : 'text-amber-700'
                         }`}>
                           {payment.status}
                         </span>
