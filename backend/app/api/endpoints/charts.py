@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from app.api.endpoints.auth import get_current_user
 from app.services.subscription_permissions import require_chart_quota
 from app.services.ephemeris import calcular_carta_completa
+import re
 
 load_dotenv()
 
@@ -185,9 +186,32 @@ async def generate_chart(chart_data: ChartGenerate):
     try:
         print(f"[GENERATE_CHART] Recibiendo request: {chart_data.model_dump()}", file=sys.stderr)
 
-        # Convertir coordenadas a float
-        latitude = float(chart_data.latitude)
-        longitude = float(chart_data.longitude)
+        def _parse_coord(raw: str, *, kind: str) -> float:
+            """
+            Acepta formatos típicos:
+            - "37.1212"
+            - "37,1212"
+            - "37.1212° N" / "37.1212 N"
+            - "5.4542° W"  (convierte a negativo)
+            """
+            s = str(raw or "").strip().upper()
+            # coma decimal -> punto
+            s = s.replace(",", ".")
+            # extraer primer número
+            m = re.search(r"[-+]?\d+(?:\.\d+)?", s)
+            if not m:
+                raise ValueError(f"{kind} inválida: {raw!r}")
+            v = float(m.group(0))
+            # signo por hemisferio
+            if ("S" in s) or ("W" in s):
+                v = -abs(v)
+            elif ("N" in s) or ("E" in s):
+                v = abs(v)
+            return v
+
+        # Convertir coordenadas a float (robusto)
+        latitude = _parse_coord(chart_data.latitude, kind="latitud")
+        longitude = _parse_coord(chart_data.longitude, kind="longitud")
 
         print(f"[GENERATE_CHART] Coordenadas: lat={latitude}, lon={longitude}", file=sys.stderr)
 

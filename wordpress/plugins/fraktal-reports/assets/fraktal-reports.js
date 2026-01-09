@@ -1,6 +1,41 @@
 (function($){
   function el(html){ return $(html); }
 
+  function normalizeDate(input){
+    const s = String(input || '').trim();
+    // yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // dd/mm/yyyy
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m){
+      const dd = String(m[1]).padStart(2,'0');
+      const mm = String(m[2]).padStart(2,'0');
+      const yyyy = m[3];
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return s;
+  }
+
+  function normalizeTime(input){
+    const s = String(input || '').trim();
+    // "8:02" -> "08:02"
+    const m = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (m) return String(m[1]).padStart(2,'0') + ':' + m[2];
+    return s;
+  }
+
+  function parseCoord(input){
+    // Acepta "37.1212", "37,1212", "37.1212° N", "5.4542° W"
+    let s = String(input || '').trim().toUpperCase();
+    s = s.replace(',', '.');
+    const num = s.match(/[-+]?\d+(?:\.\d+)?/);
+    if (!num) return null;
+    let v = parseFloat(num[0]);
+    if (s.includes('S') || s.includes('W')) v = -Math.abs(v);
+    if (s.includes('N') || s.includes('E')) v = Math.abs(v);
+    return v;
+  }
+
   function api(action, data){
     return $.ajax({
       url: FraktalReports.ajaxUrl,
@@ -128,8 +163,13 @@
     btn.on('click', async () => {
       const idx = parseInt(sel.val(), 10);
       const p = profiles[idx];
-      if (!p || !p.birth_date || !p.birth_time || !p.latitude || !p.longitude){
-        alert('Completa fecha, hora, latitud y longitud del perfil.');
+      const birthDate = normalizeDate(p?.birth_date);
+      const birthTime = normalizeTime(p?.birth_time);
+      const lat = parseCoord(p?.latitude);
+      const lon = parseCoord(p?.longitude);
+
+      if (!p || !birthDate || !birthTime || lat === null || lon === null){
+        alert('Completa fecha, hora, latitud y longitud. Ejemplos: fecha 1972-05-27 o 27/05/1972; lat 37.1212; lon -5.4542 (o con N/S/E/W).');
         return;
       }
       btn.prop('disabled', true).text('Generando...');
@@ -144,11 +184,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: p.name || 'Consultante',
-            birth_date: p.birth_date,
-            birth_time: p.birth_time,
+            birth_date: birthDate,
+            birth_time: birthTime,
             birth_place: p.birth_place || '',
-            latitude: String(p.latitude),
-            longitude: String(p.longitude),
+            latitude: String(lat),
+            longitude: String(lon),
             is_demo: true
           })
         });
