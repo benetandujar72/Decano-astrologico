@@ -187,11 +187,38 @@ Estoy aquí para ayudarte a comprender más profundamente tu carta natal y los m
 ai_expert: Optional[AIExpertService] = None
 
 
+class DisabledAIExpertService:
+    """
+    Servicio “placeholder” cuando falta configuración (p.ej. GEMINI_API_KEY).
+    Evita que el backend falle al importar módulos; fallará solo cuando se use.
+    """
+
+    def __init__(self, reason: str):
+        self.current_model = "disabled"
+        self._reason = reason
+        self._last_usage_metadata = {}
+
+    async def get_chat_response(self, *args, **kwargs) -> str:
+        raise Exception(f"Servicio IA deshabilitado: {self._reason}")
+
+    def get_last_usage_metadata(self) -> Optional[Dict]:
+        return self._last_usage_metadata
+
+    async def generate_welcome_message(self, user_name: Optional[str] = None) -> str:
+        raise Exception(f"Servicio IA deshabilitado: {self._reason}")
+
+
 def get_ai_expert_service() -> AIExpertService:
     """Obtiene la instancia del servicio de IA (lazy initialization)"""
     global ai_expert
     if ai_expert is None:
-        ai_expert = AIExpertService()
+        try:
+            ai_expert = AIExpertService()
+        except Exception as e:
+            # Importante: no tumbar el backend por falta de variables en entornos donde
+            # no se use Gemini (tests, desarrollo, endpoints no-AI). Fallará al usarlo.
+            print(f"⚠️ AIExpertService deshabilitado: {e}")
+            ai_expert = DisabledAIExpertService(str(e))  # type: ignore[assignment]
     return ai_expert
 
 
