@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Fraktal Reports (Motor Fractal)
  * Description: Panel de usuario en WordPress para generar y descargar informes astrológicos (WooCommerce + Motor Fractal).
-  * Version: 0.1.2
+  * Version: 0.1.3
  * Author: Fraktal
  */
 
@@ -12,7 +12,7 @@ class Fraktal_Reports_Plugin {
   const OPT_API_URL = 'fraktal_reports_api_url';
   const OPT_HMAC_SECRET = 'fraktal_reports_hmac_secret';
   const OPT_PRODUCT_ID = 'fraktal_reports_product_id';
-  const PLUGIN_VERSION = '0.1.2';
+  const PLUGIN_VERSION = '0.1.3';
 
   public static function init() {
     add_action('admin_menu', [__CLASS__, 'admin_menu']);

@@ -1,6 +1,40 @@
 (function($){
   function el(html){ return $(html); }
 
+  function renderLoading(targetSelector, message){
+    const root = $(targetSelector);
+    root.empty();
+    const msg = message || 'Cargando…';
+    root.append(el('<div class="fraktal-loading"></div>')
+      .append(el('<div class="fraktal-spinner" aria-hidden="true"></div>'))
+      .append(el('<div></div>').text(msg))
+    );
+  }
+
+  function phaseLabel(phase){
+    // fases pensadas para evitar sensación de “cuelgue”
+    if (phase === 'chart') return '1/4 Calculando carta natal';
+    if (phase === 'queue') return '2/4 Encolando informe en el servidor';
+    if (phase === 'modules') return '3/4 Generando módulos del informe';
+    if (phase === 'final') return '4/4 Preparando resultado';
+    return '';
+  }
+
+  function renderProgress({ phase, percent, status, moduleText, etaText, elapsedText }){
+    const parts = [];
+    if (phase) parts.push('<div><strong>Fase:</strong> ' + phaseLabel(phase) + '</div>');
+    if (etaText) parts.push('<div style="color:#6b7280;font-size:12px;margin-top:2px">' + etaText + '</div>');
+    if (elapsedText) parts.push('<div style="color:#6b7280;font-size:12px;margin-top:2px">' + elapsedText + '</div>');
+    if (status) parts.push('<div style="margin-top:8px"><strong>Estado:</strong> ' + status + '</div>');
+    if (moduleText) parts.push('<div><strong>Progreso:</strong> ' + moduleText + '</div>');
+    if (typeof percent === 'number'){
+      const p = Math.max(0, Math.min(100, percent));
+      parts.push('<div class="fraktal-progressbar" aria-label="Progreso"><div style="width:' + p + '%"></div></div>');
+      parts.push('<div style="color:#6b7280;font-size:12px;margin-top:4px">' + p + '%</div>');
+    }
+    $('#fraktal-progress').html(parts.join(''));
+  }
+
   function normalizeDate(input){
     const s = String(input || '').trim();
     // yyyy-mm-dd
@@ -114,7 +148,7 @@
     const root = $('#fraktal-reports-list');
     root.empty();
     if (!sessions.length){
-      root.append(el('<p>No hay informes aún.</p>'));
+      root.append(el('<p>No hay informes aún. Si acabas de generar uno, puede tardar unos segundos en aparecer.</p>'));
       return;
     }
     sessions.forEach((s) => {
@@ -157,7 +191,7 @@
     });
 
     const btn = el('<button class="button button-primary">Generar informe (exhaustivo)</button>');
-    const info = el('<p class="description">El sistema generará el informe completo en background. Puedes cerrar la pestaña y volver luego a “Mis informes”.</p>');
+    const info = el('<p class="description">El informe exhaustivo suele tardar <strong>15–20 minutos</strong> (según carga del servidor). Puedes dejar esta pestaña abierta para ver el progreso o cerrarla y volver luego a “Mis informes”.</p>');
     root.append(sel).append(btn).append(info);
 
     btn.on('click', async () => {
@@ -172,8 +206,14 @@
         alert('Completa fecha, hora, latitud y longitud. Ejemplos: fecha 1972-05-27 o 27/05/1972; lat 37.1212; lon -5.4542 (o con N/S/E/W).');
         return;
       }
-      btn.prop('disabled', true).text('Generando...');
-      $('#fraktal-progress').html('Iniciando generación...');
+      btn.prop('disabled', true).text('Generando…');
+      renderProgress({
+        phase: 'chart',
+        percent: 3,
+        etaText: 'Tiempo estimado: 15–20 min.',
+        elapsedText: ''
+      });
+      const startedAt = Date.now();
       try {
         // 1) generar carta_data (endpoint público del backend)
         // Nota: no usamos secret en browser. /charts/generate es público en el backend actual.
@@ -196,6 +236,12 @@
         const cartaData = await cartaResp.json();
 
         // 2) encolar informe completo vía WP (server-side HMAC)
+        renderProgress({
+          phase: 'queue',
+          percent: 8,
+          etaText: 'Tiempo estimado: 15–20 min.',
+          elapsedText: 'Tiempo transcurrido: ' + Math.round((Date.now() - startedAt)/1000) + 's'
+        });
         const payload = {
           email: '',
           display_name: p.name || '',
@@ -206,8 +252,15 @@
         const start = await api('fraktal_reports_start', { payload: JSON.stringify(payload) });
         if (!start.success) throw new Error(start.data?.message || 'Error iniciando informe');
         const session_id = start.data.session_id;
-        $('#fraktal-progress').html('Sesión creada: <code>' + session_id + '</code><br/>Iniciando polling...');
-        pollStatus(session_id);
+        renderProgress({
+          phase: 'modules',
+          percent: 10,
+          status: 'in_progress',
+          moduleText: 'Iniciando…',
+          etaText: 'Tiempo estimado: 15–20 min.',
+          elapsedText: 'Tiempo transcurrido: ' + Math.round((Date.now() - startedAt)/1000) + 's'
+        });
+        pollStatus(session_id, startedAt);
       } catch (e){
         console.error(e);
         alert(e.message || 'Error');
@@ -218,7 +271,7 @@
     });
   }
 
-  async function pollStatus(sessionId){
+  async function pollStatus(sessionId, startedAt){
     let done = false;
     while(!done){
       try {
@@ -228,14 +281,29 @@
         const modTitle = res.data.current_module_title || '';
         const idx = res.data.current_module_index || 0;
         const total = res.data.total_modules || 0;
-        $('#fraktal-progress').html(
-          '<div><strong>Estado:</strong> ' + st + '</div>' +
-          '<div><strong>Módulo:</strong> ' + (idx+1) + '/' + total + ' — ' + modTitle + '</div>'
-        );
+
+        let percent = null;
+        if (total > 0){
+          // idx es 0-based; el % lo aproximamos sobre módulos
+          percent = Math.round(((idx + 1) / total) * 100);
+          // En in_progress, no mostrar 100% para evitar “fin” prematuro
+          if (st !== 'completed') percent = Math.min(99, percent);
+        }
+
+        const elapsed = startedAt ? Math.round((Date.now() - startedAt)/60000) : null;
+        const elapsedText = startedAt ? ('Tiempo transcurrido: ' + Math.round((Date.now() - startedAt)/60000) + ' min') : '';
+        const etaText = 'Tiempo estimado: 15–20 min.' + (elapsed !== null ? ' (variable)' : '');
+
+        const phase = (st === 'completed') ? 'final' : 'modules';
+        const moduleText = total ? ((idx + 1) + '/' + total + (modTitle ? (' — ' + modTitle) : '')) : (modTitle || '');
+        renderProgress({ phase, percent, status: st, moduleText, etaText, elapsedText });
         if (st === 'completed' || st === 'error'){
           done = true;
-          const sessions = await listReports();
-          renderReports(sessions);
+          try {
+            renderLoading('#fraktal-reports-list', 'Actualizando la lista de informes…');
+            const sessions = await listReports();
+            renderReports(sessions);
+          } catch(e){ /* best-effort */ }
           break;
         }
       } catch (e){
@@ -280,6 +348,7 @@
       try { await saveProfiles(profiles); } catch(e){ console.error(e); }
       if ($(this).data('tab') === 'reports'){
         try {
+          renderLoading('#fraktal-reports-list', 'Cargando informes… (puede tardar unos segundos)');
           const sessions = await listReports();
           renderReports(sessions);
         } catch(e){
