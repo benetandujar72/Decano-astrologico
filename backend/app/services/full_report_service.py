@@ -486,7 +486,7 @@ REGLAS CRÍTICAS:
                         print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto ({len(response)} chars, esperado: {section['expected_min_chars']}). Reintentando...")
                         # En reintento no inflamos el base_prompt; la instrucción de continuación ya fuerza expansión.
                     else:
-                        print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido corto después de {max_retries + 1} intentos. Usando contenido generado.")
+                        print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido inválido después de {max_retries + 1} intentos. Se intentará expansión adicional en modo FULL.")
             except Exception as e:
                 print(f"[MÓDULO {module_index + 1}/{len(sections)}] ❌ Error en intento {attempt + 1}: {type(e).__name__}: {e}")
                 await _progress("ai_attempt_error", {"attempt": attempt + 1, "error": f"{type(e).__name__}: {str(e)}"})
@@ -494,6 +494,48 @@ REGLAS CRÍTICAS:
                     raise Exception(f"Error generando módulo después de {max_retries + 1} intentos: {str(e)}")
                 # Continuar al siguiente intento
         
+        # En modo FULL, no aceptamos módulos que no cumplan longitud/formato:
+        # hacemos expansiones “append-only” (solo texto nuevo) hasta cumplir o fallar explícitamente.
+        if report_mode == "full":
+            max_expansions = int(os.getenv("FULL_REPORT_MAX_EXPANSIONS", "6"))
+            tail_chars = int(os.getenv("FULL_REPORT_EXPANSION_TAIL_CHARS", "1800"))
+            expansions_done = 0
+
+            while True:
+                is_valid, error_msg = self._validate_section_content(section["id"], response, section["expected_min_chars"])
+                if is_valid:
+                    break
+                if expansions_done >= max_expansions:
+                    raise Exception(f"Módulo {section['id']} no cumple criterios FULL: {error_msg}")
+
+                missing = []
+                if len(response) < int(section["expected_min_chars"]):
+                    missing.append(f"EXTENSIÓN: faltan al menos {int(section['expected_min_chars']) - len(response)} caracteres")
+                if "pregunta para reflexionar" not in (response or "").lower():
+                    missing.append("CIERRE: falta 'Pregunta para reflexionar:' al final")
+
+                expansions_done += 1
+                await _progress("ai_expand_start", {"expansion": expansions_done, "max": max_expansions, "reason": error_msg})
+
+                extra_prompt = f"""
+CONTINÚA el texto del módulo y DEVUELVE SOLO TEXTO NUEVO (no repitas nada).
+
+Requisitos:
+- Longitud total mínima del módulo: {section['expected_min_chars']} caracteres (sumando lo ya escrito + lo nuevo).
+- Añade profundidad ensayística: mecánica, psicología, vivencia, proyección y evolución.
+- Mantén el mismo formato (títulos/subtítulos) y el tono.
+- Termina con: "Pregunta para reflexionar: ..."
+- Pendientes: {", ".join(missing) if missing else error_msg}
+
+ÚLTIMOS PÁRRAFOS (contexto, NO repitas):
+{(response or "")[-tail_chars:]}
+"""
+
+                extra = await self.ai_service.get_chat_response(extra_prompt, [])
+                if extra and extra.strip():
+                    response = (response.rstrip() + "\n\n" + extra.strip())
+                await _progress("ai_expand_done", {"expansion": expansions_done, "response_chars": len(response)})
+
         if not response or len(response.strip()) == 0:
             raise ValueError("No se pudo generar contenido para el módulo después de todos los intentos")
         
@@ -597,6 +639,22 @@ REGLAS CRÍTICAS:
                 "requires_template": False
             }
         ]
+
+        # Asegurar que FULL sea realmente “exhaustivo (~30 páginas)”.
+        # Multiplicador configurable por env (default 1.6) + cap por módulo.
+        if report_mode == "full":
+            try:
+                mult = float(os.getenv("FULL_REPORT_MIN_CHARS_MULTIPLIER", "1.6"))
+            except Exception:
+                mult = 1.6
+            cap = int(os.getenv("FULL_REPORT_MIN_CHARS_CAP", "20000"))
+            if mult > 1.0:
+                for s in sections:
+                    base = int(s.get("expected_min_chars") or 0)
+                    if base <= 0:
+                        continue
+                    bumped = int(base * mult)
+                    s["expected_min_chars"] = min(cap, max(base, bumped))
 
         if report_mode == "light":
             # Reduce thresholds to target ~6–8 pages total.
