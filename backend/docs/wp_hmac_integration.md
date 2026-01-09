@@ -26,7 +26,7 @@ Donde:
 
 - `timestamp`: el de `X-Fraktal-Timestamp`
 - `method`: `GET|POST|...` en mayúsculas
-- `path`: path exacto, p.ej. `/wp/report/queue-full`
+- `path`: path exacto **incluyendo query string si la hay**, p.ej. `/wp/report/my-sessions?limit=100`
 - `body_sha256`: `sha256(body_raw)` en hex (para GET sin body, es el sha256 del vacío)
 - `wp_user_id`: el de `X-Fraktal-WP-User-Id`
 

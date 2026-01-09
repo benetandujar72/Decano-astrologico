@@ -53,7 +53,13 @@ async def verify_wp_hmac(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Timestamp fuera de ventana")
 
     body = await request.body()
-    canonical = f"{ts}.{request.method.upper()}.{request.url.path}.{_body_sha256(body)}.{wp_user_id}".encode("utf-8")
+    # Importante: incluir query string si existe, porque el plugin firma el path
+    # tal como lo envía (p.ej. "/wp/report/my-sessions?limit=100").
+    path_with_query = request.url.path
+    if request.url.query:
+        path_with_query = f"{path_with_query}?{request.url.query}"
+
+    canonical = f"{ts}.{request.method.upper()}.{path_with_query}.{_body_sha256(body)}.{wp_user_id}".encode("utf-8")
     expected = hmac.new(secret, canonical, hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(expected, sig):
