@@ -15,3 +15,40 @@
 .fraktal-badge.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 .fraktal-badge.wait { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
 
+.fraktal-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #374151;
+  font-size: 13px;
+}
+
+.fraktal-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #d1d5db;
+  border-top-color: #111827;
+  animation: fraktalSpin 0.9s linear infinite;
+}
+
+@keyframes fraktalSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fraktal-progressbar {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.fraktal-progressbar > div {
+  height: 100%;
+  width: 0%;
+  background: #111827;
+  border-radius: 999px;
+  transition: width 250ms ease;
+}
