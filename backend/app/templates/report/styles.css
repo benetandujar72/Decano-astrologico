@@ -1,4 +1,17 @@
-/* Estilos base (SaaS/Clínico) para HTML/PDF */
+/* Estilo "Cosmograma" (limpio, científico) para HTML/PDF
+   Referencia: cosmogramas con fondo blanco, líneas finas y acentos magenta/rojo.
+*/
+
+:root{
+  --ink: #111827;
+  --muted: #6b7280;
+  --line: #d1d5db;
+  --soft: #f3f4f6;
+  --accent: #d1005b;  /* magenta cosmograma (AC/DC/MC/IC) */
+  --blue: #2563eb;    /* aspecto armónico */
+  --red: #dc2626;     /* aspecto tenso */
+  --yellow: #f59e0b;  /* aspecto menor */
+}
 
 @page {
   size: A4;
@@ -16,9 +29,10 @@
 
 html, body {
   font-family: Inter, Roboto, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
-  color: #0f172a;
+  color: var(--ink);
   font-size: 11pt;
   line-height: 1.45;
+  background: #fff;
 }
 
 .report-header, .report-footer {
@@ -34,7 +48,7 @@ html, body {
   justify-content: space-between;
   align-items: flex-end;
   padding-bottom: 6px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--line);
 }
 
 .report-footer {
@@ -42,7 +56,7 @@ html, body {
   justify-content: space-between;
   align-items: center;
   padding-top: 6px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--line);
   font-size: 9pt;
 }
 
@@ -52,7 +66,7 @@ html, body {
 }
 
 .subtitle {
-  color: #475569;
+  color: var(--muted);
   font-size: 9.5pt;
 }
 
@@ -62,26 +76,29 @@ html, body {
 }
 
 .meta {
-  color: #475569;
+  color: var(--muted);
   font-size: 9.5pt;
   text-align: right;
 }
 
-.muted { color: #64748b; }
+.muted { color: var(--muted); }
 
 .h1 {
   font-size: 22pt;
   margin: 0 0 6pt 0;
+  letter-spacing: 0.01em;
 }
 
 .h2 {
   font-size: 14.5pt;
   margin: 0 0 8pt 0;
   padding-top: 2pt;
+  border-left: 3px solid var(--accent);
+  padding-left: 10pt;
 }
 
 .card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10pt;
   background: #ffffff;
@@ -94,9 +111,11 @@ html, body {
 }
 
 .label {
-  color: #475569;
+  color: var(--muted);
   font-size: 9pt;
   display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .value {
@@ -106,23 +125,23 @@ html, body {
 .table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
 }
 
 .table th, .table td {
   padding: 8pt;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
 
 .table th {
-  background: #f8fafc;
+  background: var(--soft);
   text-align: left;
   font-weight: 700;
 }
 
 .analysis {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12pt;
 }
@@ -131,7 +150,17 @@ html, body {
 .analysis h3 { margin: 14pt 0 6pt 0; }
 
 .center { text-align: center; }
-.chart-image { width: 420px; max-width: 100%; height: auto; }
+.chart-image { width: 460px; max-width: 100%; height: auto; }
+
+.pill {
+  display: inline-block;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 2pt 8pt;
+  font-size: 9pt;
+  color: var(--muted);
+}
 
 /* Impresión: control de cortes */
 @media print {

@@ -2,7 +2,7 @@
 Generador de imágenes de cartas astrales
 Crea visualizaciones radiales profesionales de cartas natales
 """
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from io import BytesIO
 import math
 
@@ -50,12 +50,27 @@ ZODIAC_SYMBOLS = {
     'Sagitario': '♐', 'Capricornio': '♑', 'Acuario': '♒', 'Piscis': '♓'
 }
 
-# Colores de elementos
+# Colores (estilo cosmograma)
+THEME_COSMOGRAMA = {
+    "bg": "#ffffff",
+    "ring": "#ffffff",
+    "ring_alt": "#ffffff",
+    "line": "#9ca3af",         # tick/lineas finas
+    "line_soft": "#d1d5db",    # bordes suaves
+    "ink": "#111827",
+    "muted": "#6b7280",
+    "accent": "#d1005b",       # AC/DC/MC/IC
+    "aspect_red": "#dc2626",
+    "aspect_blue": "#2563eb",
+    "aspect_yellow": "#f59e0b",
+}
+
+# Colores de elementos (más cercanos a cosmogramas impresos)
 ELEMENT_COLORS = {
-    'Fuego': '#ef4444',
-    'Tierra': '#10b981',
-    'Aire': '#f59e0b',
-    'Agua': '#3b82f6'
+    "Fuego": "#dc2626",
+    "Tierra": "#8b7b4f",
+    "Aire": "#c5a200",
+    "Agua": "#2563eb",
 }
 
 # Mapeo de signos a elementos
@@ -71,7 +86,8 @@ def generate_chart_image_matplotlib(
     carta_data: Dict,
     size: Tuple[int, int] = (800, 800),
     dpi: int = 100,
-    format: str = 'png'
+    format: str = 'png',
+    theme: str = "cosmograma",
 ) -> BytesIO:
     """
     Genera una imagen de carta astral usando Matplotlib
@@ -93,6 +109,23 @@ def generate_chart_image_matplotlib(
     casas = carta_data.get('casas', [])
     angulos = carta_data.get('angulos', {})
     
+    theme_name = (theme or "cosmograma").lower().strip()
+    t = THEME_COSMOGRAMA if theme_name == "cosmograma" else THEME_COSMOGRAMA
+
+    # Extra: rotación para fijar Ascendente a la izquierda (180°)
+    angulos = carta_data.get("angulos", {}) or {}
+    asc_lon = None
+    try:
+        asc_lon = float((angulos.get("ascendente") or {}).get("longitud"))  # type: ignore
+    except Exception:
+        asc_lon = None
+    rotation_offset = 0.0
+    if isinstance(asc_lon, (int, float)):
+        rotation_offset = (180.0 - float(asc_lon)) % 360.0
+
+    def rot(lon: float) -> float:
+        return (float(lon) + rotation_offset) % 360.0
+
     # Crear figura
     fig_width = size[0] / dpi
     fig_height = size[1] / dpi
@@ -102,32 +135,44 @@ def generate_chart_image_matplotlib(
     ax.set_aspect('equal')
     ax.axis('off')
     
-    # Fondo
-    ax.add_patch(Circle((0, 0), 1.45, color='#0f1729', zorder=0))
+    # Fondo blanco (cosmograma)
+    ax.add_patch(Circle((0, 0), 1.45, color=t["bg"], zorder=0))
     
     # Círculos concéntricos
     circles_radii = [1.0, 0.95, 0.85, 0.75]
     for i, radius in enumerate(circles_radii):
-        color = '#1e293b' if i % 2 == 0 else '#0f172a'
-        circle = Circle((0, 0), radius, fill=True, edgecolor='#334155', 
+        color = t["ring"] if i % 2 == 0 else t["ring_alt"]
+        circle = Circle((0, 0), radius, fill=True, edgecolor=t["line_soft"],
                        facecolor=color, linewidth=1, zorder=1)
         ax.add_patch(circle)
     
     # Dibujar divisiones de signos (12 secciones de 30°)
     for i in range(12):
-        angle_deg = i * 30
+        angle_deg = rot(i * 30)
         angle_rad = math.radians(angle_deg)
         x1 = 0.75 * math.cos(angle_rad)
         y1 = 0.75 * math.sin(angle_rad)
         x2 = 1.0 * math.cos(angle_rad)
         y2 = 1.0 * math.sin(angle_rad)
-        ax.plot([x1, x2], [y1, y2], color='#475569', linewidth=1, zorder=2)
+        ax.plot([x1, x2], [y1, y2], color=t["line"], linewidth=0.9, zorder=2)
+
+    # Ticks exteriores (estilo cosmograma)
+    for deg in range(0, 360, 2):
+        a = math.radians(rot(deg))
+        r_outer = 1.28
+        r_inner = 1.22 if (deg % 10) else 1.18
+        lw = 0.6 if (deg % 10) else 0.9
+        x1 = r_inner * math.cos(a)
+        y1 = r_inner * math.sin(a)
+        x2 = r_outer * math.cos(a)
+        y2 = r_outer * math.sin(a)
+        ax.plot([x1, x2], [y1, y2], color=t["line"], linewidth=lw, zorder=2)
     
     # Dibujar símbolos de signos en el anillo exterior
     signos = list(ZODIAC_SYMBOLS.keys())
     for i, signo in enumerate(signos):
         # Calcular ángulo (empezando desde Aries en 0°)
-        angle_deg = i * 30 + 15  # Centro del signo
+        angle_deg = rot(i * 30 + 15)  # Centro del signo
         angle_rad = math.radians(angle_deg)
         
         # Posición en el círculo exterior
@@ -139,18 +184,18 @@ def generate_chart_image_matplotlib(
         elemento = SIGN_TO_ELEMENT.get(signo, 'Fuego')
         color = ELEMENT_COLORS.get(elemento, '#ffffff')
         
-        # Dibujar símbolo
+        # Dibujar símbolo (coloreado por elemento)
         ax.text(x, y, ZODIAC_SYMBOLS[signo], 
                 fontsize=16, ha='center', va='center',
                 color=color, weight='bold', zorder=4,
                 family='DejaVu Sans')
     
-    # Dibujar cúspides de casas
+    # Dibujar cúspides de casas (Placidus/Koch según data) con rotación por Asc
     if casas:
         for casa in casas:
             longitud = casa.get('cuspide', 0)
-            # Convertir longitud a ángulo (0° Aries = 0°, luego sentido antihorario)
-            angle_rad = math.radians(longitud)
+            # Convertir longitud a ángulo con rotación (Asc fijo)
+            angle_rad = math.radians(rot(longitud))
             
             # Línea de cúspide
             x1 = 0.0 * math.cos(angle_rad)
@@ -161,14 +206,14 @@ def generate_chart_image_matplotlib(
             # Línea más gruesa para casas angulares (1, 4, 7, 10)
             casa_num = casa.get('numero', 0)
             if casa_num in [1, 4, 7, 10]:
-                ax.plot([x1, x2], [y1, y2], color='#f59e0b', linewidth=2, zorder=3)
+                ax.plot([x1, x2], [y1, y2], color=t["ink"], linewidth=1.8, zorder=3)
             else:
-                ax.plot([x1, x2], [y1, y2], color='#64748b', linewidth=1, zorder=2)
+                ax.plot([x1, x2], [y1, y2], color=t["ink"], linewidth=0.9, zorder=2, alpha=0.8)
             
             # Número de casa en el anillo medio
             angle_next = casas[(casa_num) % 12].get('cuspide', longitud + 30)
             angle_mid = (longitud + angle_next) / 2
-            angle_mid_rad = math.radians(angle_mid)
+            angle_mid_rad = math.radians(rot(angle_mid))
             
             radius_text = 0.65
             x_text = radius_text * math.cos(angle_mid_rad)
@@ -176,7 +221,55 @@ def generate_chart_image_matplotlib(
             
             ax.text(x_text, y_text, str(casa_num),
                    fontsize=10, ha='center', va='center',
-                   color='#94a3b8', weight='bold', zorder=5)
+                   color=t["muted"], weight='bold', zorder=5)
+
+    # Aspectos (líneas interiores) si están disponibles
+    aspectos = carta_data.get("aspectos") or carta_data.get("aspects") or []
+    if isinstance(aspectos, list) and aspectos:
+        # Map de planeta -> longitud
+        lon_by_name: Dict[str, float] = {}
+        for nombre, datos in (planetas or {}).items():
+            if not isinstance(datos, dict):
+                continue
+            try:
+                lon_by_name[str(nombre)] = float(datos.get("longitud", 0.0))
+            except Exception:
+                continue
+
+        def aspect_color(tipo: str) -> str:
+            t0 = (tipo or "").lower()
+            if "tríg" in t0 or "trig" in t0:
+                return t["aspect_blue"]
+            if "sext" in t0:
+                return t["aspect_yellow"]
+            if "cuad" in t0 or "square" in t0:
+                return t["aspect_red"]
+            if "opos" in t0 or "opposition" in t0:
+                return t["aspect_red"]
+            if "conj" in t0:
+                return t["line"]
+            return t["line"]
+
+        r_aspect = 0.70
+        for a in aspectos[:220]:
+            if not isinstance(a, dict):
+                continue
+            p1 = a.get("planeta1") or a.get("p1") or a.get("from")
+            p2 = a.get("planeta2") or a.get("p2") or a.get("to")
+            tipo = a.get("tipo") or a.get("aspect") or ""
+            if not p1 or not p2:
+                continue
+            if str(p1) not in lon_by_name or str(p2) not in lon_by_name:
+                continue
+            ang1 = math.radians(rot(lon_by_name[str(p1)]))
+            ang2 = math.radians(rot(lon_by_name[str(p2)]))
+            x1 = r_aspect * math.cos(ang1)
+            y1 = r_aspect * math.sin(ang1)
+            x2 = r_aspect * math.cos(ang2)
+            y2 = r_aspect * math.sin(ang2)
+            col = aspect_color(str(tipo))
+            lw = 1.2 if (("opos" in str(tipo).lower()) or ("cuad" in str(tipo).lower())) else 0.9
+            ax.plot([x1, x2], [y1, y2], color=col, linewidth=lw, alpha=0.75, zorder=2)
     
     # Dibujar planetas
     planeta_positions = []
@@ -185,7 +278,7 @@ def generate_chart_image_matplotlib(
             continue
             
         longitud = datos.get('longitud', 0)
-        angle_rad = math.radians(longitud)
+        angle_rad = math.radians(rot(longitud))
         
         # Posición en el anillo de planetas
         radius_planeta = 0.9
@@ -211,7 +304,7 @@ def generate_chart_image_matplotlib(
         color = ELEMENT_COLORS.get(elemento, '#ffffff')
         
         # Círculo de fondo
-        circle = Circle((x, y), 0.04, color='#1e293b', zorder=6)
+        circle = Circle((x, y), 0.042, color="#ffffff", zorder=6, ec=t["line_soft"], lw=0.8)
         ax.add_patch(circle)
         
         # Símbolo del planeta
@@ -225,41 +318,35 @@ def generate_chart_image_matplotlib(
         if datos.get('retrogrado', False):
             ax.text(x + 0.06, y + 0.06, 'R',
                    fontsize=8, ha='center', va='center',
-                   color='#ef4444', weight='bold', zorder=7)
+                   color=t["aspect_red"], weight='bold', zorder=7)
     
-    # Dibujar ascendente (línea especial)
-    if angulos and 'ascendente' in angulos:
-        asc_lon = angulos['ascendente'].get('longitud', 0)
-        angle_rad = math.radians(asc_lon)
-        x1 = 0.0
-        y1 = 0.0
-        x2 = 1.0 * math.cos(angle_rad)
-        y2 = 1.0 * math.sin(angle_rad)
-        ax.plot([x1, x2], [y1, y2], color='#22d3ee', linewidth=3, zorder=3)
-        
-        # Etiqueta ASC
-        x_label = 1.08 * math.cos(angle_rad)
-        y_label = 1.08 * math.sin(angle_rad)
-        ax.text(x_label, y_label, 'ASC',
-               fontsize=10, ha='center', va='center',
-               color='#22d3ee', weight='bold', zorder=4)
+    # Ejes AC/DC/MC/IC en magenta (cosmograma)
+    def draw_axis(lon: Optional[float], label: str) -> None:
+        if lon is None:
+            return
+        a = math.radians(rot(float(lon)))
+        ax.plot([0.0, 1.25 * math.cos(a)], [0.0, 1.25 * math.sin(a)], color=t["accent"], linewidth=2.0, zorder=3)
+        ax.text(1.33 * math.cos(a), 1.33 * math.sin(a), label, fontsize=10, ha='center', va='center', color=t["accent"], weight='bold', zorder=4)
+
+    asc = None
+    mc = None
+    try:
+        asc = float((angulos.get("ascendente") or {}).get("longitud"))  # type: ignore
+    except Exception:
+        asc = None
+    try:
+        mc = float((angulos.get("medio_cielo") or {}).get("longitud"))  # type: ignore
+    except Exception:
+        mc = None
+
+    if asc is not None:
+        draw_axis(asc, "AC")
+        draw_axis((asc + 180.0) % 360.0, "DC")
+    if mc is not None:
+        draw_axis(mc, "MC")
+        draw_axis((mc + 180.0) % 360.0, "IC")
     
-    # Dibujar medio cielo
-    if angulos and 'medio_cielo' in angulos:
-        mc_lon = angulos['medio_cielo'].get('longitud', 0)
-        angle_rad = math.radians(mc_lon)
-        x1 = 0.0
-        y1 = 0.0
-        x2 = 1.0 * math.cos(angle_rad)
-        y2 = 1.0 * math.sin(angle_rad)
-        ax.plot([x1, x2], [y1, y2], color='#a78bfa', linewidth=3, zorder=3)
-        
-        # Etiqueta MC
-        x_label = 1.08 * math.cos(angle_rad)
-        y_label = 1.08 * math.sin(angle_rad)
-        ax.text(x_label, y_label, 'MC',
-               fontsize=10, ha='center', va='center',
-               color='#a78bfa', weight='bold', zorder=4)
+    # (MC/IC ya dibujado arriba)
     
     # Título
     datos_entrada = carta_data.get('datos_entrada', {})
@@ -270,11 +357,11 @@ def generate_chart_image_matplotlib(
     titulo = f"{titulo_base} - {nombre}" if nombre else titulo_base
     ax.text(0, -1.35, titulo,
            fontsize=14, ha='center', va='center',
-           color='#e2e8f0', weight='bold', zorder=8)
+           color=t["muted"], weight='bold', zorder=8)
     
     # Guardar en buffer
     buffer = BytesIO()
-    plt.savefig(buffer, format=format, facecolor='#0f1729', 
+    plt.savefig(buffer, format=format, facecolor=t["bg"],
                 edgecolor='none', bbox_inches='tight', dpi=dpi)
     plt.close(fig)
     buffer.seek(0)
