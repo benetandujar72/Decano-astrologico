@@ -131,9 +131,13 @@ class Fraktal_Reports_Plugin {
     if (!is_user_logged_in()) {
       return '<p>Debes iniciar sesión para acceder al panel.</p>';
     }
+    // Admins de WordPress: bypass de restricciones de pago (pueden generar y ver todo).
+    $is_admin = current_user_can('manage_options');
     $product_id = intval(get_option(self::OPT_PRODUCT_ID, 0));
     $has_purchase = false;
-    if (class_exists('WooCommerce') && $product_id) {
+    if ($is_admin) {
+      $has_purchase = true;
+    } else if (class_exists('WooCommerce') && $product_id) {
       $user = wp_get_current_user();
       $email = $user ? $user->user_email : '';
       if ($email) {

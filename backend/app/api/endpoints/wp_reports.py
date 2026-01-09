@@ -20,6 +20,27 @@ from app.services.report_generators import generate_report
 
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# Admin bypass (WordPress)
+# ---------------------------------------------------------------------------
+def _wp_admin_ids() -> set[str]:
+    """
+    Lista de wp_user_id con privilegios de admin para acceder a todas las sesiones.
+    Configurar en backend con:
+      WP_ADMIN_USER_IDS="1,2,3"
+    """
+    raw = (os.getenv("WP_ADMIN_USER_IDS") or "").strip()
+    if not raw:
+        return set()
+    parts = [p.strip() for p in raw.split(",")]
+    return {p for p in parts if p}
+
+
+def _is_wp_admin(wp_user_id: str) -> bool:
+    wp_user_id = str(wp_user_id or "").strip()
+    return wp_user_id in _wp_admin_ids()
+
+
 # MongoDB
 MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
 mongodb_options = {"serverSelectionTimeoutMS": 5000, "connectTimeoutMS": 10000}
@@ -235,7 +256,8 @@ async def wp_get_status(
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    if str(session.get("wp_user_id") or "") != wp_user_id:
+    # Admin WP (por allowlist) puede consultar cualquier sesión.
+    if (str(session.get("wp_user_id") or "") != wp_user_id) and (not _is_wp_admin(wp_user_id)):
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
 
     # Reutilizamos la lógica del endpoint existente creando un current_user “fake” dueño
@@ -250,8 +272,13 @@ async def wp_list_sessions(
 ):
     wp_user_id = str(auth.get("wp_user_id"))
     limit = max(1, min(int(limit or 50), 200))
+    query: Dict[str, Any] = {"deleted_at": {"$exists": False}}
+    # Admin WP puede listar todas las sesiones.
+    if not _is_wp_admin(wp_user_id):
+        query["wp_user_id"] = wp_user_id
+
     cursor = report_sessions_collection.find(
-        {"wp_user_id": wp_user_id, "deleted_at": {"$exists": False}},
+        query,
         projection={
             "user_name": 1,
             "status": 1,
@@ -260,6 +287,7 @@ async def wp_list_sessions(
             "updated_at": 1,
             "full_report_length": 1,
             "batch_job": 1,
+            "wp_user_id": 1,
         },
     ).sort("created_at", -1).limit(limit)
     out = []
@@ -274,6 +302,8 @@ async def wp_list_sessions(
                 "updated_at": s.get("updated_at") or "",
                 "full_report_length": int(s.get("full_report_length") or 0),
                 "batch_status": (s.get("batch_job") or {}).get("status") if isinstance(s.get("batch_job"), dict) else None,
+                # Para admins: poder ver a qué wp_user_id pertenece cada sesión.
+                "wp_user_id": str(s.get("wp_user_id") or ""),
             }
         )
     return {"sessions": out, "total": len(out)}
@@ -292,7 +322,8 @@ async def wp_download_pdf(
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    if str(session.get("wp_user_id") or "") != wp_user_id:
+    # Admin WP (por allowlist) puede descargar cualquier sesión.
+    if (str(session.get("wp_user_id") or "") != wp_user_id) and (not _is_wp_admin(wp_user_id)):
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
 
     carta_data = session.get("carta_data") or {}

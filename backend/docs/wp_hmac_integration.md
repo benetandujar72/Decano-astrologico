@@ -6,6 +6,7 @@ Este documento define el esquema de autenticación y llamadas que debe usar Word
 
 - `WP_HMAC_SECRET`: secret compartido (obligatorio).
 - `WP_HMAC_ALLOWED_SKEW_SECONDS`: ventana de tiempo para el timestamp (default: `300`).
+- `WP_ADMIN_USER_IDS`: lista CSV de `wp_user_id` con rol admin en WordPress para **bypass** (ej. `1,2,3`).
 
 ## Headers requeridos
 
@@ -42,5 +43,13 @@ Firma:
 - `GET /wp/report/download-pdf/{session_id}`
 
 Nota: La carta completa `carta_data` se obtiene con `POST /charts/generate` (endpoint público en este backend).
+
+## Bypass para administradores
+
+Si el `wp_user_id` está incluido en `WP_ADMIN_USER_IDS`, entonces:
+
+- `GET /wp/report/my-sessions` devuelve **todas** las sesiones (no filtra por `wp_user_id`).
+- `GET /wp/report/status/{session_id}` permite consultar cualquier sesión.
+- `GET /wp/report/download-pdf/{session_id}` permite descargar cualquier PDF.
 
 
