@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Fraktal Reports (Motor Fractal)
  * Description: Panel de usuario en WordPress para generar y descargar informes astrológicos (WooCommerce + Motor Fractal).
- * Version: 0.1.0
+  * Version: 0.1.1
  * Author: Fraktal
  */
 
@@ -12,6 +12,7 @@ class Fraktal_Reports_Plugin {
   const OPT_API_URL = 'fraktal_reports_api_url';
   const OPT_HMAC_SECRET = 'fraktal_reports_hmac_secret';
   const OPT_PRODUCT_ID = 'fraktal_reports_product_id';
+  const PLUGIN_VERSION = '0.1.1';
 
   public static function init() {
     add_action('admin_menu', [__CLASS__, 'admin_menu']);
@@ -116,8 +117,8 @@ class Fraktal_Reports_Plugin {
     global $post;
     if (!$post || !has_shortcode($post->post_content, 'fraktal_panel')) return;
 
-    wp_enqueue_style('fraktal-reports', plugins_url('assets/fraktal-reports.css', __FILE__), [], '0.1.0');
-    wp_enqueue_script('fraktal-reports', plugins_url('assets/fraktal-reports.js', __FILE__), ['jquery'], '0.1.0', true);
+    wp_enqueue_style('fraktal-reports', plugins_url('assets/fraktal-reports.css', __FILE__), [], self::PLUGIN_VERSION);
+    wp_enqueue_script('fraktal-reports', plugins_url('assets/fraktal-reports.js', __FILE__), ['jquery'], self::PLUGIN_VERSION, true);
     wp_localize_script('fraktal-reports', 'FraktalReports', [
       'ajaxUrl' => admin_url('admin-ajax.php'),
       'downloadUrl' => admin_url('admin-post.php?action=fraktal_reports_download'),
@@ -132,7 +133,11 @@ class Fraktal_Reports_Plugin {
       return '<p>Debes iniciar sesión para acceder al panel.</p>';
     }
     // Admins de WordPress: bypass de restricciones de pago (pueden generar y ver todo).
-    $is_admin = current_user_can('manage_options');
+    // `manage_options` suele funcionar, pero en algunos entornos puede no estar asignado;
+    // por eso también verificamos rol explícito `administrator`.
+    $u = wp_get_current_user();
+    $roles = $u ? (array) $u->roles : [];
+    $is_admin = current_user_can('manage_options') || in_array('administrator', $roles, true);
     $product_id = intval(get_option(self::OPT_PRODUCT_ID, 0));
     $has_purchase = false;
     if ($is_admin) {
