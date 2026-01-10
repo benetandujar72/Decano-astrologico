@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Calendar, MapPin, Clock, AlertCircle, Download, Mail, Send, User, Bot, ArrowRight } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { api } from '../services/api';
 
@@ -570,7 +570,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                 >
                   {msg.role === 'assistant' ? (
                     <div className="leading-relaxed text-sm">
-                      <ReactMarkdown
+                      <Markdown
                         remarkPlugins={[remarkGfm]}
                         components={{
                           p: (props: any) => <p className="mb-2 last:mb-0" {...props} />,
@@ -614,7 +614,7 @@ const AstrologyDemo: React.FC<AstrologyDemoProps> = ({ onHire }) => {
                         }}
                       >
                         {formatAssistantMessage(msg.content, isGuidedOnly)}
-                      </ReactMarkdown>
+                      </Markdown>
                     </div>
                   ) : (
                     <div className="whitespace-pre-wrap leading-relaxed text-sm">{msg.content}</div>
