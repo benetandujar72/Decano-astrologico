@@ -3,10 +3,11 @@
  * Genera cada módulo con confirmación del usuario antes de continuar
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, CheckCircle, Loader2, AlertCircle, 
-  FileText, Sparkles, ArrowRight, RefreshCw
+import {
+  X, CheckCircle, Loader2, AlertCircle,
+  FileText, Sparkles, ArrowRight, RefreshCw, Settings2
 } from 'lucide-react';
+import OrbConfigurationPanel from './OrbConfigurationPanel';
 
 interface ReportGenerationWizardProps {
   cartaData: any;
@@ -78,11 +79,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const [events, setEvents] = useState<string[]>([]);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [downloadedPdf, setDownloadedPdf] = useState(false);
+  const [showOrbConfig, setShowOrbConfig] = useState(true);
+  const [userConfig, setUserConfig] = useState<any>(null);
 
   const remainingRef = useRef<number>(0);
-  const timerRef = useRef<number | null>(null);
+  const timerRef.current = useRef<number | null>(null);
   const lastEventRef = useRef<{ moduleId?: string | null; step?: string | null }>({ moduleId: null, step: null });
-  
+
   // Estimación de tiempo por módulo (en segundos)
   const TIME_ESTIMATES: Record<string, number> = {
     'modulo_1': 300, // 5 minutos
@@ -98,7 +101,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   };
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  
+
   // Función para obtener el token dinámicamente (por si expira durante la generación)
   const getToken = () => {
     const token = localStorage.getItem('fraktal_token');
@@ -113,19 +116,23 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   // Inicializar sesión al montar
   useEffect(() => {
     let mounted = true;
-    
+
     const init = async () => {
       try {
-        await initializeSession();
+        // initializeSession() will now be called after OrbConfigurationPanel is confirmed
+        // if autoGenerateAll is true, it will be called directly
+        if (autoGenerateAll) {
+          await initializeSession();
+        }
       } catch (err) {
         if (mounted) {
           console.error('[WIZARD] Error en inicialización:', err);
         }
       }
     };
-    
+
     init();
-    
+
     return () => {
       mounted = false;
       if (timerRef.current) {
@@ -133,16 +140,22 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         timerRef.current = null;
       }
     };
-  }, []);
+  }, [autoGenerateAll]);
 
   const initializeSession = async () => {
+    const token = getToken();
+    if (!token) {
+      setError('No estás autenticado. Por favor, inicia sesión.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const token = getToken();
-      // Modo "un clic": encolar generación completa en backend (batch job)
-      const url = autoGenerateAll ? `${API_URL}/reports/queue-full-report` : `${API_URL}/reports/start-generation`;
+      const url = `${API_URL}/reports/start-full-generation`;
+      console.log('[WIZARD] Iniciando sesión en:', url);
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -154,7 +167,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           nombre: nombre,
           report_mode: "full",
           report_type: reportType,
-          profiles: Array.isArray(profiles) && profiles.length > 0 ? profiles : undefined
+          profiles: Array.isArray(profiles) && profiles.length > 0 ? profiles : undefined,
+          calculation_profile: userConfig // Inyectar configuración de orbes
         })
       });
 
@@ -164,18 +178,18 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
 
       const data = await response.json();
-      
+
       if (!data.session_id) {
         throw new Error('No se recibió session_id del servidor');
       }
-      
+
       console.log('[WIZARD] Sesión inicializada:', data.session_id);
-      
+
       // Actualizar estado
       setSessionId(data.session_id);
       setModules(data.modules || []);
       setCurrentModuleIndex(0);
-      
+
       // Generar automáticamente el primer módulo usando el sessionId directamente
       if (data.session_id && data.modules && data.modules.length > 0) {
         if (autoGenerateAll) {
@@ -279,20 +293,20 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
 
       setCurrentModuleContent(result.content);
-      
+
       // Actualizar estado
       await refreshStatus();
-      
+
     } catch (err: any) {
       console.error('[WIZARD] Error generando módulo:', err);
-      
+
       let errorMessage = 'Error generando módulo';
       if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
-      
+
       // Si el error es de autenticación, detener la generación automática
       if (errorMessage.includes('sesión ha expirado') || errorMessage.includes('No estás autenticado')) {
         setIsAutoGenerating(false);
@@ -316,7 +330,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       setError('No hay sesión activa. Por favor, cierra y vuelve a abrir el wizard.');
       return;
     }
-    
+
     await generateModuleWithSession(currentSessionId, moduleId);
   };
 
@@ -337,7 +351,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const refreshStatus = async (sid?: string) => {
     const sidToUse = sid || sessionId;
     if (!sidToUse) return;
-    
+
     try {
       const token = getToken();
       const response = await fetch(`${API_URL}/reports/generation-status/${sidToUse}`, {
@@ -511,10 +525,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
   const getFullReport = async () => {
     if (!sessionId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const token = getToken();
       const response = await fetch(`${API_URL}/reports/generation-full-report/${sessionId}`, {
@@ -529,7 +543,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
 
       const data = await response.json();
-      
+
       if (data.full_report) {
         onComplete(data.full_report);
       } else {
@@ -547,7 +561,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     setIsAutoGenerating(true);
     setError(null);
     setGeneratedModulesCount(0);
-    
+
     // Calcular tiempo total estimado
     const totalEstimatedTime = modulesList.reduce((total, module) => {
       return total + (TIME_ESTIMATES[module.id] || 240); // Default 4 minutos
@@ -564,26 +578,26 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       remainingRef.current = Math.max(0, remainingRef.current - 1);
       setEstimatedTimeRemaining(remainingRef.current);
     }, 1000);
-    
+
     try {
       for (let i = 0; i < modulesList.length; i++) {
         const module = modulesList[i];
         setCurrentModuleIndex(i);
         setCurrentModuleContent('');
-        
+
         // Calcular tiempo restante basado en módulos pendientes
         const remaining = modulesList.slice(i).reduce((total, m) => {
           return total + (TIME_ESTIMATES[m.id] || 240);
         }, 0);
         remainingRef.current = remaining;
         setEstimatedTimeRemaining(remainingRef.current);
-        
+
         console.log(`[WIZARD] Generando módulo ${i + 1}/${modulesList.length}: ${module.id}`);
         console.log(`[WIZARD] Tiempo estimado para este módulo: ${TIME_ESTIMATES[module.id] || 240}s`);
-        
+
         // Generar módulo
         await generateModuleWithSession(sessionIdToUse, module.id);
-        
+
         setGeneratedModulesCount(i + 1);
 
         // Recalcular remaining en base a módulos pendientes (evita drift)
@@ -592,7 +606,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         }, 0);
         remainingRef.current = remainingAfter;
         setEstimatedTimeRemaining(remainingRef.current);
-        
+
         // Pequeño delay entre módulos para no saturar
         if (i < modulesList.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -602,10 +616,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      
+
       // Todos los módulos generados, obtener informe completo
       await getFullReport();
-      
+
     } catch (err: any) {
       console.error('[WIZARD] Error en generación automática:', err);
       setError(err.message || 'Error generando módulos automáticamente');
@@ -626,13 +640,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       setCurrentModuleIndex(nextIndex);
       setCurrentModuleContent(''); // Limpiar contenido anterior
       setError(null); // Limpiar errores
-      
+
       // Actualizar tiempo estimado restante
       const remaining = modules.slice(nextIndex).reduce((total, m) => {
         return total + (TIME_ESTIMATES[m.id] || 240);
       }, 0);
       setEstimatedTimeRemaining(remaining);
-      
+
       // Generar automáticamente el siguiente módulo
       const nextModule = modules[nextIndex];
       await generateModule(nextModule.id);
@@ -658,283 +672,316 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   return (
     <div className="fixed inset-0 md-backdrop flex items-center justify-center z-50 p-4">
       <div className="md-modal w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50/60">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-slate-700" />
-            <div>
-              <h2 className="text-2xl font-semibold text-slate-900">Generación de informe exhaustivo</h2>
-              <p className="text-slate-600 text-sm">
-                Router: <span className="font-semibold text-slate-800">{String(reportType || 'individual')}</span>
-              </p>
+        {showOrbConfig ? (
+          <div className="flex-1 overflow-y-auto bg-slate-900 rounded-xl">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 sticky top-0 z-10 backdrop-blur-md">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-indigo-400" />
+                PRE-CONFIGURACIÓN SISTÉMICA v6.0
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={20} /></button>
             </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-500 hover:text-slate-900 transition-colors"
-            title="Cerrar"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Barra + Botones de módulos (simplificado) */}
-        <div className="px-6 py-4 bg-slate-50/60 border-b border-slate-200">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-700">
-              {isCompleted
-                ? 'Informe completo'
-                : `Progreso: ${generatedModulesCount} de ${modules.length} módulos`
-              }
-            </span>
-            <div className="flex items-center gap-3">
-              {estimatedTimeRemaining !== null && (
-                <span className="text-sm text-blue-700 font-semibold">
-                  ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
-                </span>
-              )}
-              <span className="text-sm text-slate-700">{Math.round(progress)}%</span>
-            </div>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-2 mb-3 overflow-hidden">
-            <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          {/* Botonera de módulos */}
-          <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
-            {modules.map((module, idx) => {
-              const isGenerated = status?.modules.find(m => m.id === module.id)?.is_generated || false;
-              const isCurrent = idx === activeIndex;
-
-              const base = 'px-3 py-2 rounded-lg text-xs font-semibold transition-all border';
-              const cls = isCurrent
-                ? `${base} bg-blue-600 text-white border-blue-200 shadow-sm`
-                : isGenerated
-                ? `${base} bg-slate-50 text-slate-800 border-slate-200 opacity-70 cursor-not-allowed`
-                : `${base} bg-slate-100 text-slate-600 border-slate-200`;
-
-              return (
+            <div className="p-6">
+              <OrbConfigurationPanel
+                onSave={(prefs) => {
+                  setUserConfig(prefs);
+                  setShowOrbConfig(false);
+                  // No llamamos a startGeneration aquí para permitir al usuario ver el estado final antes de "Dalle"
+                }}
+              />
+              <div className="mt-6 flex justify-center">
                 <button
-                  key={module.id}
-                  type="button"
-                  className={cls}
-                  disabled={true}
-                  title={module.title}
-                >
-                  {idx + 1}. {module.title}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* (Opcional) Eventos: mantenemos pero más discreto */}
-          {!!events.length && (
-            <div className="md-card md-card--flat rounded-lg p-3 mb-4">
-              <div className="text-[11px] text-slate-600 mb-2">Eventos</div>
-              <ul className="text-[11px] text-slate-600 space-y-1">
-                {events.slice(0, 6).map((e, i) => (
-                  <li key={i}>- {e}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {isCompleted && (
-            <div className="md-alert md-alert--success mb-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-semibold">Informe completo generado</span>
-              </div>
-              <p className="mt-2 text-sm">
-                Ya puedes descargar el PDF final o abrir el exportador.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  onClick={() => downloadPdf()}
-                  disabled={isDownloadingPdf}
-                  className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:opacity-60"
-                >
-                  {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                  Descargar PDF
-                </button>
-                <button
-                  onClick={async () => { await getFullReport(); }}
-                  className="md-button md-button--secondary px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
-                >
-                  Abrir exportador
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                {downloadedPdf && (
-                  <span className="text-xs text-green-800 self-center">PDF descargado.</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center h-full">
-              <Loader2 className="w-12 h-12 text-blue-700 animate-spin mb-4" />
-              <p className="text-slate-600">Inicializando generación...</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="md-alert md-alert--error mb-4">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                <span className="font-semibold">Error</span>
-              </div>
-              <p className="mt-2">{error}</p>
-            </div>
-          )}
-
-          {currentModule && (
-            <>
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-slate-700" />
-                  {currentModule.title}
-                </h3>
-                <p className="text-slate-600 text-sm">
-                  Extensión mínima esperada: {currentModule.expected_min_chars.toLocaleString()} caracteres
-                </p>
-              </div>
-
-              {(isGenerating || isAutoGenerating) && (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-12 h-12 text-blue-700 animate-spin mb-4" />
-                  <p className="text-slate-700 font-semibold text-lg">
-                    {isAutoGenerating 
-                      ? `Generando módulo ${generatedModulesCount + 1} de ${modules.length}...`
-                      : 'Generando módulo...'
-                    }
-                  </p>
-                  {!!status?.current_module_title && (
-                    <p className="text-slate-600 text-sm mt-2">
-                      Módulo actual: <span className="text-blue-700 font-semibold">{status.current_module_title}</span>
-                    </p>
-                  )}
-                  {!!status?.current_module_id && !!status?.module_runs_summary?.[status.current_module_id]?.last_step && (
-                    <p className="text-slate-600 text-xs mt-2">
-                      Paso: {status.module_runs_summary[status.current_module_id]?.last_step}
-                    </p>
-                  )}
-                  <p className="text-slate-600 text-sm mt-2">
-                    {isAutoGenerating 
-                      ? `Proceso automático en curso. Todos los módulos se generarán secuencialmente.`
-                      : 'Esto puede tardar varios minutos'
-                    }
-                  </p>
-                  {estimatedTimeRemaining !== null && (
-                    <p className="text-blue-700 font-semibold mt-3">⏱️ Tiempo estimado restante: {formatTimeRemaining(estimatedTimeRemaining)}</p>
-                  )}
-                  <p className="text-slate-600 text-xs mt-4">
-                    El sistema está analizando las efemérides y la documentación de Carutti
-                  </p>
-                  <div className="mt-6 w-full max-w-md">
-                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 animate-pulse" style={{ width: '60%' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!isGenerating && currentModuleContent && (
-                <div className="md-card rounded-lg p-6">
-                  <div className="max-w-none">
-                    <div className="text-slate-900 whitespace-pre-wrap leading-relaxed">
-                      {currentModuleContent}
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-slate-200">
-                    <p className="text-sm text-slate-600">
-                      Longitud generada: {currentModuleContent.length.toLocaleString()} caracteres
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {!isGenerating && !currentModuleContent && !isLoading && (
-                <div className="text-center py-12 text-slate-600">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-700" />
-                  <p>Preparando generación del módulo...</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Footer Actions */}
-        {!isAutoGenerating && (
-          <div className="p-6 border-t border-slate-200 bg-slate-50/60 flex items-center justify-between">
-            <button
-              onClick={handleRegenerate}
-              disabled={isGenerating || !currentModuleContent}
-              className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Regenerar Módulo Actual
-            </button>
-
-            <div className="flex items-center gap-3">
-              {!isGenerating && currentModuleContent && !isLastModule && (
-                <button
-                  onClick={handleNext}
-                  className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
-                >
-                  Proceder al Siguiente Módulo
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-
-              {isGenerating && (
-                <div className="px-6 py-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg font-semibold flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generando módulo...
-                </div>
-              )}
-
-              {!isGenerating && isLastModule && currentModuleContent && (
-                <button
-                  onClick={async () => {
-                    await getFullReport();
+                  onClick={() => {
+                    setShowOrbConfig(false);
                   }}
-                  className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
+                  className="text-indigo-400 hover:text-indigo-300 text-sm font-medium underline underline-offset-4"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  Finalizar y Generar Informe Completo
+                  Omitir y usar valores por defecto
                 </button>
-              )}
+              </div>
             </div>
           </div>
-        )}
-
-        {/* Footer para modo automático */}
-        {isAutoGenerating && (
-          <div className="p-6 border-t border-slate-200 bg-slate-50/60">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-700" />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50/60">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-6 h-6 text-slate-700" />
                 <div>
-                  <p className="text-slate-900 font-semibold text-sm">Generando informe…</p>
-                  <p className="text-slate-600 text-xs">
-                    {status?.current_module_title ? `Módulo actual: ${status.current_module_title}` : `Módulo ${activeIndex + 1} de ${modules.length}`}
+                  <h2 className="text-2xl font-semibold text-slate-900">Generación de informe exhaustivo</h2>
+                  <p className="text-slate-600 text-sm">
+                    Router: <span className="font-semibold text-slate-800">{String(reportType || 'individual')}</span>
                   </p>
                 </div>
               </div>
-              {estimatedTimeRemaining !== null && (
-                <p className="text-blue-700 text-sm font-semibold">
-                  ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
-                </p>
+              <button
+                onClick={onClose}
+                className="text-slate-500 hover:text-slate-900 transition-colors"
+                title="Cerrar"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Barra + Botones de módulos (simplificado) */}
+            <div className="px-6 py-4 bg-slate-50/60 border-b border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-slate-700">
+                  {isCompleted
+                    ? 'Informe completo'
+                    : `Progreso: ${generatedModulesCount} de ${modules.length} módulos`
+                  }
+                </span>
+                <div className="flex items-center gap-3">
+                  {estimatedTimeRemaining !== null && (
+                    <span className="text-sm text-blue-700 font-semibold">
+                      ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
+                    </span>
+                  )}
+                  <span className="text-sm text-slate-700">{Math.round(progress)}%</span>
+                </div>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2 mb-3 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              {/* Botonera de módulos */}
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+                {modules.map((module, idx) => {
+                  const isGenerated = status?.modules.find(m => m.id === module.id)?.is_generated || false;
+                  const isCurrent = idx === activeIndex;
+
+                  const base = 'px-3 py-2 rounded-lg text-xs font-semibold transition-all border';
+                  const cls = isCurrent
+                    ? `${base} bg-blue-600 text-white border-blue-200 shadow-sm`
+                    : isGenerated
+                      ? `${base} bg-slate-50 text-slate-800 border-slate-200 opacity-70 cursor-not-allowed`
+                      : `${base} bg-slate-100 text-slate-600 border-slate-200`;
+
+                  return (
+                    <button
+                      key={module.id}
+                      type="button"
+                      className={cls}
+                      disabled={true}
+                      title={module.title}
+                    >
+                      {idx + 1}. {module.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* (Opcional) Eventos: mantenemos pero más discreto */}
+              {!!events.length && (
+                <div className="md-card md-card--flat rounded-lg p-3 mb-4">
+                  <div className="text-[11px] text-slate-600 mb-2">Eventos</div>
+                  <ul className="text-[11px] text-slate-600 space-y-1">
+                    {events.slice(0, 6).map((e, i) => (
+                      <li key={i}>- {e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {isCompleted && (
+                <div className="md-alert md-alert--success mb-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-semibold">Informe completo generado</span>
+                  </div>
+                  <p className="mt-2 text-sm">
+                    Ya puedes descargar el PDF final o abrir el exportador.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      onClick={() => downloadPdf()}
+                      disabled={isDownloadingPdf}
+                      className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                      Descargar PDF
+                    </button>
+                    <button
+                      onClick={async () => { await getFullReport(); }}
+                      className="md-button md-button--secondary px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
+                    >
+                      Abrir exportador
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    {downloadedPdf && (
+                      <span className="text-xs text-green-800 self-center">PDF descargado.</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {isLoading && (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <Loader2 className="w-12 h-12 text-blue-700 animate-spin mb-4" />
+                  <p className="text-slate-600">Inicializando generación...</p>
+                </div>
+              )}
+
+              {error && (
+                <div className="md-alert md-alert--error mb-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-semibold">Error</span>
+                  </div>
+                  <p className="mt-2">{error}</p>
+                </div>
+              )}
+
+              {currentModule && (
+                <>
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-slate-700" />
+                      {currentModule.title}
+                    </h3>
+                    <p className="text-slate-600 text-sm">
+                      Extensión mínima esperada: {currentModule.expected_min_chars.toLocaleString()} caracteres
+                    </p>
+                  </div>
+
+                  {(isGenerating || isAutoGenerating) && (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <Loader2 className="w-12 h-12 text-blue-700 animate-spin mb-4" />
+                      <p className="text-slate-700 font-semibold text-lg">
+                        {isAutoGenerating
+                          ? `Generando módulo ${generatedModulesCount + 1} de ${modules.length}...`
+                          : 'Generando módulo...'
+                        }
+                      </p>
+                      {!!status?.current_module_title && (
+                        <p className="text-slate-600 text-sm mt-2">
+                          Módulo actual: <span className="text-blue-700 font-semibold">{status.current_module_title}</span>
+                        </p>
+                      )}
+                      {!!status?.current_module_id && !!status?.module_runs_summary?.[status.current_module_id]?.last_step && (
+                        <p className="text-slate-600 text-xs mt-2">
+                          Paso: {status.module_runs_summary[status.current_module_id]?.last_step}
+                        </p>
+                      )}
+                      <p className="text-slate-600 text-sm mt-2">
+                        {isAutoGenerating
+                          ? `Proceso automático en curso. Todos los módulos se generarán secuencialmente.`
+                          : 'Esto puede tardar varios minutos'
+                        }
+                      </p>
+                      {estimatedTimeRemaining !== null && (
+                        <p className="text-blue-700 font-semibold mt-3">⏱️ Tiempo estimado restante: {formatTimeRemaining(estimatedTimeRemaining)}</p>
+                      )}
+                      <p className="text-slate-600 text-xs mt-4">
+                        El sistema está analizando las efemérides y la documentación de Carutti
+                      </p>
+                      <div className="mt-6 w-full max-w-md">
+                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-600 animate-pulse" style={{ width: '60%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isGenerating && currentModuleContent && (
+                    <div className="md-card rounded-lg p-6">
+                      <div className="max-w-none">
+                        <div className="text-slate-900 whitespace-pre-wrap leading-relaxed">
+                          {currentModuleContent}
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        <p className="text-sm text-slate-600">
+                          Longitud generada: {currentModuleContent.length.toLocaleString()} caracteres
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isGenerating && !currentModuleContent && !isLoading && (
+                    <div className="text-center py-12 text-slate-600">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-700" />
+                      <p>Preparando generación del módulo...</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          </div>
+
+            {/* Footer Actions */}
+            {!isAutoGenerating && (
+              <div className="p-6 border-t border-slate-200 bg-slate-50/60 flex items-center justify-between">
+                <button
+                  onClick={handleRegenerate}
+                  disabled={isGenerating || !currentModuleContent}
+                  className="md-button md-button--secondary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Regenerar Módulo Actual
+                </button>
+
+                <div className="flex items-center gap-3">
+                  {!isGenerating && currentModuleContent && !isLastModule && (
+                    <button
+                      onClick={handleNext}
+                      className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
+                    >
+                      Proceder al Siguiente Módulo
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {isGenerating && (
+                    <div className="px-6 py-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg font-semibold flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generando módulo...
+                    </div>
+                  )}
+
+                  {!isGenerating && isLastModule && currentModuleContent && (
+                    <button
+                      onClick={async () => {
+                        await getFullReport();
+                      }}
+                      className="md-button px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Finalizar y Generar Informe Completo
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Footer para modo automático */}
+            {isAutoGenerating && (
+              <div className="p-6 border-t border-slate-200 bg-slate-50/60">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-700" />
+                    <div>
+                      <p className="text-slate-900 font-semibold text-sm">Generando informe…</p>
+                      <p className="text-slate-600 text-xs">
+                        {status?.current_module_title ? `Módulo actual: ${status.current_module_title}` : `Módulo ${activeIndex + 1} de ${modules.length}`}
+                      </p>
+                    </div>
+                  </div>
+                  {estimatedTimeRemaining !== null && (
+                    <p className="text-blue-700 text-sm font-semibold">
+                      ⏱️ {formatTimeRemaining(estimatedTimeRemaining)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

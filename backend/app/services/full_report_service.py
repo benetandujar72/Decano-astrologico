@@ -1,24 +1,50 @@
-
 import os
 import asyncio
 import re
 import json
+import sys
 from typing import Dict, List, Optional, Callable, Awaitable
 from app.services.documentation_service import documentation_service
 from app.services.ai_expert_service import get_ai_expert_service
 from app.services.rag_router import rag_router
+import app.services.ephemeris as ephemeris
+import pytz
+from datetime import datetime
+
+# Intentar importar OrbEngine desde el root
+try:
+    # Ajustar path para encontrar orb_engine.py en el root
+    root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    if root_path not in sys.path:
+        sys.path.append(root_path)
+    from orb_engine import OrbEngine
+except ImportError:
+    OrbEngine = None
 
 class FullReportService:
     """
     Servicio para generar informes astrológicos completos y extensos (30 páginas)
-    siguiendo estrictamente el prompt CORE CARUTTI v5.3 (REORDENADO & HOMOGÉNEO).
+    siguiendo estrictamente el prompt CORE CARUTTI v6.0 (INTEGRACIÓN DINÁMICA).
     Utiliza documentación contextual, generación por secciones con confirmación paso a paso,
     y validación automática de contenido.
     """
     
     def __init__(self):
+        """Inicializa el servicio"""
         self.doc_service = documentation_service
         self.ai_service = get_ai_expert_service()
+        
+        # Inicializar OrbEngine
+        self.orb_engine = None
+        if OrbEngine:
+            mongo_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI")
+            if mongo_url:
+                try:
+                    # Usar la base de datos 'fraktal' por defecto
+                    self.orb_engine = OrbEngine(mongo_url, "fraktal")
+                    print("✅ FullReportService - OrbEngine inicializado correctamente")
+                except Exception as e:
+                    print(f"⚠️ FullReportService - Error al inicializar OrbEngine: {e}")
 
     def _generate_ejes_template_prompt(self, *, report_mode: str = "full") -> str:
         """
@@ -96,30 +122,36 @@ TOTAL MÍNIMO PARA ESTA SECCIÓN: 8000 caracteres (6 ejes × 1200 + introducció
 RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas vacías NO son excusa para escribir menos. El objetivo es 30 páginas. EXPÁNDE cada eje con máxima profundidad.
 """
 
-    def _validate_section_content(self, section_id: str, content: str, expected_min_chars: int) -> tuple:
+    def _validate_section_content(self, section_id: str, content: str, expected_min_chars: int) -> tuple[bool, str]:
         """
         Valida el contenido generado para una sección.
         
         Returns:
             (is_valid, error_message)
         """
-        # Validar extensión mínima
+        if not content or len(content) < 100:
+            return False, "Contenido demasiado corto o vacío"
+
+        # Validación de extensión mínima v6.0
         if len(content) < expected_min_chars:
-            return False, f"Contenido demasiado corto: {len(content)} caracteres (mínimo esperado: {expected_min_chars})"
-        
-        # Validar presencia de pregunta de reflexión
-        if "pregunta para reflexionar" not in content.lower() and "pregunta para reflexionar:" not in content.lower():
-            return False, "Falta la 'Pregunta para reflexionar' al final del bloque"
-        
-        # Validar lenguaje abierto (no determinista)
-        deterministas = [" es ", " tiene ", " siempre ", " nunca ", " bloqueado "]
-        for palabra in deterministas:
-            if palabra in content.lower():
-                # Permitir si está en contexto de lenguaje abierto
-                if "tiende a" not in content.lower() and "puede" not in content.lower():
-                    return False, f"Lenguaje demasiado determinista detectado. Usa 'tiende a', 'puede', 'frecuentemente'"
-        
-        # Validación especial para MÓDULO 2-VII (Ejes)
+            return False, f"Extensión insuficiente: {len(content)} de {expected_min_chars} caracteres requeridos (Protocolo de Profundidad v6.0)"
+
+        # Validación de Pregunta de Reflexión (OBLIGATORIA v6.0)
+        if "Pregunta para reflexionar" not in content and "¿" not in content:
+            return False, "Falta la Pregunta para Reflexionar obligatoria al final del módulo"
+
+        # Validación de Lenguaje Amable/Abierto (v6.0)
+        deter_words = [" es ", " será ", " siempre ", " nunca ", " indudablemente ", " inevitablemente "]
+        found_deter = [w for w in deter_words if w in content.lower()]
+        if found_deter and len(found_deter) > 2:
+            return False, f"Se detectó lenguaje determinista prohibido por Protocolo v6.0: {found_deter}"
+
+        drama_words = ["terrible", "catastrófico", "drama", "fatal", "maldición", "peor escenario"]
+        found_drama = [w for w in drama_words if w in content.lower()]
+        if found_drama:
+            return False, f"Se detectó lenguaje dramático prohibido por Protocolo v6.0: {found_drama}"
+
+        # Validaciones específicas por módulo
         if section_id == "modulo_2_ejes":
             # Verificar que tenga los 6 ejes mencionados
             ejes_requeridos = ["I-VII", "II-VIII", "III-IX", "IV-X", "V-XI", "VI-XII"]
@@ -131,6 +163,10 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             if "Polo A" not in content or "Polo B" not in content:
                 return False, "Falta la estructura de plantilla (Polo A / Polo B) en los ejes"
         
+        if section_id == "modulo_3_transitos":
+            if "Tránsitos Críticos" not in content and "Tránsitos" not in content:
+                return False, "El análisis de tránsitos no parece seguir la jerarquía v6.0"
+
         return True, ""
 
     def build_chart_facts(self, chart_data: Dict) -> Dict:
@@ -145,7 +181,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         planetas = chart_data.get("planetas") or chart_data.get("planets") or {}
         casas = chart_data.get("casas") or chart_data.get("houses") or []
         angulos = chart_data.get("angulos") or chart_data.get("angles") or {}
-        aspectos = chart_data.get("aspectos") or chart_data.get("aspects") or []
+        aspectos_raw = chart_data.get("aspectos") or chart_data.get("aspects") or []
 
         # Reducir planetas a campos típicos
         planetas_compact: Dict[str, Dict] = {}
@@ -175,7 +211,7 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
                     "regente": c.get("regente") or "",
                 })
 
-        # Reducir ángulos típicos (ascendente, medio_cielo, etc.)
+        # Reducir ángulos típicos
         angulos_compact: Dict[str, Dict] = {}
         if isinstance(angulos, dict):
             for k in ["ascendente", "medio_cielo", "descendente", "fondo_cielo", "parte_fortuna"]:
@@ -187,12 +223,33 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
                         "texto": v.get("texto") or "",
                     }
 
-        # Aspectos: mantener solo elementos más útiles si es lista de dicts
+        # Filtrado inteligente de aspectos con OrbEngine si está disponible
         aspectos_compact: List[Dict] = []
-        if isinstance(aspectos, list):
-            for a in aspectos[:200]:  # cap defensivo
-                if not isinstance(a, dict):
-                    continue
+        if self.orb_engine:
+            config = self.orb_engine.get_effective_config("NATAL")
+            if config:
+                # Si tenemos orbes personalizados, filtramos la lista original
+                for a in aspectos_raw:
+                    if not isinstance(a, dict): continue
+                    p1 = a.get("planeta1") or a.get("p1")
+                    p2 = a.get("planeta2") or a.get("p2")
+                    angle = a.get("angulo") or a.get("angle")
+                    
+                    if p1 and p2 and angle is not None:
+                        # validar aspecto con lógica de orbes (Efecto Paraguas por defecto en NATAL)
+                        res = self.orb_engine.validate_aspect(p1, p2, angle, config)
+                        if res.get('isValid'):
+                            aspectos_compact.append({
+                                "p1": p1, "p2": p2,
+                                "tipo": res.get("aspectType") or a.get("tipo") or a.get("aspect") or "",
+                                "orbe": res.get("orb") or a.get("orbe") or a.get("orb") or "",
+                                "nota": res.get("note", "")
+                            })
+        
+        # Fallback si no hay OrbEngine o no se filtró nada útil
+        if not aspectos_compact and isinstance(aspectos_raw, list):
+            for a in aspectos_raw[:200]:
+                if not isinstance(a, dict): continue
                 aspectos_compact.append({
                     "p1": a.get("planeta1") or a.get("p1") or a.get("from") or "",
                     "p2": a.get("planeta2") or a.get("p2") or a.get("to") or "",
@@ -207,6 +264,80 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             "angulos": angulos_compact,
             "aspectos": aspectos_compact,
         }
+
+    async def _calculate_current_transits(self, natal_data: Dict) -> Dict:
+        """
+        Calcula tránsitos actuales comparándolos con las posiciones natales.
+        """
+        try:
+            # 1. Obtener Julian Day actual (UTC)
+            now = datetime.now(pytz.utc)
+            hora_utc_dec = now.hour + now.minute/60.0 + now.second/3600.0
+            import swisseph as swe
+            jd_now = swe.julday(now.year, now.month, now.day, hora_utc_dec)
+
+            # 2. Calcular posiciones de tránsitos
+            transit_positions = ephemeris.calcular_posiciones_planetas(jd_now)
+            
+            natal_planetas = natal_data.get("planetas") or {}
+            natal_casas = natal_data.get("casas_cuspides") or [c.get("grado") for c in natal_data.get("casas", [])]
+            if not natal_casas and "casas" in natal_data:
+                 # fallback a la lista de dicts
+                 natal_casas = [c.get("grado") or c.get("cuspide") for c in natal_data.get("casas", [])]
+
+            transitos_destacados = []
+            
+            # Obtener config de tránsitos
+            transit_config = None
+            if self.orb_engine:
+                transit_config = self.orb_engine.get_config("TRANSIT")
+
+            # 3. Comparar Tránsitos vs Natal
+            for t_name, t_pos in transit_positions.items():
+                if not t_pos: continue
+                
+                # Aspectos a planetas natales
+                for n_name, n_pos in natal_planetas.items():
+                    if not n_pos: continue
+                    
+                    dist = self.orb_engine.angular_distance(t_pos["longitud"], n_pos["longitud"]) if self.orb_engine else abs(t_pos["longitud"] - n_pos["longitud"]) % 360
+                    if dist > 180: dist = 360 - dist
+                    
+                    # Validar si hay aspecto
+                    is_valid = False
+                    tipo_aspecto = ""
+                    nota_tecnica = ""
+                    if self.orb_engine and transit_config:
+                        res = self.orb_engine.validate_aspect(t_name, n_name, dist, transit_config)
+                        is_valid = res.get('isValid', False)
+                        tipo_aspecto = res.get('aspectType', "")
+                        nota_tecnica = res.get('note', "")
+                    else:
+                        # Fallback simple
+                        for asp, exact in {"conjunction": 0, "opposition": 180, "square": 90, "trine": 120, "sextile": 60}.items():
+                            if abs(dist - exact) <= 5: # orbe genérico 5°
+                                is_valid = True
+                                tipo_aspecto = asp
+                                break
+                    
+                    if is_valid:
+                        transitos_destacados.append({
+                            "transit_planet": t_name,
+                            "natal_planet": n_name,
+                            "aspect": tipo_aspecto,
+                            "orb": round(dist - self.orb_engine.get_exact_angle_for_aspect(tipo_aspecto), 2) if self.orb_engine and tipo_aspecto else round(dist, 2),
+                            "signo_transito": t_pos["signo"],
+                            "nota": nota_tecnica
+                        })
+
+            return {
+                "fecha_actual": now.strftime("%Y-%m-%d %H:%M UTC"),
+                "posiciones_transito": {k: {"signo": v["signo"], "grado": v["grado"]} for k,v in transit_positions.items() if v},
+                "aspectos_transit_natal": transitos_destacados[:30] # Cap para el prompt
+            }
+        except Exception as e:
+            print(f"⚠️ Error calculando tránsitos: {e}")
+            return {"error": str(e)}
 
     def _facts_for_module(self, chart_facts: Dict, module_id: str) -> Dict:
         """
@@ -250,6 +381,14 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
             return {"datos_entrada": datos, "planetas": planetas, "aspectos": aspectos}
         if module_id == "modulo_2_ejes":
             return {"datos_entrada": datos, "planetas": planetas, "casas": casas, "angulos": angulos}
+        if module_id == "modulo_3_transitos":
+            return {
+                "datos_entrada": datos,
+                "planetas": planetas,
+                "aspectos": aspectos,
+                "transitos_actuales": chart_facts.get("transitos_actuales", {})
+            }
+        
         if module_id in {"modulo_2_sintesis", "modulo_3_recomendaciones"}:
             return {"datos_entrada": datos, "planetas": planetas, "casas": casas, "angulos": angulos, "aspectos": aspectos}
 
@@ -340,6 +479,12 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
 
         # Facts compactos (reduce tokens y latencia manteniendo rigor)
         effective_facts = chart_facts if isinstance(chart_facts, dict) and chart_facts else self.build_chart_facts(chart_data)
+        
+        # Inyectar tránsitos si es el Módulo 3
+        if module_id == "modulo_3_transitos":
+            transitos_facts = await self._calculate_current_transits(chart_data)
+            effective_facts["transitos_actuales"] = transitos_facts
+
         module_facts = self._facts_for_module(effective_facts, module_id)
         facts_text = self._format_facts_for_prompt(module_facts, max_chars=12000 if section['requires_template'] else 8000)
         
@@ -570,71 +715,79 @@ Requisitos:
                 "id": "modulo_2_fundamentos",
                 "title": "MÓDULO 2-I: FUNDAMENTOS DEL SER",
                 "topic": "fundamentos",
-                "prompt": "EJECUTA la parte I del MÓDULO 2 (ANÁLISIS PLANETARIO). Analiza EXHAUSTIVAMENTE cada uno: Sol (función, escenario, dispositor, aspectos, manifestación psicológica, vivencia, proyección), Luna (refugio regresivo, función, escenario, dispositor, aspectos, manifestación emocional), Ascendente (destino, energía no reconocida, función, signo, regente), Regente del Ascendente (función, posición, aspectos, manifestación). Cero definiciones de diccionario, solo mecánica energética pura. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 1000 caracteres por planeta/componente.",
-                "expected_min_chars": 5000,
-                "requires_template": False
-            },
-            {
-                "id": "modulo_2_personales",
-                "title": "MÓDULO 2-II: PLANETAS PERSONALES",
-                "topic": "personales",
-                "prompt": "EJECUTA la parte II del MÓDULO 2. Analiza EXHAUSTIVAMENTE cada uno: Mercurio (función, escenario, dispositor, aspectos, manifestación mental, comunicación, vivencia), Venus (función, escenario, dispositor, aspectos, manifestación afectiva, valores, vivencia), Marte (función, escenario, dispositor, aspectos, manifestación de acción, impulso, vivencia). Para cada planeta desarrolla: mecánica energética, psicología profunda, vivencia concreta, proyección y evolución. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 1500 caracteres por planeta.",
-                "expected_min_chars": 5000,
-                "requires_template": False
-            },
-            {
-                "id": "modulo_2_sociales",
-                "title": "MÓDULO 2-III: PLANETAS SOCIALES",
-                "topic": "sociales",
-                "prompt": "EJECUTA la parte III del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Júpiter (función, escenario, dispositor, aspectos, expansión, filosofía, vivencia) y Saturno (función como estructura, escenario, dispositor, aspectos, límites, responsabilidad, esqueleto del dharma, vivencia). Presta especial atención a la función de Saturno como estructura del destino. Desarrolla cada planeta con profundidad ensayística: mecánica, psicología, vivencia, proyección y evolución. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 2000 caracteres por planeta.",
-                "expected_min_chars": 5000,
-                "requires_template": False
-            },
-            {
-                "id": "modulo_2_transpersonales",
-                "title": "MÓDULO 2-IV: PLANETAS TRANSPERSONALES",
-                "topic": "transpersonales",
-                "prompt": "EJECUTA la parte IV del MÓDULO 2. Analiza EXHAUSTIVAMENTE cada uno: Urano (función, escenario, dispositor, aspectos, ruptura, innovación, vivencia), Neptuno (función, escenario, dispositor, aspectos, disolución, trascendencia, vivencia), Plutón (función, escenario, dispositor, aspectos, transformación, poder, vivencia). Presta especial atención a la 'Polarización Transpersonal'. Desarrolla cada planeta con profundidad ensayística: mecánica energética, psicología profunda, vivencia, proyección y evolución. EXTENSIÓN MÍNIMA: 6000 caracteres. Mínimo 1800 caracteres por planeta.",
-                "expected_min_chars": 6000,
-                "requires_template": False
-            },
-            {
-                "id": "modulo_2_nodos",
-                "title": "MÓDULO 2-V: LOS NODOS LUNARES",
-                "topic": "nodos",
-                "prompt": "EJECUTA la parte V del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Los Nodos Lunares (Norte y Sur). Desarrolla: Nodo Sur (inercia, patrones kármicos, zona de confort, lo conocido, manifestación), Nodo Norte (dharma, dirección evolutiva, desafío, lo desconocido, manifestación), el Eje Evolutivo completo (de la inercia Sur a la ingesta Norte), la tensión entre ambos, y la integración. Profundiza en mecánica, psicología, vivencia y proyección. EXTENSIÓN MÍNIMA: 4000 caracteres. Mínimo 1500 caracteres por nodo más análisis del eje.",
-                "expected_min_chars": 4000,
-                "requires_template": False
-            },
-            {
-                "id": "modulo_2_aspectos",
-                "title": "MÓDULO 2-VI: ASPECTOS CLAVE",
-                "topic": "aspectos",
-                "prompt": "EJECUTA la parte VI del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Aspectos Clave (Tensiones estructurales y Facilitadores). Identifica TODOS los aspectos significativos según la matriz de orbes. Para cada aspecto mayor desarrolla: identificación técnica (planetas, tipo, orbe), mecánica energética, manifestación psicológica, vivencia concreta, proyección y oportunidad evolutiva. Incluye aspectos mayores (conjunciones, oposiciones, cuadraturas, trígonos, sextiles) y configuraciones (T-cuadradas, Grandes Trígonos, Yods, etc.). EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 300-400 caracteres por aspecto significativo.",
+                "prompt": "EJECUTA la parte I del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Sol (propósito núcleo), Luna (refugio emocional), Ascendente (estilo instintivo) y Regente del Ascendente (la brújula evolutiva). Sigue el Protocolo de Lenguaje Amable v6.0. EXTENSIÓN MÍNIMA: 5000 caracteres.",
                 "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
                 "id": "modulo_2_ejes",
-                "title": "MÓDULO 2-VII: LOS EJES DE VIDA (ANÁLISIS DE CASAS)",
+                "title": "MÓDULO 2-II: LOS EJES DE VIDA (ANÁLISIS DE CASAS)",
                 "topic": "ejes",
-                "prompt": "EJECUTA la parte VII del MÓDULO 2. Analiza EXHAUSTIVAMENTE los 6 Ejes de Vida siguiendo OBLIGATORIAMENTE el formato rígido especificado en el System Prompt. Para CADA eje desarrolla con máxima profundidad: Título y Signos, Dinámica Psicológica (intro extensa), Polo A (análisis exhaustivo del Signo + cada planeta individualmente con subapartados + si está vacía analiza Signo y Regente con MÍNIMO 150 palabras), Polo B (análisis exhaustivo de la Proyección/Destino + cada planeta individualmente + si está vacía analiza Signo y Regente con MÍNIMO 150 palabras), Síntesis del Eje (tensión y resolución extensa). CASAS VACÍAS: Analizar obligatoriamente Signo en cúspide + Regente con misma profundidad que si hubiera planetas. EXTENSIÓN MÍNIMA: 8000 caracteres. Mínimo 1200 caracteres por eje.",
+                "prompt": "EJECUTA la parte II del MÓDULO 2. Analiza EXHAUSTIVAMENTE los 6 Ejes de Vida (I-VII, II-VIII, III-IX, IV-X, V-XI, VI-XII) siguiendo el formato rígido Polo A / Polo B. CASAS VACÍAS: Analiza Signo + Regente con misma profundidad. EXTENSIÓN MÍNIMA: 8000 caracteres.",
                 "expected_min_chars": 8000,
                 "requires_template": True
             },
             {
-                "id": "modulo_2_sintesis",
-                "title": "MÓDULO 2-VIII: SÍNTESIS ARQUETÍPICA",
-                "topic": "general",
-                "prompt": "EJECUTA la parte VIII del MÓDULO 2. Realiza una Síntesis Arquetípica EXHAUSTIVA integrando todos los elementos analizados anteriormente. Desarrolla: patrones arquetípicos dominantes, configuraciones maestras (stelliums, T-cuadradas, etc.), sombra y proyección (qué no se reconoce), el mito personal, y la integración sistémica. Profundiza en mecánica, psicología, vivencia y proyección. EXTENSIÓN MÍNIMA: 5000 caracteres.",
+                "id": "modulo_2_personales",
+                "title": "MÓDULO 2-III: PLANETAS PERSONALES",
+                "topic": "personales",
+                "prompt": "EJECUTA la parte III del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Mercurio, Venus y Marte. Profundiza en mecánica, psicología, vivencia y proyección. EXTENSIÓN MÍNIMA: 5000 caracteres.",
                 "expected_min_chars": 5000,
                 "requires_template": False
             },
             {
-                "id": "modulo_3_recomendaciones",
-                "title": "MÓDULO 3: RECOMENDACIONES EVOLUTIVAS PRINCIPALES",
+                "id": "modulo_2_sociales",
+                "title": "MÓDULO 2-IV: PLANETAS SOCIALES",
+                "topic": "sociales",
+                "prompt": "EJECUTA la parte IV del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Júpiter y Saturno. Especial énfasis en Saturno como estructura. EXTENSIÓN MÍNIMA: 5000 caracteres.",
+                "expected_min_chars": 5000,
+                "requires_template": False
+            },
+            {
+                "id": "modulo_2_transpersonales",
+                "title": "MÓDULO 2-V: PLANETAS TRANSPERSONALES",
+                "topic": "transpersonales",
+                "prompt": "EJECUTA la parte V del MÓDULO 2. Analiza EXHAUSTIVAMENTE: Urano, Neptuno y Plutón. Polarización Transpersonal. EXTENSIÓN MÍNIMA: 6000 caracteres.",
+                "expected_min_chars": 6000,
+                "requires_template": False
+            },
+            {
+                "id": "modulo_2_nodos",
+                "title": "MÓDULO 2-VI: LOS NODOS LUNARES",
+                "topic": "nodos",
+                "prompt": "EJECUTA la parte VI del MÓDULO 2. Analiza el Eje Nodal (Sur -> Norte) como flecha del destino. EXTENSIÓN MÍNIMA: 4000 caracteres.",
+                "expected_min_chars": 4000,
+                "requires_template": False
+            },
+            {
+                "id": "modulo_2_aspectos",
+                "title": "MÓDULO 2-VII: ASPECTOS CLAVE DE LA CARTA",
+                "topic": "aspectos",
+                "prompt": "EJECUTA la parte VII del MÓDULO 2. Analiza Tensiones (cuadraturas/oposiciones) y Facilitadores (trinos/sextiles). EXTENSIÓN MÍNIMA: 5000 caracteres.",
+                "expected_min_chars": 5000,
+                "requires_template": False
+            },
+            {
+                "id": "modulo_2_sintesis",
+                "title": "MÓDULO 2-VIII: SÍNTESIS ARQUETÍPICA Y EJES DOMINANTES",
+                "topic": "general",
+                "prompt": "EJECUTA la parte VIII del MÓDULO 2. Síntesis final de la estructura natal. EXTENSIÓN MÍNIMA: 5000 caracteres.",
+                "expected_min_chars": 5000,
+                "requires_template": False
+            },
+            {
+                "id": "modulo_3_transitos",
+                "title": "MÓDULO 3: ANÁLISIS DE TRÁNSITOS ACTUALES",
+                "topic": "transitos",
+                "prompt": "EJECUTA EL MÓDULO 3. Analiza los tránsitos actuales usando ephemerides.csv. Jerarquía: Críticos, Significativos y Contexto. Sigue el protocolo de Lenguaje Abierto. EXTENSIÓN MÍNIMA: 6000 caracteres.",
+                "expected_min_chars": 6000,
+                "requires_template": False
+            },
+            {
+                "id": "modulo_4_recomendaciones",
+                "title": "MÓDULO 4: RECOMENDACIONES EVOLUTIVAS PRINCIPALES",
                 "topic": "evolucion",
-                "prompt": "EJECUTA EL MÓDULO 3. Analiza EXHAUSTIVAMENTE: A. Fortalezas Base (identifica y desarrolla cada fortaleza con detalle), B. Integración de Tensiones Principales (cómo integrar cada tensión identificada), C. Orientación hacia el Nodo Norte (camino evolutivo específico y práctico), D. Cierre Motivacional (sin lenguaje de éxito, enfoque en proceso y crecimiento). Desarrolla cada sección con profundidad ensayística. EXTENSIÓN MÍNIMA: 5000 caracteres. Mínimo 1000 caracteres por subsección.",
+                "prompt": "EJECUTA EL MÓDULO 4. Fortalezas, Integración de Tensiones y Orientación Nodal. Cierre motivacional sistémico. EXTENSIÓN MÍNIMA: 5000 caracteres.",
                 "expected_min_chars": 5000,
                 "requires_template": False
             }
@@ -674,7 +827,7 @@ Requisitos:
         el prompt CORE CARUTTI v5.3 con confirmación paso a paso.
         """
         print(f"🚀 [INICIO] Generación de informe completo para: {user_name}")
-        print(f"📋 Siguiendo estrictamente CORE CARUTTI v5.3 (REORDENADO & HOMOGÉNEO)")
+        print(f"📋 Siguiendo estrictamente CORE CARUTTI v6.0 (INTEGRACIÓN DINÁMICA)")
         
         # Nota: NO precargar PDFs en producción. El contexto se obtiene por módulo vía Atlas/BD.
 
