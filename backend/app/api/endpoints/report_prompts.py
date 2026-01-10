@@ -69,7 +69,7 @@ def prompt_doc_to_response(doc: dict, user_id: str, user_role: str) -> PromptRes
         user_prompt_template=doc.get("user_prompt_template", ""),
         variables=[PromptVariable(**v) for v in doc.get("variables", [])],
         llm_provider=doc.get("llm_provider", "gemini"),
-        model=doc.get("model", "gemini-2.0-flash-exp"),
+        model=doc.get("model", "gemini-3-pro-preview"),
         temperature=doc.get("temperature", 0.7),
         max_tokens=doc.get("max_tokens", 8000),
         safety_settings=SafetySettings(**doc.get("safety_settings", {})),

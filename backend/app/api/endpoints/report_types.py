@@ -195,7 +195,7 @@ async def create_report_type(
             {"name": "report_type", "type": "string", "required": False}
         ],
         "llm_provider": "gemini",
-        "model": "gemini-2.0-flash-exp",
+        "model": "gemini-3-pro-preview",
         "temperature": 0.7,
         "max_tokens": 8000,
         "safety_settings": {

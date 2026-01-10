@@ -45,7 +45,7 @@ class PromptOrchestrator:
             "version": 0,
             "system_instruction": "Eres un astrólogo profesional certificado con experiencia en interpretación de cartas natales.",
             "user_prompt_template": "Genera un informe astrológico para {nombre} basado en su carta natal:\n\n{carta_data}",
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-3-pro-preview",
             "temperature": 0.7,
             "max_tokens": 8000
         }
@@ -124,7 +124,7 @@ class PromptOrchestrator:
             "system_instruction": final_prompt["system_instruction"],
             "user_prompt": final_prompt["user_prompt"],
             "llm_config": {
-                "model": prompt.get("model", "gemini-2.0-flash-exp"),
+                "model": prompt.get("model", "gemini-3-pro-preview"),
                 "temperature": prompt.get("temperature", 0.7),
                 "max_tokens": prompt.get("max_tokens", 8000),
                 "safety_settings": prompt.get("safety_settings", {})

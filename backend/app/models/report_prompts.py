@@ -76,7 +76,7 @@ class PromptCreate(BaseModel):
         description="Proveedor del LLM"
     )
     model: str = Field(
-        default="gemini-2.0-flash-exp",
+        default="gemini-3-pro-preview",
         description="Modelo específico"
     )
     temperature: float = Field(
@@ -113,7 +113,7 @@ class PromptCreate(BaseModel):
                         "required": True
                     }
                 ],
-                "model": "gemini-2.0-flash-exp",
+                "model": "gemini-3-pro-preview",
                 "temperature": 0.7
             }
         }
@@ -205,7 +205,7 @@ class PromptResolveResponse(BaseModel):
                 "system_instruction": "Eres un astrólogo profesional...",
                 "user_prompt": "Genera un informe para Juan Pérez...",
                 "llm_config": {
-                    "model": "gemini-2.0-flash-exp",
+                    "model": "gemini-3-pro-preview",
                     "temperature": 0.7,
                     "max_tokens": 8000
                 }
