@@ -88,6 +88,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const lastEventRef = useRef<{ moduleId?: string | null; step?: string | null }>({ moduleId: null, step: null });
   const lastUpdateRef = useRef<string | null>(null);
   const stalledCounterRef = useRef<number>(0);
+  const isPollingActiveRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Estimación de tiempo por módulo (en segundos)
   const TIME_ESTIMATES: Record<string, number> = {
@@ -138,9 +140,14 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
     return () => {
       mounted = false;
+      isPollingActiveRef.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
     };
   }, [autoGenerateAll]);
@@ -224,7 +231,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       const response = await fetch(`${API_URL}/reports/module-status/${sessionIdToUse}/${moduleId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        signal: abortControllerRef.current?.signal
       });
 
       if (!response.ok) {
@@ -251,7 +259,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         throw new Error(errorMsg);
       }
 
-      await sleep(2500);
+      // Polling cada 5 segundos (aumentado de 2.5s para reducir carga del servidor)
+      await sleep(5000);
     }
   };
 
@@ -360,7 +369,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       const response = await fetch(`${API_URL}/reports/generation-status/${sidToUse}`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        signal: abortControllerRef.current?.signal
       });
 
       if (response.ok) {
@@ -469,6 +479,15 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   };
 
   const startAutoGenerationPolling = async (sessionIdToUse: string, modulesList: Module[]) => {
+    // Prevenir múltiples instancias de polling
+    if (isPollingActiveRef.current) {
+      console.warn('[WIZARD] Ya hay un polling activo, ignorando nueva solicitud');
+      return;
+    }
+
+    isPollingActiveRef.current = true;
+    abortControllerRef.current = new AbortController();
+
     setIsAutoGenerating(true);
     setError(null);
     setGeneratedModulesCount(0);
@@ -499,7 +518,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     const maxWaitMs = 60 * 180 * 1000; // 3h defensivo para batch completo
 
     try {
-      while (true) {
+      while (isPollingActiveRef.current) {
         if (Date.now() - start > maxWaitMs) {
           throw new Error('Tiempo de espera agotado generando el informe completo. Inténtalo de nuevo.');
         }
@@ -511,7 +530,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         // hacemos una consulta directa para decisión (evita depender de state async)
         const token = getToken();
         const res = await fetch(`${API_URL}/reports/generation-status/${sessionIdToUse}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: abortControllerRef.current?.signal
         });
         if (!res.ok) {
           if (res.status === 401) {
@@ -526,8 +546,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const updatedAt = data.batch_job?.updated_at || data.updated_at;
         if (updatedAt === lastUpdateRef.current) {
           stalledCounterRef.current += 1;
-          // Si no hay cambios durante ~2 min (40 * 3s)
-          if (stalledCounterRef.current > 40) {
+          // Si no hay cambios durante ~2 min (24 * 5s = 120s)
+          if (stalledCounterRef.current > 24) {
             setIsStalled(true);
           }
         } else {
@@ -544,6 +564,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         if (data.status === 'completed' || data.has_full_report) {
           // Terminado: cerrar wizard y delegar al contenedor (App) el enlace de descarga / navegación
           setIsAutoGenerating(false);
+          isPollingActiveRef.current = false;
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
@@ -559,12 +580,21 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           return;
         }
 
-        await sleep(3000);
+        // Polling cada 5 segundos (aumentado de 3s para reducir carga del servidor)
+        await sleep(5000);
       }
     } catch (err: any) {
       console.error('[WIZARD] Error en auto-generación:', err);
+
+      // Ignorar errores de abort (cancelación intencional)
+      if (err.name === 'AbortError') {
+        console.log('[WIZARD] Polling cancelado intencionalmente');
+        return;
+      }
+
       setError(err.message || 'Error generando el informe completo');
       setIsAutoGenerating(false);
+      isPollingActiveRef.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
