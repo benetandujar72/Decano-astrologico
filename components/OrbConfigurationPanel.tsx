@@ -49,8 +49,41 @@ const PLANET_DATA: Record<string, { label: string; icon: string; category: strin
     pluto: { label: 'Plutón', icon: '♇', category: 'Transpersonal' },
     chiron: { label: 'Quirón', icon: '⚷', category: 'Puntos Extra' },
     north_node: { label: 'Nodo Norte', icon: '☊', category: 'Puntos Extra' },
-    lilith: { label: 'Lilith', icon: '⚸', category: 'Puntos Extra' }
+    lilith: { label: 'Lilith', icon: '⚸', category: 'Puntos Extra' },
+    // Objetos adicionales
+    ceres: { label: 'Ceres', icon: '⚳', category: 'Asteroides' },
+    pallas: { label: 'Pallas', icon: '⚴', category: 'Asteroides' },
+    juno: { label: 'Juno', icon: '⚵', category: 'Asteroides' },
+    vesta: { label: 'Vesta', icon: '⚶', category: 'Asteroides' },
+    eris: { label: 'Eris', icon: '⯰', category: 'Asteroides' },
+    sedna: { label: 'Sedna', icon: '⯲', category: 'Asteroides' },
+    orcus: { label: 'Orcus', icon: '🝾', category: 'Asteroides' },
+    quaoar: { label: 'Quaoar', icon: '⯖', category: 'Asteroides' },
+    makemake: { label: 'MakeMake', icon: '🝿', category: 'Asteroides' },
+    haumea: { label: 'Haumea', icon: '🝻', category: 'Asteroides' },
+    ixion: { label: 'Ixion', icon: '⯗', category: 'Asteroides' },
+    salacia: { label: 'Salacia', icon: '⯝', category: 'Asteroides' },
+    pholus: { label: 'Pholus', icon: '⯛', category: 'Asteroides' },
+    nessus: { label: 'Nessus', icon: '⯚', category: 'Asteroides' },
+    vertex: { label: 'Vértex', icon: 'Vx', category: 'Puntos Extra' },
+    part_fortune: { label: 'P. Fortuna', icon: '⊗', category: 'Puntos Extra' },
+    nodo_south: { label: 'Nodo S.', icon: '☋', category: 'Puntos Extra' }
 };
+
+const FIXED_STARS = [
+    'Aldebarán', 'Algol', 'Altair', 'Antares', 'Arcturus',
+    'Capella', 'Castor', 'C. Galac.', 'Pollux', 'Régulus',
+    'Rigel', 'Sirius', 'Spica'
+];
+
+const HOUSE_SYSTEMS = [
+    { id: 'placidus', label: 'Placidus' },
+    { id: 'campanus', label: 'Campanus' },
+    { id: 'koch', label: 'Koch' },
+    { id: 'regiomontanus', label: 'Regiomontanus' },
+    { id: 'equal', label: 'Iguales' },
+    { id: 'whole_sign', label: 'Signos ent.' }
+];
 
 const OrbConfigurationPanel: React.FC<{ onSave: (prefs: any) => void }> = ({ onSave }) => {
     const [activeBodies, setActiveBodies] = useState<string[]>(['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto']);
@@ -59,6 +92,11 @@ const OrbConfigurationPanel: React.FC<{ onSave: (prefs: any) => void }> = ({ onS
         aspects: { strategy: 'UMBRELLA_MAX' }
     });
     const [orbMatrix, setOrbMatrix] = useState<OrbMatrix>({});
+    const [houseSystem, setHouseSystem] = useState<string>('placidus');
+    const [activeFixedStars, setActiveFixedStars] = useState<string[]>([]);
+    const [orbBaseType, setOrbBaseType] = useState<'minor' | 'major' | 'custom'>('major');
+    const [showPlanetSymbols, setShowPlanetSymbols] = useState(true);
+    const [showTranspersonalPlanets, setShowTranspersonalPlanets] = useState(false);
 
     useEffect(() => {
         // Inicializar matriz con valores por defecto
@@ -98,6 +136,25 @@ const OrbConfigurationPanel: React.FC<{ onSave: (prefs: any) => void }> = ({ onS
         });
     };
 
+    const handleToggleFixedStar = (star: string) => {
+        setActiveFixedStars(prev =>
+            prev.includes(star) ? prev.filter(s => s !== star) : [...prev, star]
+        );
+    };
+
+    const handleSaveConfig = () => {
+        onSave({
+            activeBodies,
+            logicRules,
+            orbMatrix,
+            houseSystem,
+            activeFixedStars,
+            orbBaseType,
+            showPlanetSymbols,
+            showTranspersonalPlanets
+        });
+    };
+
     return (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
@@ -133,7 +190,108 @@ const OrbConfigurationPanel: React.FC<{ onSave: (prefs: any) => void }> = ({ onS
                 </div>
             </section>
 
-            {/* SECCIÓN 2: REGLAS DE LÓGICA */}
+            {/* SECCIÓN 2: SISTEMA DE CASAS Y SÍMBOLOS */}
+            <section className="grid md:grid-cols-2 gap-6">
+                <div className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-700/50 pb-2">
+                        <Info className="w-5 h-5 text-indigo-400" />
+                        <span className="font-bold text-slate-200">Sistema de Casas</span>
+                    </div>
+                    <select
+                        value={houseSystem}
+                        onChange={e => setHouseSystem(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:outline-none focus:border-indigo-500 appearance-none"
+                    >
+                        {HOUSE_SYSTEMS.map(sys => (
+                            <option key={sys.id} value={sys.id}>{sys.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-amber-400" />
+                            <span className="font-bold text-slate-200">Símbolos</span>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <label className="flex items-center justify-between p-2 rounded cursor-pointer hover:bg-slate-700/30">
+                            <span className="text-slate-300 text-sm">Mostrar símbolos de planetas</span>
+                            <input
+                                type="checkbox"
+                                checked={showPlanetSymbols}
+                                onChange={e => setShowPlanetSymbols(e.target.checked)}
+                                className="w-4 h-4 accent-indigo-500"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between p-2 rounded cursor-pointer hover:bg-slate-700/30">
+                            <span className="text-slate-300 text-sm">Planetas transpersonales</span>
+                            <input
+                                type="checkbox"
+                                checked={showTranspersonalPlanets}
+                                onChange={e => setShowTranspersonalPlanets(e.target.checked)}
+                                className="w-4 h-4 accent-indigo-500"
+                            />
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            {/* SECCIÓN 3: ESTRELLAS FIJAS */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 text-indigo-300">
+                    <Sparkles className="w-5 h-5" />
+                    <h3 className="font-semibold uppercase tracking-wider text-sm">Estrellas Fijas</h3>
+                </div>
+                <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-7 gap-3">
+                    {FIXED_STARS.map(star => (
+                        <label key={star} className={`flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${activeFixedStars.includes(star)
+                                ? 'bg-amber-500/10 border-amber-500/50 text-white shadow-[0_0_15px_rgba(251,191,36,0.1)]'
+                                : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                            }`}>
+                            <input
+                                type="checkbox"
+                                className="hidden"
+                                checked={activeFixedStars.includes(star)}
+                                onChange={() => handleToggleFixedStar(star)}
+                            />
+                            <span className="text-xs font-medium text-center">{star}</span>
+                        </label>
+                    ))}
+                </div>
+            </section>
+
+            {/* SECCIÓN 4: ORBES BASE */}
+            <section className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-700/50 pb-2">
+                    <Settings2 className="w-5 h-5 text-indigo-400" />
+                    <span className="font-bold text-slate-200">Orbes de Base</span>
+                </div>
+                <div className="flex gap-4">
+                    {[
+                        { id: 'minor', label: 'Menores' },
+                        { id: 'major', label: 'Mayores' },
+                        { id: 'custom', label: 'Personalizado' }
+                    ].map(type => (
+                        <label key={type.id} className={`flex-1 p-4 rounded-lg border cursor-pointer transition-all text-center ${orbBaseType === type.id
+                                ? 'bg-indigo-500/20 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                                : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                            }`}>
+                            <input
+                                type="radio"
+                                name="orbBase"
+                                className="hidden"
+                                checked={orbBaseType === type.id}
+                                onChange={() => setOrbBaseType(type.id as any)}
+                            />
+                            <span className="font-semibold">{type.label}</span>
+                        </label>
+                    ))}
+                </div>
+            </section>
+
+            {/* SECCIÓN 5: REGLAS DE LÓGICA */}
             <section className="grid md:grid-cols-2 gap-6">
                 <div className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
                     <div className="flex items-center justify-between">
@@ -240,7 +398,7 @@ const OrbConfigurationPanel: React.FC<{ onSave: (prefs: any) => void }> = ({ onS
             <div className="flex justify-between items-center pt-6 border-t border-slate-800">
                 <p className="text-slate-500 text-xs italic">* Los orbes se basan en la jerarquía sistémica Core Carutti v6.</p>
                 <button
-                    onClick={() => onSave({ activeBodies, logicRules, orbMatrix })}
+                    onClick={handleSaveConfig}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all active:scale-95"
                 >
                     <Check className="w-5 h-5" />

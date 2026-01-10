@@ -18,7 +18,10 @@ from app.api.endpoints import (
     expert_chat,
     professional_services,
     demo_chat,
-    contact
+    contact,
+    report_types,
+    report_templates,
+    report_prompts
 )
 
 # Crear router principal
@@ -42,6 +45,11 @@ router.include_router(expert_chat.router, prefix="/expert-chat", tags=["expert-c
 router.include_router(professional_services.router, prefix="/professional-services", tags=["professional-services"])
 router.include_router(demo_chat.router, prefix="/demo-chat", tags=["demo-chat"])
 router.include_router(contact.router, prefix="/contact", tags=["contact"])
+
+# Endpoints para sistema de tipos de informe y plantillas personalizables
+router.include_router(report_types.router, prefix="/report-types", tags=["report-types"])
+router.include_router(report_templates.router, prefix="/templates", tags=["templates"])
+router.include_router(report_prompts.router, prefix="/prompts", tags=["prompts"])
 
 # Alias para compatibilidad
 app = router
