@@ -52,6 +52,7 @@ import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técni
 import ProfessionalServices from './components/ProfessionalServices';
 import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualización de datos de carta
 import LandingPage from './components/LandingPage';
+import { HelpButton } from './components/HelpSystem'; // 🆕 Sistema de ayuda contextual
 import { calculateChartData } from './astrologyEngine';
 import { api } from './services/api';
 import './styles/material-theme.css';
@@ -2758,6 +2759,15 @@ ${analysisText}
             </button>
           </div>
         </div>
+      )}
+
+      {/* Botón de ayuda contextual - visible en todos los modos excepto AUTH y LANDING */}
+      {isAuthenticated && mode !== AppMode.AUTH && mode !== AppMode.LANDING && (
+        <HelpButton
+          context={mode.toLowerCase()}
+          position="bottom-right"
+          tooltip="Abrir centro de ayuda"
+        />
       )}
     </MaterialBackground>
   );
