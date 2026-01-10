@@ -38,6 +38,7 @@ class DA_Loader {
 
         // Public
         require_once DECANO_PLUGIN_DIR . 'public/class-da-public.php';
+        require_once DECANO_PLUGIN_DIR . 'public/class-da-shortcodes.php';
 
         // API (mantener compatibilidad con código existente)
         // La clase Fraktal_Reports_Plugin existente maneja los AJAX endpoints
@@ -67,8 +68,14 @@ class DA_Loader {
         add_action('wp_enqueue_scripts', [$public, 'enqueue_styles']);
         add_action('wp_enqueue_scripts', [$public, 'enqueue_scripts']);
 
-        // Shortcodes (mantener compatibilidad con [fraktal_panel])
-        // Los nuevos shortcodes se añadirán progresivamente
+        // Shortcodes
+        add_shortcode('decano-report-generator', ['DA_Shortcodes', 'report_generator_shortcode']);
+        add_shortcode('decano-user-dashboard', ['DA_Shortcodes', 'user_dashboard_shortcode']);
+        add_shortcode('decano-plans', ['DA_Shortcodes', 'plans_shortcode']);
+        add_shortcode('decano-report-history', ['DA_Shortcodes', 'report_history_shortcode']);
+
+        // Mantener compatibilidad con versión anterior
+        add_shortcode('fraktal_panel', ['DA_Shortcodes', 'legacy_panel_shortcode']);
     }
 
     /**

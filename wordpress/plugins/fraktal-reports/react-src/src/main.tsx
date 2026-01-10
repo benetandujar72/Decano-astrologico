@@ -11,7 +11,7 @@ import PlanSelector from './components/PlanSelector/PlanSelector';
 const components = {
   ReportGenerator,
   UserDashboard,
-  PlanSelector,
+  PlanSelector
 };
 
 // Find all containers with data-component attribute and render the appropriate component
