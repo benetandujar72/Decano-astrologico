@@ -887,6 +887,373 @@ export const helpContent: HelpSection[] = [
         ]
       }
     ]
+  },
+
+  // ====================================================================
+  // EXTENSIÓN WORDPRESS
+  // ====================================================================
+  {
+    id: 'wordpress-extension',
+    title: 'Extensión WordPress',
+    icon: '🔌',
+    description: 'Integra el sistema de informes astrológicos con tu sitio WordPress',
+    category: 'advanced',
+    steps: [
+      {
+        id: 'wp-intro',
+        title: 'Introducción a la Extensión',
+        description: `
+          La extensión de WordPress te permite integrar completamente el sistema de generación de informes astrológicos en tu sitio web.
+
+          **¿Qué incluye?**
+          - 🎨 Interfaz coherente con la aplicación principal
+          - 💳 Integración con WooCommerce y Stripe
+          - 📊 Panel de administración completo
+          - 🔐 Control de acceso por plan de pago
+          - 📱 Diseño responsive
+          - 🌍 Multiidioma
+
+          **Requisitos:**
+          - WordPress 6.0 o superior
+          - WooCommerce 8.0 o superior
+          - WooCommerce Subscriptions (para suscripciones)
+          - Stripe Payment Gateway
+          - PHP 8.1 o superior
+        `,
+        image: '/help/screenshots/wp-intro.png',
+        tips: [
+          'Asegúrate de tener un backup completo antes de instalar',
+          'Prueba primero en un entorno de staging',
+          'Lee la documentación completa antes de comenzar'
+        ],
+        relatedSteps: ['wp-install', 'wp-configure']
+      },
+      {
+        id: 'wp-install',
+        title: 'Instalación del Plugin',
+        description: `
+          Instala el plugin Decano Astrológico en tu WordPress.
+
+          **Método 1: Desde el repositorio**
+          1. Ve a **Plugins → Añadir nuevo**
+          2. Busca "Decano Astrológico"
+          3. Haz clic en "Instalar ahora"
+          4. Haz clic en "Activar"
+
+          **Método 2: Subida manual**
+          1. Descarga el archivo ZIP del plugin
+          2. Ve a **Plugins → Añadir nuevo → Subir plugin**
+          3. Selecciona el archivo ZIP
+          4. Haz clic en "Instalar ahora"
+          5. Activa el plugin
+
+          **Después de la activación:**
+          El plugin creará automáticamente:
+          - 3 productos de suscripción en WooCommerce
+          - Tablas necesarias en la base de datos
+          - Páginas de configuración
+        `,
+        image: '/help/screenshots/wp-install.png',
+        tips: [
+          'Verifica que WooCommerce esté activo antes de instalar',
+          'La primera activación puede tardar unos segundos',
+          'Revisa los logs si hay algún error durante la instalación'
+        ],
+        warnings: [
+          'No desactives el plugin mientras haya informes generándose',
+          'Asegúrate de tener permisos de escritura en wp-content'
+        ],
+        relatedSteps: ['wp-configure', 'wp-products']
+      },
+      {
+        id: 'wp-configure',
+        title: 'Configuración Inicial',
+        description: `
+          Configura el plugin para conectarlo con el backend de la aplicación.
+
+          **Paso 1: Configurar conexión API**
+          1. Ve a **Decano → Configuración → API**
+          2. Ingresa la **URL del backend**: \`https://api.decano.com\`
+          3. Ingresa tu **API Key** (solicítala al administrador)
+          4. Haz clic en "Probar conexión"
+          5. Verifica que aparezca "✅ Conexión exitosa"
+
+          **Paso 2: Configurar Stripe**
+          1. Ve a **WooCommerce → Ajustes → Pagos → Stripe**
+          2. Activa el método de pago
+          3. Ingresa tus claves de Stripe (test o producción)
+          4. Configura webhooks según la documentación
+
+          **Paso 3: Configurar límites**
+          1. Ve a **Decano → Configuración → Límites**
+          2. Configura límites personalizados si es necesario
+          3. Activa el control de límites
+          4. Guarda los cambios
+        `,
+        image: '/help/screenshots/wp-config.png',
+        tips: [
+          'Usa las claves de test de Stripe primero',
+          'Guarda la API Key en un lugar seguro',
+          'Prueba la conexión después de cada cambio'
+        ],
+        warnings: [
+          'No compartas tu API Key con nadie',
+          'Usa HTTPS en producción (SSL requerido para Stripe)'
+        ],
+        relatedSteps: ['wp-products', 'wp-shortcodes']
+      },
+      {
+        id: 'wp-products',
+        title: 'Productos y Planes',
+        description: `
+          El plugin crea automáticamente 3 productos de suscripción en WooCommerce.
+
+          **Plan Gratuito (€0/mes)**
+          - 1 informe resumido al mes
+          - Carta natal básica
+          - Posiciones planetarias
+          - Aspectos principales
+
+          **Plan Premium (€29.99/mes)**
+          - Informes ilimitados
+          - Informes completos
+          - Plantillas personalizadas
+          - Técnicas avanzadas
+          - Exportación PDF/DOCX
+          - Soporte prioritario
+
+          **Plan Enterprise (€99.99/mes)**
+          - Todo de Premium
+          - Informes personalizados
+          - API REST completa
+          - Prompts personalizados
+          - Soporte 24/7
+          - Gestor de cuenta dedicado
+
+          **Personalizar productos:**
+          1. Ve a **WooCommerce → Productos**
+          2. Edita el producto que desees
+          3. Modifica precio, descripción o características
+          4. Guarda los cambios
+        `,
+        image: '/help/screenshots/wp-products.png',
+        tips: [
+          'Puedes crear planes personalizados adicionales',
+          'Los precios son solo sugeridos, ajústalos a tu mercado',
+          'Usa cupones de WooCommerce para promociones'
+        ],
+        relatedSteps: ['wp-configure', 'wp-checkout']
+      },
+      {
+        id: 'wp-shortcodes',
+        title: 'Usar Shortcodes',
+        description: `
+          El plugin incluye varios shortcodes para insertar funcionalidad en tus páginas.
+
+          **[decano-report-generator]**
+          Muestra el generador de informes completo.
+          \`\`\`
+          [decano-report-generator plan_check="true" show_upgrade="true"]
+          \`\`\`
+
+          **[decano-user-dashboard]**
+          Dashboard del usuario con sus informes y estadísticas.
+          \`\`\`
+          [decano-user-dashboard]
+          \`\`\`
+
+          **[decano-plans]**
+          Selector de planes con comparación.
+          \`\`\`
+          [decano-plans highlighted="premium"]
+          \`\`\`
+
+          **[decano-report-history]**
+          Historial de informes del usuario.
+          \`\`\`
+          [decano-report-history limit="10"]
+          \`\`\`
+
+          **Ejemplo de página completa:**
+          \`\`\`
+          <h1>Genera tu Carta Astral</h1>
+          <p>Descubre tu carta natal personalizada</p>
+
+          [decano-report-generator]
+
+          <h2>¿Necesitas más informes?</h2>
+          [decano-plans]
+          \`\`\`
+        `,
+        image: '/help/screenshots/wp-shortcodes.png',
+        tips: [
+          'Combina shortcodes con contenido personalizado',
+          'Usa atributos para personalizar comportamiento',
+          'Crea páginas específicas para cada shortcode'
+        ],
+        relatedSteps: ['wp-pages', 'wp-customize']
+      },
+      {
+        id: 'wp-checkout',
+        title: 'Proceso de Compra',
+        description: `
+          Cómo funciona el proceso de compra de planes para tus usuarios.
+
+          **Flujo de compra:**
+          1. Usuario hace clic en "Mejorar plan" o "Comprar"
+          2. Se redirige al checkout de WooCommerce
+          3. Completa datos de facturación
+          4. Ingresa datos de tarjeta (Stripe)
+          5. Confirma el pago
+          6. Stripe procesa la suscripción
+          7. WordPress actualiza el plan del usuario
+          8. Backend se sincroniza automáticamente
+          9. Usuario puede generar informes según su nuevo plan
+
+          **Gestión de suscripciones:**
+          Los usuarios pueden gestionar sus suscripciones desde:
+          - **Mi cuenta → Suscripciones**
+          - Ver próxima renovación
+          - Actualizar método de pago
+          - Cancelar suscripción
+          - Ver historial de pagos
+        `,
+        image: '/help/screenshots/wp-checkout.png',
+        tips: [
+          'Configura emails de confirmación personalizados',
+          'Ofrece cupones de descuento para nuevos usuarios',
+          'Activa renovación automática para suscripciones'
+        ],
+        warnings: [
+          'Las cancelaciones son inmediatas pero el acceso dura hasta fin de periodo',
+          'Configura webhooks de Stripe correctamente para evitar problemas'
+        ]
+      },
+      {
+        id: 'wp-admin-panel',
+        title: 'Panel de Administración',
+        description: `
+          Gestiona usuarios, informes y configuración desde el panel de WordPress.
+
+          **Dashboard (Decano → Dashboard)**
+          - Estadísticas generales
+          - Informes generados este mes
+          - Suscripciones activas
+          - Ingresos del mes
+          - Gráficos de uso
+
+          **Usuarios (Decano → Usuarios)**
+          - Ver todos los usuarios
+          - Filtrar por plan
+          - Ver informes de cada usuario
+          - Cambiar plan manualmente
+          - Exportar lista de usuarios
+
+          **Informes (Decano → Informes)**
+          - Ver todos los informes generados
+          - Filtrar por tipo, fecha, usuario
+          - Descargar cualquier informe
+          - Eliminar informes antiguos
+          - Ver estadísticas de uso
+
+          **Configuración (Decano → Configuración)**
+          - API settings
+          - Límites de planes
+          - Email templates
+          - Cache settings
+          - Webhooks
+        `,
+        image: '/help/screenshots/wp-admin.png',
+        tips: [
+          'Revisa el dashboard semanalmente para detectar tendencias',
+          'Exporta informes mensuales para análisis',
+          'Configura alertas para problemas de API'
+        ],
+        relatedSteps: ['wp-users-management', 'wp-reports-management']
+      },
+      {
+        id: 'wp-users-management',
+        title: 'Gestión de Usuarios',
+        description: `
+          Administra usuarios y sus planes directamente desde WordPress.
+
+          **Ver detalles de usuario:**
+          1. Ve a **Decano → Usuarios**
+          2. Busca el usuario
+          3. Haz clic en "Ver detalles"
+          4. Verás:
+             - Plan actual
+             - Informes generados este mes
+             - Límite de informes
+             - Historial completo
+             - Próxima renovación
+
+          **Cambiar plan manualmente:**
+          1. Busca el usuario
+          2. Haz clic en "Cambiar plan"
+          3. Selecciona el nuevo plan
+          4. (Opcional) Añade nota sobre el cambio
+          5. Confirma
+          6. El cambio es inmediato
+
+          **Ver informes de un usuario:**
+          1. Haz clic en "Ver informes"
+          2. Verás todos sus informes
+          3. Puedes descargarlos o eliminarlos
+          4. Ver detalles de generación
+        `,
+        image: '/help/screenshots/wp-users-manage.png',
+        tips: [
+          'Documenta cambios manuales de plan',
+          'Usa filtros para encontrar usuarios rápidamente',
+          'Exporta datos antes de hacer cambios masivos'
+        ],
+        warnings: [
+          'Cambios manuales no afectan suscripciones de WooCommerce',
+          'Sincroniza manualmente si es necesario'
+        ]
+      },
+      {
+        id: 'wp-troubleshooting',
+        title: 'Solución de Problemas',
+        description: `
+          Problemas comunes y cómo resolverlos.
+
+          **Error: "No se puede conectar con la API"**
+          - Verifica que la URL de la API sea correcta
+          - Comprueba que el backend esté funcionando
+          - Revisa la API Key
+          - Verifica el firewall de tu servidor
+
+          **Error: "Plan no actualizado después del pago"**
+          - Verifica webhooks de WooCommerce
+          - Comprueba logs en **WooCommerce → Estado → Logs**
+          - Sincroniza manualmente desde admin
+          - Revisa que Stripe esté configurado correctamente
+
+          **Error: "No se puede generar informe"**
+          - Verifica límites del plan del usuario
+          - Comprueba conexión con backend
+          - Revisa logs en **Decano → Configuración → Logs**
+          - Prueba generar desde el admin
+
+          **Error: "Shortcode no funciona"**
+          - Verifica que el plugin esté activo
+          - Limpia caché de WordPress
+          - Comprueba sintaxis del shortcode
+          - Revisa consola del navegador para errores JS
+        `,
+        tips: [
+          'Activa modo debug de WordPress temporalmente',
+          'Revisa logs regularmente',
+          'Mantén backup reciente antes de troubleshooting'
+        ],
+        warnings: [
+          'No desactives el plugin mientras investigas errores',
+          'Documenta los pasos que tomas para resolver problemas'
+        ]
+      }
+    ]
   }
 ];
 
