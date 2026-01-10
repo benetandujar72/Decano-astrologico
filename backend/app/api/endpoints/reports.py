@@ -736,6 +736,55 @@ async def queue_full_report(
         "status": "queued",
     }
 
+@router.post("/resume-generation/{session_id}")
+async def resume_generation(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Intenta reanudar una sesión de generación interrumpida (p.ej. por reinicio de servidor).
+    """
+    user_id = str(current_user.get("_id"))
+    
+    try:
+        session = await report_sessions_collection.find_one({"_id": ObjectId(session_id)})
+    except:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    is_admin = (current_user.get("role") == "admin")
+    if (not is_admin) and str(session.get("user_id")) != user_id:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión")
+
+    if session.get("status") == "completed":
+        return {"status": "completed", "message": "La sesión ya está completada"}
+
+    # Resetear estado de error si lo había para permitir que el polling del frontend fluya
+    await report_sessions_collection.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {
+            "status": "in_progress",
+            "error": None,
+            "updated_at": datetime.utcnow().isoformat(),
+            "batch_job.status": "running",
+            "batch_job.error": None,
+            "batch_job.updated_at": datetime.utcnow().isoformat(),
+        }}
+    )
+
+    job_id = str(uuid.uuid4())
+    # _run_full_report_job ya es inteligente: salta módulos ya existentes en generated_modules
+    asyncio.create_task(_run_full_report_job(session_id, user_id, job_id))
+
+    return {
+        "session_id": session_id,
+        "job_id": job_id,
+        "message": "Generación reanudada exitosamente",
+        "status": "resumed"
+    }
+
 @router.post("/queue-module")
 async def queue_module(
     request: GenerateModuleRequest,

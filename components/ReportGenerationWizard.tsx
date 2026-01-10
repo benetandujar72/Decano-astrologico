@@ -81,10 +81,13 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const [downloadedPdf, setDownloadedPdf] = useState(false);
   const [showOrbConfig, setShowOrbConfig] = useState(true);
   const [userConfig, setUserConfig] = useState<any>(null);
+  const [isStalled, setIsStalled] = useState(false);
 
   const remainingRef = useRef<number>(0);
   const timerRef = useRef<number | null>(null);
   const lastEventRef = useRef<{ moduleId?: string | null; step?: string | null }>({ moduleId: null, step: null });
+  const lastUpdateRef = useRef<string | null>(null);
+  const stalledCounterRef = useRef<number>(0);
 
   // Estimación de tiempo por módulo (en segundos)
   const TIME_ESTIMATES: Record<string, number> = {
@@ -433,6 +436,38 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     }
   };
 
+  const handleResume = async () => {
+    if (!sessionId) return;
+    setIsLoading(true);
+    setError(null);
+    setIsStalled(false);
+    stalledCounterRef.current = 0;
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/reports/resume-generation/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Error al reanudar la generación');
+      }
+
+      // Reiniciar polling si no estaba activo
+      if (!isAutoGenerating) {
+        // Obtenemos los módulos actuales del estado
+        const currentModules = modules.length > 0 ? modules : [];
+        startAutoGenerationPolling(sessionId, currentModules);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al reanudar');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const startAutoGenerationPolling = async (sessionIdToUse: string, modulesList: Module[]) => {
     setIsAutoGenerating(true);
     setError(null);
@@ -486,6 +521,20 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
           throw new Error(errData.detail || `Error consultando estado: HTTP ${res.status}`);
         }
         const data = await res.json();
+
+        // Stall detection
+        const updatedAt = data.batch_job?.updated_at || data.updated_at;
+        if (updatedAt === lastUpdateRef.current) {
+          stalledCounterRef.current += 1;
+          // Si no hay cambios durante ~2 min (40 * 3s)
+          if (stalledCounterRef.current > 40) {
+            setIsStalled(true);
+          }
+        } else {
+          lastUpdateRef.current = updatedAt;
+          stalledCounterRef.current = 0;
+          setIsStalled(false);
+        }
 
         if (data.status === 'error') {
           const msg = data.error || data?.batch_job?.error || 'Error generando el informe en el servidor. Revisa el panel y reintenta.';
@@ -835,7 +884,31 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
                     <AlertCircle className="w-5 h-5" />
                     <span className="font-semibold">Error</span>
                   </div>
-                  <p className="mt-2">{error}</p>
+                  <p className="mt-2 text-sm">{error}</p>
+                </div>
+              )}
+
+              {((isStalled && isAutoGenerating) || (error && (isAutoGenerating || autoGenerateAll && sessionId))) && (
+                <div className="md-alert md-alert--warning mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 animate-spin-slow" />
+                    <span className="font-semibold">
+                      {isStalled ? 'Progreso pausado o estancado' : 'Interrupción detectada'}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm">
+                    {isStalled
+                      ? 'No se ha detectado actividad reciente. Esto sucede a veces si el servidor se reinicia o el proceso en segundo plano se detiene.'
+                      : 'Ha ocurrido un error durante la generación automática. Puedes intentar continuar desde el último punto guardado.'}
+                  </p>
+                  <button
+                    onClick={handleResume}
+                    disabled={isLoading}
+                    className="mt-3 md-button bg-amber-600 hover:bg-amber-700 text-white w-full py-2.5 flex items-center justify-center gap-2 font-bold shadow-md transition-all active:scale-95"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Reanudar generación de informe
+                  </button>
                 </div>
               )}
 
