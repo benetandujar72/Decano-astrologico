@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name: Decano Astrológico
- * Plugin URI: https://decano.com/wordpress
+ * Plugin URI: https://app.programafraktal.com
  * Description: Sistema completo de generación de informes astrológicos con WooCommerce, múltiples planes (Free/Premium/Enterprise) y panel de administración avanzado.
  * Version: 1.0.0
  * Author: Decano Team
- * Author URI: https://decano.com
+ * Author URI: https://app.programafraktal.com
  * License: GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
- * Text Domain: decano
+ * Text Domain: decano-astrologico
  * Domain Path: /languages
  * Requires at least: 6.0
  * Requires PHP: 8.0
@@ -28,8 +28,32 @@ define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
  * Activación del plugin
  */
 function activate_decano() {
-    require_once DECANO_PLUGIN_DIR . 'includes/class-da-activator.php';
-    DA_Activator::activate();
+    try {
+        // Verificar requisitos básicos ANTES de cargar clases
+        if (version_compare(PHP_VERSION, '8.0', '<')) {
+            wp_die('Este plugin requiere PHP 8.0 o superior. Tu versión actual es: ' . PHP_VERSION);
+        }
+
+        if (!class_exists('WooCommerce')) {
+            wp_die('Este plugin requiere WooCommerce instalado y activado. Por favor, instala y activa WooCommerce primero.');
+        }
+
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-activator.php';
+        DA_Activator::activate();
+
+    } catch (Exception $e) {
+        // Registrar error
+        error_log('ERROR ACTIVACIÓN DECANO: ' . $e->getMessage());
+        error_log('TRACE: ' . $e->getTraceAsString());
+
+        wp_die(
+            '<h1>Error al activar el plugin Decano Astrológico</h1>' .
+            '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>' .
+            '<p><strong>Archivo:</strong> ' . esc_html($e->getFile()) . ':' . $e->getLine() . '</p>' .
+            '<p>Por favor, revisa el log de errores de WordPress para más detalles.</p>' .
+            '<p><a href="' . admin_url('plugins.php') . '">← Volver a Plugins</a></p>'
+        );
+    }
 }
 register_activation_hook(__FILE__, 'activate_decano');
 
@@ -45,9 +69,12 @@ register_deactivation_hook(__FILE__, 'deactivate_decano');
 /**
  * Cargar el plugin
  */
-require_once DECANO_PLUGIN_DIR . 'includes/class-da-loader.php';
-
 function run_decano() {
+    // Cargar clases principales primero
+    require_once DECANO_PLUGIN_DIR . 'includes/class-da-loader.php';
+    require_once DECANO_PLUGIN_DIR . 'includes/class-da-plan-manager.php';
+    require_once DECANO_PLUGIN_DIR . 'includes/class-da-limits.php';
+
     $loader = new DA_Loader();
     $loader->run();
 }
