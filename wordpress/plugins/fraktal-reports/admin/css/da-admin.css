@@ -5,6 +5,7 @@
  * @since 1.0.0
  */
 
+/* Estadísticas en Grid */
 .da-admin-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -14,10 +15,11 @@
 
 .da-stat-card {
     background: #fff;
-    border: 1px solid #c3c4c7;
+    border: 1px solid #ccd0d4;
     border-radius: 4px;
     padding: 20px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    text-align: center;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
 }
 
 .da-stat-card h3 {
@@ -25,6 +27,8 @@
     font-size: 14px;
     color: #646970;
     font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .da-stat-number {
@@ -34,6 +38,140 @@
     margin: 0;
 }
 
+.da-stat-detail {
+    font-size: 12px;
+    color: #646970;
+    margin: 5px 0 0 0;
+}
+
+/* Secciones del Admin */
+.da-admin-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.da-admin-section h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* Distribución de planes */
+.da-plans-distribution {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.da-plan-item {
+    flex: 1;
+    padding: 15px;
+    background: #f6f7f7;
+    border-radius: 4px;
+    text-align: center;
+}
+
+/* Badges de estado */
+.da-status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.da-status-pending {
+    background: #f0f6fc;
+    color: #0969da;
+}
+
+.da-status-processing {
+    background: #fff8c5;
+    color: #7d4e00;
+}
+
+.da-status-completed {
+    background: #dafbe1;
+    color: #0f5132;
+}
+
+.da-status-failed {
+    background: #ffebe9;
+    color: #d1242f;
+}
+
+.da-status-stalled {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Badges de plan */
+.da-plan-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.da-plan-free {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.da-plan-premium {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.da-plan-enterprise {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+/* Estadísticas inline */
+.da-admin-stats-inline {
+    display: flex;
+    gap: 30px;
+    margin: 15px 0;
+    padding: 15px;
+    background: #f6f7f7;
+    border-radius: 4px;
+}
+
+.da-stat-inline {
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.da-stat-inline strong {
+    font-weight: 600;
+}
+
+/* Filtros */
+.tablenav.top {
+    margin-bottom: 15px;
+}
+
+.tablenav.top form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.tablenav.top select,
+.tablenav.top input[type="search"] {
+    max-width: 200px;
+}
+
+/* Info */
 .da-admin-info {
     background: #fff;
     border: 1px solid #c3c4c7;
