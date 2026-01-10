@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Book, ChevronRight, AlertCircle, Lightbulb, Link as LinkIcon } from 'lucide-react';
 import { HelpSection, HelpStep, HelpSearchResult } from '@/types/help';
-import { helpSections, searchHelp, getContextualHelp } from '@/data/helpContent';
+import { helpContent, searchHelp, getContextualHelp } from '@/data/helpContent';
 import HelpStepViewer from './HelpStepViewer';
 import HelpSearchBar from './HelpSearchBar';
 
@@ -184,7 +184,7 @@ export default function HelpPanel({ isOpen, onClose, initialContext }: HelpPanel
           ) : (
             // Sections Grid
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {helpSections.map((section) => (
+              {helpContent.map((section) => (
                 <button
                   key={section.id}
                   onClick={() => setSelectedSection(section)}
