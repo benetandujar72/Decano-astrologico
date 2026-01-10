@@ -194,6 +194,8 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
       }
 
       console.log('[WIZARD] Sesión inicializada:', data.session_id);
+      console.log('[WIZARD] Módulos recibidos:', data.modules?.length || 0);
+      console.log('[WIZARD] autoGenerateAll:', autoGenerateAll);
 
       // Actualizar estado
       setSessionId(data.session_id);
@@ -202,16 +204,28 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
 
       // Generar automáticamente el primer módulo usando el sessionId directamente
       if (data.session_id && data.modules && data.modules.length > 0) {
+        console.log('[WIZARD] ✅ Condiciones cumplidas para generar primer módulo');
+        console.log('[WIZARD] Primer módulo ID:', data.modules[0]?.id);
+
         if (autoGenerateAll) {
           // Modo "un clic": el backend genera todo en background; aquí solo hacemos polling y al final descargamos
+          console.log('[WIZARD] Iniciando generación automática completa');
           await startAutoGenerationPolling(data.session_id, data.modules);
         } else {
           // Modo paso a paso: generar solo el primero
+          console.log('[WIZARD] Iniciando generación paso a paso del primer módulo');
           await generateModuleWithSession(data.session_id, data.modules[0].id);
         }
+      } else {
+        console.error('[WIZARD] ❌ NO se puede generar módulo:');
+        console.error('[WIZARD]   - session_id:', data.session_id || 'MISSING');
+        console.error('[WIZARD]   - modules:', data.modules);
+        console.error('[WIZARD]   - modules.length:', data.modules?.length || 0);
+        setError('Error: no se recibieron módulos del servidor. Por favor, recarga la página e inténtalo de nuevo.');
       }
     } catch (err: any) {
-      console.error('Error inicializando sesión:', err);
+      console.error('[WIZARD] Error inicializando sesión:', err);
+      console.error('[WIZARD] Stack trace:', err.stack);
       setError(err.message || 'Error iniciando generación de informe');
     } finally {
       setIsLoading(false);
