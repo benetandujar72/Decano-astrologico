@@ -1719,3 +1719,248 @@ async def get_user_ai_usage(
             detail=f"Error obteniendo uso del usuario: {str(e)}"
         )
 
+
+# ==================== SEEDING SISTEMA DE INFORMES ====================
+
+# MongoDB collections for report system
+report_types_collection = db["report_types"]
+templates_collection = db["templates"]
+prompts_collection = db["prompts"]
+
+# Default report types
+DEFAULT_REPORT_TYPES = [
+    {
+        "code": "carta_natal_completa",
+        "name": "Carta Natal Completa",
+        "description": "Análisis exhaustivo de la carta natal con todos los módulos disponibles",
+        "icon": "🌟",
+        "category": "individual",
+        "folder_path": "/reports/individual/carta-natal",
+        "min_plan_required": "free",
+        "is_active": True,
+        "is_beta": False,
+        "available_modules": [
+            {"id": "modulo_1", "name": "Introducción y Contexto", "required": True, "estimated_duration_sec": 300},
+            {"id": "modulo_2_fundamentos", "name": "Fundamentos Astrológicos", "required": True, "estimated_duration_sec": 240},
+            {"id": "modulo_2_personales", "name": "Planetas Personales", "required": True, "estimated_duration_sec": 240},
+            {"id": "modulo_2_sociales", "name": "Planetas Sociales", "required": True, "estimated_duration_sec": 240},
+            {"id": "modulo_2_transpersonales", "name": "Planetas Transpersonales", "required": True, "estimated_duration_sec": 300},
+            {"id": "modulo_2_nodos", "name": "Nodos Lunares", "required": False, "estimated_duration_sec": 180},
+            {"id": "modulo_2_aspectos", "name": "Aspectos Principales", "required": True, "estimated_duration_sec": 240},
+            {"id": "modulo_2_ejes", "name": "Ejes y Configuraciones", "required": True, "estimated_duration_sec": 480},
+            {"id": "modulo_2_sintesis", "name": "Síntesis Interpretativa", "required": True, "estimated_duration_sec": 240},
+            {"id": "modulo_3_recomendaciones", "name": "Recomendaciones", "required": False, "estimated_duration_sec": 240}
+        ]
+    },
+    {
+        "code": "carta_natal_resumida",
+        "name": "Carta Natal Resumida",
+        "description": "Análisis breve de los elementos más importantes de la carta natal",
+        "icon": "📝",
+        "category": "individual",
+        "folder_path": "/reports/individual/carta-natal-resumida",
+        "min_plan_required": "free",
+        "is_active": True,
+        "is_beta": False,
+        "available_modules": [
+            {"id": "modulo_1", "name": "Introducción", "required": True, "estimated_duration_sec": 180},
+            {"id": "modulo_2_personales", "name": "Planetas Personales", "required": True, "estimated_duration_sec": 200},
+            {"id": "modulo_2_aspectos", "name": "Aspectos Principales", "required": True, "estimated_duration_sec": 180},
+            {"id": "modulo_2_sintesis", "name": "Síntesis", "required": True, "estimated_duration_sec": 180}
+        ]
+    }
+]
+
+
+def get_default_prompt_for_type(report_type: dict) -> dict:
+    """Generar prompt por defecto para un tipo de informe"""
+    return {
+        "system_instruction": f"""Eres un astrólogo profesional certificado especializado en {report_type['name']}.
+
+INSTRUCCIONES GENERALES:
+- Utiliza un lenguaje claro, profesional y empático
+- Basa tu análisis en la tradición astrológica clásica y moderna
+- Interpreta los símbolos astrológicos de manera constructiva
+- Enfócate en el potencial de crecimiento y desarrollo personal
+- Evita predicciones categóricas o deterministas
+
+IMPORTANTE - RESTRICCIONES:
+- Nunca proporciones información médica, legal o financiera específica
+- No hagas diagnósticos de salud mental
+- No predecir eventos específicos como predicciones categóricas
+- Enfócate en el potencial y el crecimiento personal""",
+
+        "user_prompt_template": """Genera un informe astrológico de tipo '{report_type}' para {nombre}.
+
+DATOS DE LA CARTA NATAL:
+{carta_data}
+
+MÓDULOS A INCLUIR:
+{modulos}
+
+Por favor, genera un análisis profesional, coherente y bien estructurado.""",
+
+        "variables": [
+            {"name": "nombre", "type": "string", "required": True, "description": "Nombre de la persona"},
+            {"name": "carta_data", "type": "object", "required": True, "description": "Datos completos de la carta natal"},
+            {"name": "report_type", "type": "string", "required": False, "description": "Tipo de informe"},
+            {"name": "modulos", "type": "string", "required": False, "description": "Lista de módulos a generar"}
+        ],
+        "llm_provider": "gemini",
+        "model": "gemini-3-pro-preview",
+        "temperature": 0.7,
+        "max_tokens": 8000,
+        "safety_settings": {
+            "harm_category_harassment": "BLOCK_MEDIUM_AND_ABOVE",
+            "harm_category_hate_speech": "BLOCK_MEDIUM_AND_ABOVE",
+            "harm_category_sexually_explicit": "BLOCK_MEDIUM_AND_ABOVE",
+            "harm_category_dangerous_content": "BLOCK_MEDIUM_AND_ABOVE"
+        }
+    }
+
+
+@router.post("/seed-report-system")
+async def seed_report_system(
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Inicializar el sistema de informes con datos por defecto
+
+    Crea:
+    - Tipos de informe básicos (Carta Natal Completa, Resumida)
+    - Prompts por defecto para cada tipo
+
+    Solo puede ser ejecutado por administradores
+    """
+    try:
+        from bson import ObjectId
+
+        created_types = 0
+        updated_types = 0
+
+        # Seed report types
+        for rt_data in DEFAULT_REPORT_TYPES:
+            existing = await report_types_collection.find_one({"code": rt_data["code"]})
+
+            if existing:
+                # Update
+                await report_types_collection.update_one(
+                    {"code": rt_data["code"]},
+                    {"$set": {
+                        **rt_data,
+                        "updated_at": datetime.utcnow()
+                    }}
+                )
+                updated_types += 1
+            else:
+                # Create prompt first
+                prompt_data = get_default_prompt_for_type(rt_data)
+                prompt_data.update({
+                    "report_type_id": None,
+                    "version": 1,
+                    "is_default": True,
+                    "is_active": True,
+                    "customized_by": None,
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                })
+
+                prompt_result = await prompts_collection.insert_one(prompt_data)
+                prompt_id = prompt_result.inserted_id
+
+                # Create report type
+                rt_data.update({
+                    "default_prompt_id": prompt_id,
+                    "created_by": ObjectId(current_user["_id"]),
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                    "version": 1
+                })
+
+                result = await report_types_collection.insert_one(rt_data)
+
+                # Update prompt with report_type_id
+                await prompts_collection.update_one(
+                    {"_id": prompt_id},
+                    {"$set": {"report_type_id": result.inserted_id}}
+                )
+
+                created_types += 1
+
+        return {
+            "message": "Report system seeded successfully",
+            "report_types_created": created_types,
+            "report_types_updated": updated_types,
+            "prompts_created": created_types
+        }
+
+    except Exception as e:
+        print(f"❌ Error seeding report system: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error seeding report system: {str(e)}"
+        )
+
+
+@router.get("/system-status-report")
+async def get_system_status_report(
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Obtener estado del sistema de informes
+
+    Retorna:
+    - Cantidad de tipos de informe
+    - Cantidad de plantillas
+    - Cantidad de prompts
+    - Estadísticas por plan y categoría
+    """
+    try:
+        # Count documents
+        report_types_count = await report_types_collection.count_documents({"is_active": True})
+        templates_count = await templates_collection.count_documents({"is_deleted": False})
+        prompts_count = await prompts_collection.count_documents({"is_active": True})
+
+        # Count by plan
+        free_types = await report_types_collection.count_documents({
+            "is_active": True,
+            "min_plan_required": "free"
+        })
+        premium_types = await report_types_collection.count_documents({
+            "is_active": True,
+            "min_plan_required": "premium"
+        })
+        enterprise_types = await report_types_collection.count_documents({
+            "is_active": True,
+            "min_plan_required": "enterprise"
+        })
+
+        # Count by category
+        categories = {}
+        for category in ["individual", "infantil", "sistemico", "clinico"]:
+            count = await report_types_collection.count_documents({
+                "is_active": True,
+                "category": category
+            })
+            categories[category] = count
+
+        return {
+            "total_report_types": report_types_count,
+            "total_templates": templates_count,
+            "total_prompts": prompts_count,
+            "types_by_plan": {
+                "free": free_types,
+                "premium": premium_types,
+                "enterprise": enterprise_types
+            },
+            "types_by_category": categories,
+            "is_initialized": report_types_count > 0
+        }
+
+    except Exception as e:
+        print(f"❌ Error getting system status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting system status: {str(e)}"
+        )
+
