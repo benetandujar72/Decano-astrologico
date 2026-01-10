@@ -69,7 +69,8 @@ export enum AppMode {
   USER_PROFILE = 'USER_PROFILE', // 🆕 Perfil de usuario
   SUBSCRIPTION_PLANS = 'SUBSCRIPTION_PLANS', // 🆕 Planes de suscripción
   SUBSCRIPTION_SUCCESS = 'SUBSCRIPTION_SUCCESS', // 🆕 Confirmación de suscripción
-  ADVANCED_TECHNIQUES = 'ADVANCED_TECHNIQUES' // 🆕 Técnicas avanzadas
+  ADVANCED_TECHNIQUES = 'ADVANCED_TECHNIQUES', // 🆕 Técnicas avanzadas
+  CUSTOMIZATION = 'CUSTOMIZATION' // 🆕 Personalización de informes
 }
 
 export enum AnalysisType {

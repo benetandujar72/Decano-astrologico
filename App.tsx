@@ -53,6 +53,7 @@ import ProfessionalServices from './components/ProfessionalServices';
 import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualización de datos de carta
 import LandingPage from './components/LandingPage';
 import { HelpButton } from './components/HelpSystem'; // 🆕 Sistema de ayuda contextual
+import { CustomizationPanel } from './components/Customization'; // 🆕 Personalización de informes
 import { calculateChartData } from './astrologyEngine';
 import { api } from './services/api';
 import './styles/material-theme.css';
@@ -2613,6 +2614,15 @@ ${analysisText}
             onClose={() => setMode(AppMode.INPUT)}
           />
         )}
+        {mode === AppMode.CUSTOMIZATION && (
+          <CustomizationPanel
+            onClose={() => setMode(AppMode.INPUT)}
+            onSave={async () => {
+              // Guardar configuraciones de personalización
+              console.log('Guardando configuraciones de personalización');
+            }}
+          />
+        )}
         {mode === AppMode.ADVANCED_TECHNIQUES && (
           <AdvancedTechniques
             onSelectTechnique={async (technique) => {
@@ -2734,6 +2744,17 @@ ${analysisText}
             >
               <Zap size={20} />
               <span className="text-[10px] font-medium">Técnicas</span>
+            </button>
+            <button
+              onClick={() => handleNavigation(AppMode.CUSTOMIZATION)}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.CUSTOMIZATION
+                  ? 'text-pink-400 bg-pink-500/10'
+                  : 'text-gray-400 hover:text-pink-400 hover:bg-pink-500/5'
+                }`}
+              title="Personalización"
+            >
+              <Settings size={20} />
+              <span className="text-[10px] font-medium">Diseño</span>
             </button>
             <button
               onClick={() => handleNavigation(AppMode.LISTING)}

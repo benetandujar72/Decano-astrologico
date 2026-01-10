@@ -1254,6 +1254,314 @@ export const helpContent: HelpSection[] = [
         ]
       }
     ]
+  },
+
+  // ====================================================================
+  // PERSONALIZACIÓN
+  // ====================================================================
+  {
+    id: 'customization',
+    title: 'Personalización de Informes',
+    icon: '🎨',
+    description: 'Personaliza el diseño, branding y contenido de tus informes astrológicos',
+    category: 'advanced',
+    steps: [
+      {
+        id: 'customization-intro',
+        title: 'Introducción a la Personalización',
+        description: `
+          El sistema de personalización te permite adaptar completamente la apariencia y contenido de tus informes astrológicos.
+
+          **Qué puedes personalizar:**
+          - Logo y branding corporativo
+          - Colores y tipografía
+          - Contenido y módulos a incluir
+          - Prompts de generación de IA
+          - Configuración avanzada (CSS, seguridad)
+
+          **Planes disponibles:**
+          - **Free:** No incluye personalización
+          - **Premium:** Branding básico, plantillas (hasta 5)
+          - **Enterprise:** Personalización completa, CSS custom, seguridad avanzada
+
+          Para acceder a la personalización, haz clic en el botón "Diseño" en el menú inferior.
+        `,
+        image: '/help/screenshots/customization-intro.png',
+        tips: [
+          'Empieza con plantillas predefinidas y clónalas para personalizarlas',
+          'Prueba siempre tus cambios antes de usarlos en producción',
+          'Guarda versiones de respaldo de tus configuraciones'
+        ]
+      },
+      {
+        id: 'branding-customization',
+        title: 'Personalización de Branding',
+        description: `
+          Personaliza el aspecto visual de tus informes PDF con tu marca corporativa.
+
+          **Configurar logo:**
+          1. Ve a **Diseño → Branding**
+          2. Haz clic en "Subir Logo"
+          3. Selecciona tu archivo (PNG, JPG o SVG)
+          4. Ajusta el tamaño (pequeño, mediano, grande)
+          5. Selecciona la posición (izquierda, centro, derecha)
+
+          **Configurar colores:**
+          1. En la sección "Esquema de Colores"
+          2. Selecciona tu color primario (para títulos y destacados)
+          3. Selecciona tu color secundario (para acentos)
+          4. Define el color de fondo
+
+          **Configurar tipografía:**
+          1. Selecciona la familia de fuente (Merriweather, Inter, Roboto, etc.)
+          2. Ajusta el tamaño base (8-24pt)
+          3. Define colores para texto primario y secundario
+
+          **Vista previa en tiempo real:**
+          - Haz clic en "Ver Vista Previa"
+          - Verás cómo quedará tu informe con los cambios
+          - Ajusta hasta estar satisfecho
+          - Haz clic en "Guardar cambios"
+        `,
+        image: '/help/screenshots/branding-editor.png',
+        tips: [
+          'Usa colores que contrasten bien para facilitar la lectura',
+          'El logo debe ser de alta resolución (mínimo 300 DPI)',
+          'Prueba diferentes combinaciones en la vista previa'
+        ],
+        warnings: [
+          'Requiere plan Premium o superior',
+          'Los cambios afectan a todos los informes nuevos'
+        ],
+        relatedSteps: ['template-management', 'advanced-settings']
+      },
+      {
+        id: 'prompt-customization',
+        title: 'Personalización de Prompts',
+        description: `
+          Personaliza los prompts que controlan cómo se genera el contenido de cada sección del informe.
+
+          **Ver prompts disponibles:**
+          1. Ve a **Diseño → Prompts**
+          2. Verás una lista de tipos de prompts:
+             - Análisis Natal
+             - Análisis de Casas
+             - Análisis de Aspectos
+             - Tránsitos
+             - Progresiones
+             - Sinastría
+          3. Haz clic en cualquier tipo para ver su contenido
+
+          **Crear prompt personalizado:**
+          1. Selecciona un tipo de prompt existente
+          2. Haz clic en "Crear Copia Personalizada"
+          3. Edita el nombre y descripción
+          4. Modifica el contenido del prompt según tus necesidades
+          5. Puedes usar variables como {nombre}, {fecha_nacimiento}, {planetas}
+          6. Haz clic en "Guardar Prompt"
+
+          **Editar prompt existente:**
+          1. Selecciona tu prompt personalizado
+          2. Haz clic en "Editar"
+          3. Realiza los cambios necesarios
+          4. Guarda los cambios
+
+          **Ejemplo de prompt personalizado:**
+          \`\`\`
+          Analiza la carta natal de {nombre}, nacido/a el {fecha_nacimiento}.
+
+          Enfócate especialmente en:
+          - Posiciones planetarias en signos
+          - Aspectos mayores
+          - Puntos de tensión y armonía
+
+          Usa un tono profesional pero cercano, y proporciona
+          interpretaciones prácticas y aplicables.
+          \`\`\`
+        `,
+        image: '/help/screenshots/prompt-editor.png',
+        tips: [
+          'Los prompts controlan la personalidad de la IA al generar contenido',
+          'Prueba diferentes estilos hasta encontrar el que mejor se adapte',
+          'Puedes crear hasta 10 prompts personalizados (Premium)'
+        ],
+        warnings: [
+          'Requiere plan Premium o superior',
+          'Los cambios afectan solo a informes generados con ese prompt específico'
+        ],
+        relatedSteps: ['branding-customization', 'template-management']
+      },
+      {
+        id: 'template-management',
+        title: 'Gestión de Plantillas',
+        description: `
+          Las plantillas combinan configuración de branding, contenido y prompts en un conjunto reutilizable.
+
+          **Crear nueva plantilla:**
+          1. Ve a **Diseño → Plantillas**
+          2. Haz clic en "Nueva Plantilla"
+          3. Dale un nombre descriptivo
+          4. Selecciona el tipo de informe asociado
+          5. Configura branding, contenido y opciones avanzadas
+          6. Guarda la plantilla
+
+          **Clonar plantilla pública:**
+          1. En la sección "Plantillas Públicas"
+          2. Encuentra una plantilla que te guste
+          3. Haz clic en "Clonar"
+          4. Se creará una copia en "Mis Plantillas"
+          5. Edítala según tus necesidades
+
+          **Usar plantilla al generar informe:**
+          1. Al crear un nuevo informe
+          2. En el paso de configuración
+          3. Selecciona "Usar plantilla"
+          4. Elige tu plantilla personalizada
+          5. El informe se generará con ese diseño
+
+          **Límites por plan:**
+          - Free: 0 plantillas personalizadas
+          - Premium: Hasta 5 plantillas
+          - Enterprise: Plantillas ilimitadas
+        `,
+        image: '/help/screenshots/template-manager.png',
+        tips: [
+          'Crea plantillas diferentes para distintos tipos de clientes',
+          'Nombra tus plantillas de forma descriptiva',
+          'Las plantillas públicas son un buen punto de partida'
+        ],
+        relatedSteps: ['branding-customization', 'prompt-customization']
+      },
+      {
+        id: 'content-configuration',
+        title: 'Configuración de Contenido',
+        description: `
+          Controla qué módulos y elementos incluir en tus informes.
+
+          **Seleccionar módulos:**
+          1. Ve a **Diseño → Avanzado**
+          2. En "Módulos a Incluir"
+          3. Marca/desmarca los módulos que quieras:
+             - Módulo 1: Introducción
+             - Módulo 2: Fundamentos
+             - Módulo 3: Estructura Esencial
+             - Módulo 4: Análisis de Elementos
+             - ... hasta Módulo 11
+
+          **Configurar modo de informe:**
+          1. Selecciona el nivel de detalle:
+             - **Resumen:** Breve, información esencial (≈10 páginas)
+             - **Completo:** Estándar, todos los detalles (≈30 páginas)
+             - **Exhaustivo:** Muy detallado, análisis profundo (≈50+ páginas)
+
+          **Elementos adicionales:**
+          - ☑ Incluir imágenes de carta natal
+          - ☑ Incluir tabla de aspectos
+          - ☑ Incluir tabla planetaria
+
+          **Configuración de página:**
+          - Tamaño: A4 o Letter
+          - Orientación: Vertical o Horizontal
+          - Pie de página personalizado
+        `,
+        image: '/help/screenshots/content-config.png',
+        tips: [
+          'Modo "Resumen" es ideal para consultas rápidas',
+          'Modo "Exhaustivo" para análisis profesionales profundos',
+          'Las tablas ayudan a visualizar mejor la información técnica'
+        ],
+        relatedSteps: ['template-management', 'advanced-settings']
+      },
+      {
+        id: 'advanced-settings',
+        title: 'Configuración Avanzada',
+        description: `
+          Opciones avanzadas de personalización y seguridad (Enterprise).
+
+          **CSS Personalizado:**
+          \`\`\`css
+          /* Personaliza completamente el diseño */
+          .report-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            border-radius: 8px;
+          }
+
+          .report-section {
+            margin-bottom: 2rem;
+            border-left: 4px solid #4f46e5;
+            padding-left: 1rem;
+          }
+          \`\`\`
+
+          **Marca de Agua:**
+          - Añade texto semi-transparente en todas las páginas
+          - Útil para versiones preliminares o confidenciales
+          - Ejemplo: "BORRADOR", "CONFIDENCIAL", etc.
+
+          **Seguridad:**
+          - **Encriptación PDF:** Protege el PDF con AES-256
+          - **Protección con contraseña:** Requiere contraseña para abrir
+          - Solo disponible en plan Enterprise
+
+          **Advertencias:**
+          - El CSS personalizado puede romper el diseño si no se usa correctamente
+          - Siempre prueba en un informe de prueba primero
+          - Mantén backup de tus configuraciones
+        `,
+        image: '/help/screenshots/advanced-settings.png',
+        tips: [
+          'Usa CSS solo si tienes conocimientos técnicos',
+          'La encriptación aumenta el tiempo de generación',
+          'Las marcas de agua son útiles para borradores'
+        ],
+        warnings: [
+          'Requiere plan Enterprise',
+          'El CSS incorrecto puede romper el PDF',
+          'Los archivos encriptados no se pueden editar después'
+        ],
+        relatedSteps: ['branding-customization', 'content-configuration']
+      },
+      {
+        id: 'customization-best-practices',
+        title: 'Mejores Prácticas',
+        description: `
+          Consejos para aprovechar al máximo la personalización.
+
+          **Organización:**
+          - Crea plantillas por tipo de cliente (profesional, personal, etc.)
+          - Usa nombres descriptivos para tus plantillas y prompts
+          - Mantén una plantilla "base" sin modificar
+
+          **Diseño:**
+          - Mantén la coherencia visual en todos tus informes
+          - No sobrecargues con demasiados colores
+          - Prioriza la legibilidad sobre la estética
+          - Usa tipografías profesionales
+
+          **Contenido:**
+          - Adapta los prompts a tu estilo interpretativo
+          - No incluyas todos los módulos si no son relevantes
+          - El modo "Completo" es el más equilibrado
+
+          **Testing:**
+          - Siempre genera un informe de prueba antes de usar en producción
+          - Pide feedback a colegas sobre el diseño
+          - Verifica la impresión en papel, no solo en pantalla
+
+          **Mantenimiento:**
+          - Revisa y actualiza tus plantillas regularmente
+          - Elimina plantillas que ya no uses
+          - Documenta los cambios importantes
+        `,
+        tips: [
+          'Menos es más: simplifica tu diseño',
+          'Mantén un archivo con tus configuraciones favoritas',
+          'Comparte plantillas públicas si son útiles para la comunidad'
+        ],
+        relatedSteps: ['branding-customization', 'template-management', 'prompt-customization']
+      }
+    ]
   }
 ];
 
