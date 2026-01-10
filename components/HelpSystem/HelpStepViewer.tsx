@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, Lightbulb, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 import { HelpStep } from '@/types/help';
-import ReactMarkdown from 'react-markdown';
+import Markdown from 'react-markdown';
 
 interface HelpStepViewerProps {
   step: HelpStep;
@@ -62,7 +62,7 @@ export default function HelpStepViewer({ step }: HelpStepViewerProps) {
       {/* Description */}
       <div className="prose prose-invert prose-slate max-w-none">
         <div className="text-slate-300 leading-relaxed">
-          <ReactMarkdown
+          <Markdown
             components={{
               h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-white mb-3 mt-6" {...props} />,
               h2: ({ node, ...props }) => <h2 className="text-xl font-bold text-white mb-2 mt-5" {...props} />,
@@ -82,7 +82,7 @@ export default function HelpStepViewer({ step }: HelpStepViewerProps) {
             }}
           >
             {step.description}
-          </ReactMarkdown>
+          </Markdown>
         </div>
       </div>
 
