@@ -25,32 +25,120 @@ define('DECANO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 /**
- * Activación del plugin
+ * Activación del plugin con diagnóstico extensivo
  */
 function activate_decano() {
+    // LOG 1: Inicio de activación
+    error_log('=== DECANO ACTIVATION START ===');
+    error_log('Plugin dir: ' . DECANO_PLUGIN_DIR);
+    error_log('Plugin version: ' . DECANO_VERSION);
+
     try {
-        // Verificar requisitos básicos ANTES de cargar clases
+        // LOG 2: Verificar PHP
+        error_log('Checking PHP version...');
+        error_log('Current PHP: ' . PHP_VERSION);
         if (version_compare(PHP_VERSION, '8.0', '<')) {
+            error_log('ERROR: PHP version insufficient');
             wp_die('Este plugin requiere PHP 8.0 o superior. Tu versión actual es: ' . PHP_VERSION);
         }
+        error_log('✓ PHP version OK');
 
+        // LOG 3: Verificar WordPress
+        error_log('Checking WordPress version...');
+        global $wp_version;
+        error_log('WordPress version: ' . $wp_version);
+        error_log('✓ WordPress version OK');
+
+        // LOG 4: Verificar WooCommerce
+        error_log('Checking WooCommerce...');
         if (!class_exists('WooCommerce')) {
-            wp_die('Este plugin requiere WooCommerce instalado y activado. Por favor, instala y activa WooCommerce primero.');
+            error_log('ERROR: WooCommerce not found');
+            wp_die(
+                '<h1>WooCommerce Requerido</h1>' .
+                '<p>Este plugin requiere <strong>WooCommerce</strong> instalado y activado.</p>' .
+                '<p>Por favor, instala WooCommerce primero desde <a href="' . admin_url('plugin-install.php?s=woocommerce&tab=search&type=term') . '">Plugins > Añadir nuevo</a></p>' .
+                '<p><a href="' . admin_url('plugins.php') . '">← Volver a Plugins</a></p>'
+            );
         }
+        error_log('✓ WooCommerce class found');
 
-        require_once DECANO_PLUGIN_DIR . 'includes/class-da-activator.php';
+        // LOG 5: Verificar archivo activator existe
+        error_log('Checking activator file...');
+        $activator_path = DECANO_PLUGIN_DIR . 'includes/class-da-activator.php';
+        error_log('Activator path: ' . $activator_path);
+
+        if (!file_exists($activator_path)) {
+            error_log('ERROR: Activator file not found');
+            wp_die(
+                '<h1>Error de Instalación</h1>' .
+                '<p>Archivo faltante: <code>includes/class-da-activator.php</code></p>' .
+                '<p>Por favor, reinstala el plugin desde el archivo ZIP.</p>' .
+                '<p><a href="' . admin_url('plugins.php') . '">← Volver a Plugins</a></p>'
+            );
+        }
+        error_log('✓ Activator file exists');
+
+        // LOG 6: Cargar archivo activator
+        error_log('Loading activator class...');
+        require_once $activator_path;
+        error_log('✓ Activator file loaded');
+
+        // LOG 7: Verificar clase existe
+        error_log('Checking DA_Activator class...');
+        if (!class_exists('DA_Activator')) {
+            error_log('ERROR: DA_Activator class not defined after require');
+            wp_die(
+                '<h1>Error de Carga</h1>' .
+                '<p>La clase DA_Activator no se pudo cargar correctamente.</p>' .
+                '<p>Verifica permisos de archivos y que el ZIP se instaló completamente.</p>' .
+                '<p><a href="' . admin_url('plugins.php') . '">← Volver a Plugins</a></p>'
+            );
+        }
+        error_log('✓ DA_Activator class exists');
+
+        // LOG 8: Ejecutar activación
+        error_log('Calling DA_Activator::activate()...');
         DA_Activator::activate();
+        error_log('✓ DA_Activator::activate() completed');
+
+        error_log('=== DECANO ACTIVATION SUCCESS ===');
 
     } catch (Exception $e) {
-        // Registrar error
-        error_log('ERROR ACTIVACIÓN DECANO: ' . $e->getMessage());
-        error_log('TRACE: ' . $e->getTraceAsString());
+        // LOG ERROR: Capturar cualquier excepción
+        error_log('=== DECANO ACTIVATION FAILED ===');
+        error_log('ERROR TYPE: ' . get_class($e));
+        error_log('ERROR MESSAGE: ' . $e->getMessage());
+        error_log('ERROR FILE: ' . $e->getFile() . ':' . $e->getLine());
+        error_log('ERROR TRACE: ' . $e->getTraceAsString());
+        error_log('=================================');
 
         wp_die(
             '<h1>Error al activar el plugin Decano Astrológico</h1>' .
             '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>' .
             '<p><strong>Archivo:</strong> ' . esc_html($e->getFile()) . ':' . $e->getLine() . '</p>' .
-            '<p>Por favor, revisa el log de errores de WordPress para más detalles.</p>' .
+            '<hr>' .
+            '<h3>Pasos para Depurar:</h3>' .
+            '<ol>' .
+            '<li>Revisa el log de errores de PHP en <code>/wp-content/debug.log</code></li>' .
+            '<li>Busca líneas que comiencen con <code>DECANO ACTIVATION</code></li>' .
+            '<li>Copia el error completo y repórtalo en <a href="https://github.com/benetandujar72/Decano-astrologico/issues" target="_blank">GitHub Issues</a></li>' .
+            '</ol>' .
+            '<p><a href="' . admin_url('plugins.php') . '">← Volver a Plugins</a></p>'
+        );
+    } catch (Throwable $e) {
+        // LOG ERROR: Capturar cualquier error fatal (PHP 7+)
+        error_log('=== DECANO ACTIVATION FATAL ERROR ===');
+        error_log('ERROR TYPE: ' . get_class($e));
+        error_log('ERROR MESSAGE: ' . $e->getMessage());
+        error_log('ERROR FILE: ' . $e->getFile() . ':' . $e->getLine());
+        error_log('ERROR TRACE: ' . $e->getTraceAsString());
+        error_log('=====================================');
+
+        wp_die(
+            '<h1>Error Fatal al activar el plugin</h1>' .
+            '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>' .
+            '<p><strong>Archivo:</strong> ' . esc_html($e->getFile()) . ':' . $e->getLine() . '</p>' .
+            '<p>Este es un error crítico de PHP. Revisa el log de errores para más detalles.</p>' .
             '<p><a href="' . admin_url('plugins.php') . '">← Volver a Plugins</a></p>'
         );
     }
