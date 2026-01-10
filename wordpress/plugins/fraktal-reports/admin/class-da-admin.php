@@ -63,6 +63,15 @@ class DA_Admin {
             'decano-settings',
             [$this, 'render_settings']
         );
+
+        add_submenu_page(
+            'decano',
+            'Debug - Decano Astrológico',
+            'Debug',
+            'manage_options',
+            'decano-debug',
+            [$this, 'render_debug']
+        );
     }
 
     /**
@@ -623,6 +632,341 @@ class DA_Admin {
                 <p>
                     <strong>💡 Tip:</strong> Todos los shortcodes (excepto <code>[decano-plans]</code>) requieren que el usuario esté autenticado.
                     Si el usuario no ha iniciado sesión, se mostrará un mensaje pidiéndole que lo haga.
+                </p>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Renderizar página de debug
+     */
+    public function render_debug() {
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-debug.php';
+        DA_Debug::init();
+
+        // Procesar acciones
+        if (isset($_POST['da_debug_action'])) {
+            check_admin_referer('da_debug');
+
+            $action = sanitize_text_field($_POST['da_debug_action']);
+
+            switch ($action) {
+                case 'clear_log':
+                    DA_Debug::clear_log();
+                    echo '<div class="notice notice-success"><p>Log limpiado correctamente.</p></div>';
+                    break;
+
+                case 'test_backend':
+                    $result = DA_Debug::test_backend_connection();
+                    echo '<div class="notice notice-info"><p>Test de conexión ejecutado. Ver resultados abajo.</p></div>';
+                    break;
+
+                case 'system_check':
+                    echo '<div class="notice notice-info"><p>Verificación del sistema ejecutada.</p></div>';
+                    break;
+            }
+        }
+
+        // Obtener datos
+        $checks = DA_Debug::system_check();
+        $env_info = DA_Debug::get_environment_info();
+        $log_lines = DA_Debug::get_log_lines(200);
+
+        ?>
+        <div class="wrap">
+            <h1>Debug y Diagnóstico - Decano Astrológico</h1>
+
+            <!-- Botones de acción -->
+            <div style="margin: 20px 0;">
+                <form method="post" style="display: inline-block; margin-right: 10px;">
+                    <?php wp_nonce_field('da_debug'); ?>
+                    <input type="hidden" name="da_debug_action" value="system_check" />
+                    <button type="submit" class="button">🔍 Verificar Sistema</button>
+                </form>
+
+                <form method="post" style="display: inline-block; margin-right: 10px;">
+                    <?php wp_nonce_field('da_debug'); ?>
+                    <input type="hidden" name="da_debug_action" value="test_backend" />
+                    <button type="submit" class="button">🌐 Test Conexión Backend</button>
+                </form>
+
+                <form method="post" style="display: inline-block;">
+                    <?php wp_nonce_field('da_debug'); ?>
+                    <input type="hidden" name="da_debug_action" value="clear_log" />
+                    <button type="submit" class="button">🗑️ Limpiar Log</button>
+                </form>
+            </div>
+
+            <!-- Información del Entorno -->
+            <div class="da-admin-section">
+                <h2>📋 Información del Entorno</h2>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <?php foreach ($env_info as $key => $value): ?>
+                            <tr>
+                                <th style="width: 200px;"><?php echo esc_html($key); ?></th>
+                                <td><code><?php echo esc_html(is_bool($value) ? ($value ? 'true' : 'false') : $value); ?></code></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Verificación del Sistema -->
+            <div class="da-admin-section">
+                <h2>✅ Verificación del Sistema</h2>
+
+                <!-- PHP -->
+                <h3>PHP</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Versión</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['php']['status'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['php']['version']); ?>
+                                </span>
+                                (Requerido: <?php echo esc_html($checks['php']['required']); ?>+)
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Memory Limit</th>
+                            <td><code><?php echo esc_html($checks['php']['memory_limit']); ?></code></td>
+                        </tr>
+                        <tr>
+                            <th>Max Execution Time</th>
+                            <td><code><?php echo esc_html($checks['php']['max_execution_time']); ?>s</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- WordPress -->
+                <h3>WordPress</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Versión</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['wordpress']['status'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['wordpress']['version']); ?>
+                                </span>
+                                (Requerido: <?php echo esc_html($checks['wordpress']['required']); ?>+)
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- WooCommerce -->
+                <h3>WooCommerce</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Instalado</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['woocommerce']['installed'] ? 'completed' : 'failed'; ?>">
+                                    <?php echo $checks['woocommerce']['installed'] ? 'SÍ' : 'NO'; ?>
+                                </span>
+                            </td>
+                        </tr>
+                        <?php if ($checks['woocommerce']['installed']): ?>
+                            <tr>
+                                <th>Versión</th>
+                                <td><?php echo esc_html($checks['woocommerce']['version']); ?></td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <!-- WooCommerce Subscriptions -->
+                <h3>WooCommerce Subscriptions</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Instalado</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['woocommerce_subscriptions']['installed'] ? 'completed' : 'failed'; ?>">
+                                    <?php echo $checks['woocommerce_subscriptions']['installed'] ? 'SÍ' : 'NO'; ?>
+                                </span>
+                            </td>
+                        </tr>
+                        <?php if ($checks['woocommerce_subscriptions']['installed']): ?>
+                            <tr>
+                                <th>Versión</th>
+                                <td><?php echo esc_html($checks['woocommerce_subscriptions']['version']); ?></td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <!-- Base de Datos -->
+                <h3>Base de Datos</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Tabla de sesiones</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['database']['sessions_table'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['database']['sessions_table']); ?>
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Tabla de uso</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['database']['usage_table'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['database']['usage_table']); ?>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Productos -->
+                <h3>Productos WooCommerce</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Plan Free</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['products']['free'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['products']['free']); ?>
+                                </span>
+                                <?php if ($checks['products']['free'] == 'OK'): ?>
+                                    (ID: <?php echo esc_html(get_option('da_product_free_id')); ?>)
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Plan Premium</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['products']['premium'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['products']['premium']); ?>
+                                </span>
+                                <?php if ($checks['products']['premium'] == 'OK'): ?>
+                                    (ID: <?php echo esc_html(get_option('da_product_premium_id')); ?>)
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Plan Enterprise</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['products']['enterprise'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['products']['enterprise']); ?>
+                                </span>
+                                <?php if ($checks['products']['enterprise'] == 'OK'): ?>
+                                    (ID: <?php echo esc_html(get_option('da_product_enterprise_id')); ?>)
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Configuración -->
+                <h3>Configuración</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">API URL</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['configuration']['api_url'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['configuration']['api_url']); ?>
+                                </span>
+                                <?php if ($checks['configuration']['api_url'] == 'OK'): ?>
+                                    <code><?php echo esc_html(get_option('da_api_url')); ?></code>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>HMAC Secret</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['configuration']['hmac_secret'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['configuration']['hmac_secret']); ?>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Build de React -->
+                <h3>Build de React</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px;">Archivo JS</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['react_build']['js_file'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['react_build']['js_file']); ?>
+                                </span>
+                                <?php if ($checks['react_build']['js_file'] == 'OK'): ?>
+                                    (<?php echo esc_html($checks['react_build']['js_size']); ?>)
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Archivo CSS</th>
+                            <td>
+                                <span class="da-status-badge da-status-<?php echo $checks['react_build']['css_file'] == 'OK' ? 'completed' : 'failed'; ?>">
+                                    <?php echo esc_html($checks['react_build']['css_file']); ?>
+                                </span>
+                                <?php if ($checks['react_build']['css_file'] == 'OK'): ?>
+                                    (<?php echo esc_html($checks['react_build']['css_size']); ?>)
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Clases PHP -->
+                <h3>Clases PHP Requeridas</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <?php foreach ($checks['classes'] as $class => $status): ?>
+                            <tr>
+                                <th style="width: 200px;"><?php echo esc_html($class); ?></th>
+                                <td>
+                                    <span class="da-status-badge da-status-<?php echo $status == 'OK' ? 'completed' : 'failed'; ?>">
+                                        <?php echo esc_html($status); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Log de Actividades -->
+            <div class="da-admin-section">
+                <h2>📝 Log de Actividades (Últimas 200 líneas)</h2>
+                <div style="background: #f1f1f1; padding: 15px; border-radius: 5px; max-height: 500px; overflow-y: scroll; font-family: monospace; font-size: 12px;">
+                    <?php if (empty($log_lines)): ?>
+                        <p>No hay logs disponibles.</p>
+                    <?php else: ?>
+                        <?php foreach ($log_lines as $line): ?>
+                            <?php
+                            $line_html = esc_html($line);
+                            // Colorear según el nivel
+                            if (strpos($line, '[ERROR]') !== false) {
+                                $line_html = '<span style="color: #d32f2f; font-weight: bold;">' . $line_html . '</span>';
+                            } elseif (strpos($line, '[WARNING]') !== false) {
+                                $line_html = '<span style="color: #f57c00;">' . $line_html . '</span>';
+                            } elseif (strpos($line, '===') !== false) {
+                                $line_html = '<strong style="color: #1976d2;">' . $line_html . '</strong>';
+                            } elseif (strpos($line, '✓') !== false) {
+                                $line_html = '<span style="color: #388e3c;">' . $line_html . '</span>';
+                            } elseif (strpos($line, '✗') !== false) {
+                                $line_html = '<span style="color: #d32f2f;">' . $line_html . '</span>';
+                            }
+                            echo $line_html;
+                            ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+                <p style="margin-top: 10px;">
+                    <small>
+                        <strong>Ubicación del archivo:</strong>
+                        <code><?php echo esc_html(wp_upload_dir()['basedir'] . '/decano-debug.log'); ?></code>
+                    </small>
                 </p>
             </div>
         </div>

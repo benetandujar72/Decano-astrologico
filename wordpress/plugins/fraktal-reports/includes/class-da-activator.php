@@ -16,11 +16,38 @@ class DA_Activator {
      * Ejecutar al activar el plugin
      */
     public static function activate() {
-        self::check_requirements();
-        self::create_tables();
-        self::create_subscription_products();
-        self::initial_setup();
-        flush_rewrite_rules();
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-debug.php';
+        DA_Debug::init();
+
+        try {
+            DA_Debug::log('=== INICIO DE ACTIVACIÓN DEL PLUGIN ===', 'info');
+
+            DA_Debug::log('Verificando requisitos del sistema...', 'info');
+            self::check_requirements();
+            DA_Debug::log('Requisitos verificados correctamente', 'info');
+
+            DA_Debug::log('Creando tablas de base de datos...', 'info');
+            self::create_tables();
+            DA_Debug::log('Tablas creadas correctamente', 'info');
+
+            DA_Debug::log('Creando productos de suscripción...', 'info');
+            self::create_subscription_products();
+            DA_Debug::log('Productos creados correctamente', 'info');
+
+            DA_Debug::log('Configuración inicial...', 'info');
+            self::initial_setup();
+            DA_Debug::log('Configuración inicial completada', 'info');
+
+            flush_rewrite_rules();
+
+            DA_Debug::log('=== ACTIVACIÓN COMPLETADA EXITOSAMENTE ===', 'info');
+
+        } catch (Exception $e) {
+            DA_Debug::log('ERROR DURANTE LA ACTIVACIÓN: ' . $e->getMessage(), 'error', [
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     /**
@@ -46,6 +73,8 @@ class DA_Activator {
     private static function create_tables() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
+
+        DA_Debug::log('Charset/Collate: ' . $charset_collate, 'info');
 
         // Tabla de sesiones de informes
         $table_reports = $wpdb->prefix . 'da_report_sessions';
@@ -80,8 +109,27 @@ class DA_Activator {
         ) $charset_collate;";
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql_reports);
-        dbDelta($sql_usage);
+
+        DA_Debug::log('Ejecutando dbDelta para tabla de sesiones...', 'info');
+        $result_reports = dbDelta($sql_reports);
+        DA_Debug::log('Resultado tabla sesiones', 'info', $result_reports);
+
+        DA_Debug::log('Ejecutando dbDelta para tabla de uso...', 'info');
+        $result_usage = dbDelta($sql_usage);
+        DA_Debug::log('Resultado tabla uso', 'info', $result_usage);
+
+        // Verificar que las tablas se crearon
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_reports'") == $table_reports) {
+            DA_Debug::log('✓ Tabla de sesiones verificada', 'info');
+        } else {
+            DA_Debug::log('✗ Error: Tabla de sesiones NO se creó', 'error');
+        }
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_usage'") == $table_usage) {
+            DA_Debug::log('✓ Tabla de uso verificada', 'info');
+        } else {
+            DA_Debug::log('✗ Error: Tabla de uso NO se creó', 'error');
+        }
     }
 
     /**
@@ -90,8 +138,11 @@ class DA_Activator {
     private static function create_subscription_products() {
         // Solo crear si no existen
         if (get_option('da_products_created')) {
+            DA_Debug::log('Productos ya fueron creados anteriormente, saltando...', 'info');
             return;
         }
+
+        DA_Debug::log('Iniciando creación de productos WooCommerce', 'info');
 
         $products = [
             'free' => [
@@ -167,50 +218,65 @@ class DA_Activator {
         ];
 
         foreach ($products as $tier => $data) {
-            // Para el plan Free, crear producto simple (no requiere suscripción)
-            if ($tier === 'free') {
-                $product = new WC_Product_Simple();
-                $product->set_name($data['name']);
-                $product->set_regular_price($data['price']);
-                $product->set_virtual(true);
-            } else {
-                // Para Premium y Enterprise, crear productos de suscripción
-                if (!class_exists('WC_Subscriptions_Product')) {
-                    error_log('WooCommerce Subscriptions no está instalado');
-                    continue;
+            DA_Debug::log("Creando producto: $tier - {$data['name']}", 'info');
+
+            try {
+                // Para el plan Free, crear producto simple (no requiere suscripción)
+                if ($tier === 'free') {
+                    DA_Debug::log("Creando producto simple para plan Free", 'info');
+                    $product = new WC_Product_Simple();
+                    $product->set_name($data['name']);
+                    $product->set_regular_price($data['price']);
+                    $product->set_virtual(true);
+                } else {
+                    // Para Premium y Enterprise, crear productos de suscripción
+                    if (!class_exists('WC_Subscriptions_Product')) {
+                        DA_Debug::log('ERROR: WooCommerce Subscriptions no está instalado - Saltando plan ' . $tier, 'error');
+                        continue;
+                    }
+
+                    DA_Debug::log("Creando producto de suscripción para plan $tier", 'info');
+                    $product = new WC_Product_Subscription();
+                    $product->set_name($data['name']);
+                    $product->set_regular_price($data['price']);
+                    $product->set_virtual(true);
+
+                    // Configurar suscripción
+                    $product->update_meta_data('_subscription_price', $data['price']);
+                    $product->update_meta_data('_subscription_period', $data['billing_period']);
+                    $product->update_meta_data('_subscription_period_interval', $data['billing_interval']);
+                    $product->update_meta_data('_subscription_length', 0); // Hasta cancelar
+                    DA_Debug::log("Configuración de suscripción aplicada", 'info');
                 }
 
-                $product = new WC_Product_Subscription();
-                $product->set_name($data['name']);
-                $product->set_regular_price($data['price']);
-                $product->set_virtual(true);
+                $product->set_description($data['description']);
+                $product->set_short_description($data['short_description']);
+                $product->set_status('publish');
+                $product->set_catalog_visibility('visible');
 
-                // Configurar suscripción
-                $product->update_meta_data('_subscription_price', $data['price']);
-                $product->update_meta_data('_subscription_period', $data['billing_period']);
-                $product->update_meta_data('_subscription_period_interval', $data['billing_interval']);
-                $product->update_meta_data('_subscription_length', 0); // Hasta cancelar
+                // Guardar metadata del plan
+                DA_Debug::log("Guardando metadata del plan", 'info');
+                foreach ($data['meta'] as $key => $value) {
+                    $product->update_meta_data('da_' . $key, $value);
+                }
+
+                DA_Debug::log("Guardando producto en base de datos...", 'info');
+                $product_id = $product->save();
+
+                // Guardar ID del producto en opciones
+                update_option("da_product_{$tier}_id", $product_id);
+
+                DA_Debug::log("✓ Producto creado exitosamente: {$data['name']} (ID: {$product_id})", 'info');
+
+            } catch (Exception $e) {
+                DA_Debug::log("✗ ERROR al crear producto $tier: " . $e->getMessage(), 'error', [
+                    'trace' => $e->getTraceAsString()
+                ]);
             }
-
-            $product->set_description($data['description']);
-            $product->set_short_description($data['short_description']);
-            $product->set_status('publish');
-            $product->set_catalog_visibility('visible');
-
-            // Guardar metadata del plan
-            foreach ($data['meta'] as $key => $value) {
-                $product->update_meta_data('da_' . $key, $value);
-            }
-
-            $product_id = $product->save();
-
-            // Guardar ID del producto en opciones
-            update_option("da_product_{$tier}_id", $product_id);
-
-            error_log("Producto creado: {$data['name']} (ID: {$product_id})");
         }
 
         update_option('da_products_created', true);
+        DA_Debug::log('Marca de productos creados establecida', 'info');
     }
 
     /**
