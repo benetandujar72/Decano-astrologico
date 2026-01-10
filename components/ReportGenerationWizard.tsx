@@ -83,7 +83,7 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const [userConfig, setUserConfig] = useState<any>(null);
 
   const remainingRef = useRef<number>(0);
-  const timerRef.current = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
   const lastEventRef = useRef<{ moduleId?: string | null; step?: string | null }>({ moduleId: null, step: null });
 
   // Estimación de tiempo por módulo (en segundos)
