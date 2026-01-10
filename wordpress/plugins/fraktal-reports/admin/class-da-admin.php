@@ -538,9 +538,93 @@ class DA_Admin {
             <hr>
 
             <h2>Shortcodes Disponibles</h2>
-            <ul>
-                <li><code>[fraktal_panel]</code> - Panel principal del usuario (compatible con versión anterior)</li>
-            </ul>
+
+            <h3>Nuevos Shortcodes</h3>
+            <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Shortcode</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <code>[decano-report-generator]</code><br>
+                            <small>
+                                Parámetros:<br>
+                                - <code>plan_check="true"</code> (verificar límites)<br>
+                                - <code>show_upgrade="true"</code> (mostrar upgrade)
+                            </small>
+                        </td>
+                        <td>
+                            Generador completo de informes con wizard.<br>
+                            Incluye selector de perfiles, tipos de informe y progreso en tiempo real.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <code>[decano-user-dashboard]</code>
+                        </td>
+                        <td>
+                            Dashboard del usuario con estadísticas de uso e historial de informes.<br>
+                            Muestra plan actual, informes del mes y últimos informes generados.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <code>[decano-plans]</code><br>
+                            <small>
+                                Parámetros:<br>
+                                - <code>highlighted="premium"</code> (plan destacado)
+                            </small>
+                        </td>
+                        <td>
+                            Selector de planes con comparación de características.<br>
+                            Permite a usuarios ver y cambiar su plan de suscripción.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <code>[decano-report-history]</code><br>
+                            <small>
+                                Parámetros:<br>
+                                - <code>limit="10"</code> (número de informes)
+                            </small>
+                        </td>
+                        <td>
+                            Historial de informes generados por el usuario.<br>
+                            Muestra estado, fecha y opción de descarga.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Compatibilidad con Versión Anterior</h3>
+            <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Shortcode</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>[fraktal_panel]</code></td>
+                        <td>
+                            Panel principal del usuario (v0.1.3).<br>
+                            <strong>Nota:</strong> Se recomienda migrar a <code>[decano-report-generator]</code>.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="notice notice-info" style="max-width: 900px; margin-top: 20px;">
+                <p>
+                    <strong>💡 Tip:</strong> Todos los shortcodes (excepto <code>[decano-plans]</code>) requieren que el usuario esté autenticado.
+                    Si el usuario no ha iniciado sesión, se mostrará un mensaje pidiéndole que lo haga.
+                </p>
+            </div>
         </div>
         <?php
     }
