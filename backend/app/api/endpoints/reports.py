@@ -91,6 +91,7 @@ class StartReportGenerationRequest(BaseModel):
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
     report_type: str = Field(default="individual", description="Tipo de informe: individual | infantil | pareja | familiar | equipo | profesional")
     profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
+    calculation_profile: Optional[dict] = Field(default=None, description="Configuración personalizada de orbes y reglas")
 
 class QueueFullReportRequest(BaseModel):
     """Inicia y encola la generación completa del informe (todos los módulos)"""
@@ -99,6 +100,7 @@ class QueueFullReportRequest(BaseModel):
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
     report_type: str = Field(default="individual", description="Tipo de informe: individual | infantil | pareja | familiar | equipo | profesional")
     profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
+    calculation_profile: Optional[dict] = Field(default=None, description="Configuración personalizada de orbes y reglas")
 
 
 class GenerateModuleRequest(BaseModel):
@@ -181,6 +183,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                 previous_modules=previous_modules,
                 progress_cb=progress_cb,
                 chart_facts=session.get("chart_facts"),
+                chart_config=session.get("calculation_profile"),
             ),
             timeout=60 * 40,  # 40 minutos por módulo como job (aumentado de 20)
         )
@@ -570,7 +573,7 @@ async def get_available_formats(current_user: dict = Depends(get_current_user)):
     }
 
 
-@router.post("/start-generation")
+@router.post("/start-full-generation")
 async def start_report_generation(
     request: StartReportGenerationRequest,
     current_user: dict = Depends(get_current_user)
@@ -630,6 +633,7 @@ async def start_report_generation(
         "report_mode": report_mode,
         # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
         "chart_facts": multi_facts or full_report_service.build_chart_facts(request.carta_data),
+        "calculation_profile": request.calculation_profile,
         "generated_modules": {},
         "module_runs": {},
         "current_module_index": 0,
@@ -702,6 +706,7 @@ async def queue_full_report(
         "report_mode": report_mode,
         # Facts compactos para reducir tokens/latencia (reutilizable por módulo)
         "chart_facts": multi_facts or full_report_service.build_chart_facts(request.carta_data),
+        "calculation_profile": request.calculation_profile,
         "generated_modules": {},
         "module_runs": {},
         "current_module_index": 0,
@@ -909,6 +914,7 @@ async def generate_module(
                     report_type=report_type,
                     previous_modules=previous_modules,
                     chart_facts=session.get("chart_facts"),
+                    chart_config=session.get("calculation_profile"),
                 ),
                 timeout=600.0  # 10 minutos máximo por módulo
             )
