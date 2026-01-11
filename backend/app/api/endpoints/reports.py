@@ -40,11 +40,19 @@ def _clean_generated_text(txt: str, *, keep_module_headings: bool = True) -> str
     """
     Limpia texto generado por la IA para uso en informe:
     - elimina bloques de \"CONFIRMACIÓN REQUERIDA\"
+    - elimina etiquetas HTML/XML indeseadas (<d>, <span>, etc.) para visualización profesional
     - opcionalmente evita que un módulo contenga otro (\"## MÓDULO X\") por concatenación accidental
       (NO debe usarse al ensamblar el informe completo, o se truncará en el MÓDULO 1).
     """
     if not txt:
         return ""
+
+    # UX/UI improvement: Remover etiquetas <d> y otras etiquetas HTML indeseadas
+    txt = re.sub(r'<d>', '', txt, flags=re.IGNORECASE)
+    txt = re.sub(r'</d>', '', txt, flags=re.IGNORECASE)
+    # Remover otras etiquetas HTML básicas que no deberían estar en el texto
+    txt = re.sub(r'</?(?:span|div|p|br|b|i|u|strong|em)[^>]*>', '', txt, flags=re.IGNORECASE)
+
     m = re.search(r"confirmaci[oó]n requerida\s*:", txt, flags=re.IGNORECASE)
     if m:
         txt = txt[: m.start()].rstrip()
@@ -1214,6 +1222,11 @@ async def get_full_report_from_session(
     def _clean_module_text(txt: str) -> str:
         if not txt:
             return ""
+        # UX/UI improvement: Remover etiquetas <d> y otras etiquetas HTML indeseadas
+        txt = re.sub(r'<d>', '', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'</d>', '', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'</?(?:span|div|p|br|b|i|u|strong|em)[^>]*>', '', txt, flags=re.IGNORECASE)
+
         # Cortar al primer "CONFIRMACIÓN REQUERIDA" (evita prompts interactivos y concatenaciones)
         m = re.search(r"confirmaci[oó]n requerida\\s*:", txt, flags=re.IGNORECASE)
         if m:
@@ -1316,6 +1329,11 @@ async def download_pdf_from_session(
     def _clean_module_text(txt: str) -> str:
         if not txt:
             return ""
+        # UX/UI improvement: Remover etiquetas <d> y otras etiquetas HTML indeseadas
+        txt = re.sub(r'<d>', '', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'</d>', '', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'</?(?:span|div|p|br|b|i|u|strong|em)[^>]*>', '', txt, flags=re.IGNORECASE)
+
         m = re.search(r"confirmaci[oó]n requerida\\s*:", txt, flags=re.IGNORECASE)
         if m:
             txt = txt[: m.start()].rstrip()
