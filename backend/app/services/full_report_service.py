@@ -568,6 +568,17 @@ REGLAS CRÍTICAS DE ESTA SALIDA (OBJETIVO: {"30 PÁGINAS" if report_mode=="full"
 - Al final, incluye OBLIGATORIAMENTE: "Pregunta para reflexionar: [pregunta profunda, abierta y psicológica]"
 - Usa lenguaje de posibilidad: "tiende a", "puede", "frecuentemente" (evita "es", "siempre", "nunca")
 - RECUERDA: El objetivo es generar un informe {"exhaustivo (~30 páginas)" if report_mode=="full" else "ligero (6–8 páginas)"}.
+
+FORMATO Y ESTRUCTURA (UX/UI PROFESIONAL):
+- USA markdown profesional para estructura visual clara
+- Títulos de sección: ## TÍTULO DE SECCIÓN (espacios antes y después)
+- Subsecciones: ### Subtítulo (si necesario)
+- Párrafos separados por línea en blanco
+- Listas con viñetas cuando enumeres características: "- Item"
+- Énfasis: **negrita** para conceptos clave, *cursiva* para términos técnicos
+- NUNCA uses etiquetas HTML como <d>, <span>, etc.
+- Estructura clara: Introducción → Desarrollo (con subsecciones) → Síntesis/Cierre
+- Usa separadores visuales "---" entre grandes bloques temáticos si necesario
 """
         
         # Generar con reintentos
