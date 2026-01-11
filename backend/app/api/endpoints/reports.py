@@ -126,10 +126,15 @@ async def _push_module_step(session_id: str, module_id: str, step: str, ok: bool
         step_doc["note"] = note
     if meta:
         step_doc["meta"] = meta
+    timestamp = datetime.utcnow().isoformat()
     await report_sessions_collection.update_one(
         {"_id": ObjectId(session_id)},
         {"$push": {f"module_runs.{module_id}.steps": step_doc},
-         "$set": {f"module_runs.{module_id}.updated_at": datetime.utcnow().isoformat()}}
+         "$set": {
+             f"module_runs.{module_id}.updated_at": timestamp,
+             "updated_at": timestamp,  # Update session-level timestamp to prevent stall detection
+             "batch_job.updated_at": timestamp  # Also update batch job timestamp for stall detection
+         }}
     )
 
 async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None:
