@@ -407,15 +407,16 @@ RECUERDA: Todos los informes deben tener el mismo "peso" y densidad. Las casas v
         return txt
 
     async def generate_single_module(
-        self, 
-        chart_data: Dict, 
-        user_name: str, 
+        self,
+        chart_data: Dict,
+        user_name: str,
         module_id: str,
         report_mode: str = "full",
         report_type: str = "individual",
         previous_modules: List[str] = None,
         progress_cb: Optional[Callable[[str, Optional[Dict]], Awaitable[None]]] = None,
         chart_facts: Optional[Dict] = None,
+        chart_config: Optional[Dict] = None,
     ) -> tuple[str, bool, Dict]:
         """
         Genera un único módulo del informe.
