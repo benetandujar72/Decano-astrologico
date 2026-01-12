@@ -221,36 +221,25 @@ class DA_Activator {
             DA_Debug::log("Creando producto: $tier - {$data['name']}", 'info');
 
             try {
-                // Para el plan Free, crear producto simple (no requiere suscripción)
-                if ($tier === 'free') {
-                    DA_Debug::log("Creando producto simple para plan Free", 'info');
-                    $product = new WC_Product_Simple();
-                    $product->set_name($data['name']);
-                    $product->set_regular_price($data['price']);
-                    $product->set_virtual(true);
+                // Crear productos simples para todos los planes
+                // NOTA: Si en el futuro quieres usar WooCommerce Subscriptions,
+                // descomenta el código antiguo y cambia esto
+                DA_Debug::log("Creando producto simple para plan $tier", 'info');
+                $product = new WC_Product_Simple();
+                $product->set_name($data['name']);
+                $product->set_regular_price($data['price']);
+                $product->set_virtual(true);
+
+                // Añadir nota sobre la duración en la descripción para planes de pago
+                if ($tier !== 'free') {
+                    $billing_text = $data['billing_period'] === 'month' ? 'mensual' : 'anual';
+                    $period_note = "\n\n<strong>Duración:</strong> Acceso " . $billing_text . " al plan. La renovación debe realizarse manualmente cada mes.";
+                    $product->set_description($data['description'] . $period_note);
+                    $product->set_short_description($data['short_description'] . ' (Acceso ' . $billing_text . ')');
                 } else {
-                    // Para Premium y Enterprise, crear productos de suscripción
-                    if (!class_exists('WC_Subscriptions_Product')) {
-                        DA_Debug::log('ERROR: WooCommerce Subscriptions no está instalado - Saltando plan ' . $tier, 'error');
-                        continue;
-                    }
-
-                    DA_Debug::log("Creando producto de suscripción para plan $tier", 'info');
-                    $product = new WC_Product_Subscription();
-                    $product->set_name($data['name']);
-                    $product->set_regular_price($data['price']);
-                    $product->set_virtual(true);
-
-                    // Configurar suscripción
-                    $product->update_meta_data('_subscription_price', $data['price']);
-                    $product->update_meta_data('_subscription_period', $data['billing_period']);
-                    $product->update_meta_data('_subscription_period_interval', $data['billing_interval']);
-                    $product->update_meta_data('_subscription_length', 0); // Hasta cancelar
-                    DA_Debug::log("Configuración de suscripción aplicada", 'info');
+                    $product->set_description($data['description']);
+                    $product->set_short_description($data['short_description']);
                 }
-
-                $product->set_description($data['description']);
-                $product->set_short_description($data['short_description']);
                 $product->set_status('publish');
                 $product->set_catalog_visibility('visible');
 
