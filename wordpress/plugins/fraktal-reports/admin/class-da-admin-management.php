@@ -180,7 +180,7 @@ class DA_Admin_Management {
             return ['error' => 'Backend no configurado'];
         }
 
-        $response = wp_remote_get($backend_url . '/report-templates/', [
+        $response = wp_remote_get($backend_url . '/templates/', [
             'headers' => self::get_auth_headers(),
             'timeout' => self::API_TIMEOUT,
             'sslverify' => false
@@ -214,7 +214,7 @@ class DA_Admin_Management {
             return ['error' => 'Backend no configurado'];
         }
 
-        $response = wp_remote_get($backend_url . '/report-prompts/', [
+        $response = wp_remote_get($backend_url . '/prompts/', [
             'headers' => self::get_auth_headers(),
             'timeout' => self::API_TIMEOUT,
             'sslverify' => false
