@@ -7,11 +7,19 @@ import ReportGenerator from './components/ReportGeneration/ReportGenerator';
 import UserDashboard from './components/UserDashboard/UserDashboard';
 import PlanSelector from './components/PlanSelector/PlanSelector';
 
+// Import Free Report Hook components
+import { BirthDataForm as FreeReportForm } from './components/BirthDataForm/BirthDataForm';
+import { FreeReportViewer } from './components/FreeReportViewer/FreeReportViewer';
+import { UpgradeLanding } from './components/UpgradeLanding/UpgradeLanding';
+
 // Component registry
 const components = {
   ReportGenerator,
   UserDashboard,
-  PlanSelector
+  PlanSelector,
+  FreeReportForm,
+  FreeReportViewer,
+  UpgradeLanding
 };
 
 // Find all containers with data-component attribute and render the appropriate component
