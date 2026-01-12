@@ -30,6 +30,7 @@ class DA_Loader {
         // Clases Core
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-plan-manager.php';
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-limits.php';
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-rest-api.php';
 
         // Admin
         if (is_admin()) {
@@ -42,6 +43,9 @@ class DA_Loader {
 
         // API (mantener compatibilidad con código existente)
         // La clase Fraktal_Reports_Plugin existente maneja los AJAX endpoints
+
+        // Registrar REST API endpoints
+        add_action('rest_api_init', ['DA_REST_API', 'register_routes']);
     }
 
     /**
@@ -73,6 +77,11 @@ class DA_Loader {
         add_shortcode('decano-user-dashboard', ['DA_Shortcodes', 'user_dashboard_shortcode']);
         add_shortcode('decano-plans', ['DA_Shortcodes', 'plans_shortcode']);
         add_shortcode('decano-report-history', ['DA_Shortcodes', 'report_history_shortcode']);
+
+        // Shortcodes para sistema de informe Free
+        add_shortcode('decano-free-report-form', ['DA_Shortcodes', 'free_report_form_shortcode']);
+        add_shortcode('decano-upgrade-landing', ['DA_Shortcodes', 'upgrade_landing_shortcode']);
+        add_shortcode('decano-free-report-viewer', ['DA_Shortcodes', 'free_report_viewer_shortcode']);
 
         // Mantener compatibilidad con versión anterior
         add_shortcode('fraktal_panel', ['DA_Shortcodes', 'legacy_panel_shortcode']);

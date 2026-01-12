@@ -97,4 +97,73 @@ class DA_Shortcodes {
     public static function legacy_panel_shortcode($atts) {
         return self::report_generator_shortcode($atts);
     }
+
+    /**
+     * [decano-free-report-form]
+     * Formulario simplificado para informe gratuito (usuarios Free)
+     */
+    public static function free_report_form_shortcode($atts) {
+        $atts = shortcode_atts([
+            'redirect_after' => '' // URL opcional para redirigir después de generar
+        ], $atts);
+
+        // No requiere login para mostrar el formulario (el usuario se registra en el proceso)
+        ob_start();
+        ?>
+        <div
+            id="decano-free-report-form"
+            data-component="FreeReportForm"
+            data-redirect-after="<?php echo esc_attr($atts['redirect_after']); ?>"
+        ></div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * [decano-upgrade-landing]
+     * Landing page con pricing para upgrade de Free a Premium
+     */
+    public static function upgrade_landing_shortcode($atts) {
+        $atts = shortcode_atts([
+            'show_free_cta' => 'true',
+            'highlight' => 'revolucion_solar_2026' // Plan destacado por defecto
+        ], $atts);
+
+        ob_start();
+        ?>
+        <div
+            id="decano-upgrade-landing"
+            data-component="UpgradeLanding"
+            data-show-free-cta="<?php echo esc_attr($atts['show_free_cta']); ?>"
+            data-highlight="<?php echo esc_attr($atts['highlight']); ?>"
+        ></div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * [decano-free-report-viewer]
+     * Visualizador del informe gratuito generado
+     */
+    public static function free_report_viewer_shortcode($atts) {
+        if (!is_user_logged_in()) {
+            return '<div class="decano-login-required"><p>Debes iniciar sesión para ver tu informe.</p><a href="' . wp_login_url(get_permalink()) . '">Iniciar sesión</a></div>';
+        }
+
+        $atts = shortcode_atts([
+            'session_id' => '', // ID de sesión del informe a mostrar
+            'show_upgrade_cta' => 'true'
+        ], $atts);
+
+        ob_start();
+        ?>
+        <div
+            id="decano-free-report-viewer"
+            data-component="FreeReportViewer"
+            data-session-id="<?php echo esc_attr($atts['session_id']); ?>"
+            data-show-upgrade-cta="<?php echo esc_attr($atts['show_upgrade_cta']); ?>"
+        ></div>
+        <?php
+        return ob_get_clean();
+    }
 }
