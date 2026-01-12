@@ -17,11 +17,11 @@ class DA_REST_API {
      * Registrar los endpoints REST
      */
     public static function register_routes() {
-        // Endpoint de geocodificación
+        // Endpoint de geocodificación (NO requiere login para usuarios Free)
         register_rest_route('decano/v1', '/geocode', [
             'methods' => 'POST',
             'callback' => [__CLASS__, 'geocode_location'],
-            'permission_callback' => [__CLASS__, 'check_user_logged_in'],
+            'permission_callback' => '__return_true', // Permitir acceso anónimo
             'args' => [
                 'city' => [
                     'required' => true,
@@ -88,6 +88,7 @@ class DA_REST_API {
 
     /**
      * Geocodificar ubicación (ciudad → coordenadas)
+     * Llama directamente a Nominatim (OpenStreetMap) - NO requiere autenticación
      */
     public static function geocode_location($request) {
         $city = $request->get_param('city');
@@ -102,50 +103,29 @@ class DA_REST_API {
             );
         }
 
-        // Obtener backend URL desde settings
-        $backend_url = get_option('da_api_url');
-        if (empty($backend_url)) {
-            return new WP_Error(
-                'backend_not_configured',
-                'El backend no está configurado correctamente',
-                ['status' => 500]
-            );
-        }
-
-        // Obtener token de autorización
-        $user_id = get_current_user_id();
-        $token = self::get_or_create_user_token($user_id);
-
-        if (!$token) {
-            return new WP_Error(
-                'auth_error',
-                'No se pudo obtener token de autorización',
-                ['status' => 401]
-            );
-        }
-
-        // Preparar datos para enviar al backend
-        $data = [
-            'city' => $city,
-            'country' => $country
-        ];
-
+        // Construir query para Nominatim
+        $query_parts = [$city];
         if (!empty($state)) {
-            $data['state'] = $state;
+            $query_parts[] = $state;
         }
+        $query_parts[] = $country;
+        $query = implode(', ', $query_parts);
 
-        // Llamar al backend de Python
-        $response = wp_remote_post($backend_url . '/geocoding/geocode', [
+        // Llamar a Nominatim (OpenStreetMap)
+        $nominatim_url = 'https://nominatim.openstreetmap.org/search';
+        $response = wp_remote_get(add_query_arg([
+            'q' => $query,
+            'format' => 'json',
+            'limit' => 1,
+            'addressdetails' => 1
+        ], $nominatim_url), [
             'headers' => [
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $token
+                'User-Agent' => 'Decano-Astrologico-WordPress/1.0'
             ],
-            'body' => json_encode($data),
             'timeout' => 15
         ]);
 
         if (is_wp_error($response)) {
-            DA_Debug::log('Error en geocodificación: ' . $response->get_error_message(), 'error');
             return new WP_Error(
                 'geocode_error',
                 'Error al contactar el servicio de geocodificación: ' . $response->get_error_message(),
@@ -157,31 +137,59 @@ class DA_REST_API {
         $response_body = wp_remote_retrieve_body($response);
 
         if ($response_code !== 200) {
-            $error_data = json_decode($response_body, true);
-            $error_message = isset($error_data['detail']) ? $error_data['detail'] : 'Error desconocido';
-
-            DA_Debug::log("Error geocodificación (HTTP $response_code): $error_message", 'error');
-
             return new WP_Error(
                 'geocode_failed',
-                $error_message,
+                'El servicio de geocodificación no está disponible',
                 ['status' => $response_code]
             );
         }
 
-        $result = json_decode($response_body, true);
+        $results = json_decode($response_body, true);
 
-        if (!$result) {
+        if (empty($results) || !is_array($results)) {
             return new WP_Error(
-                'invalid_response',
-                'Respuesta inválida del servicio de geocodificación',
-                ['status' => 502]
+                'no_results',
+                'No se encontraron coordenadas para esta ubicación',
+                ['status' => 404]
             );
         }
 
-        DA_Debug::log("Geocodificación exitosa: $city, $country → {$result['latitude']}, {$result['longitude']}", 'info');
+        $location = $results[0];
+
+        // Extraer información relevante
+        $latitude = floatval($location['lat']);
+        $longitude = floatval($location['lon']);
+        $display_name = $location['display_name'];
+
+        // Intentar determinar el timezone (simplificado - basado en longitud)
+        $timezone = self::get_timezone_from_coordinates($latitude, $longitude);
+
+        $result = [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'formatted_address' => $display_name,
+            'city' => $city,
+            'country' => $country,
+            'timezone' => $timezone
+        ];
 
         return rest_ensure_response($result);
+    }
+
+    /**
+     * Obtener timezone aproximado desde coordenadas
+     * Simplificación basada en longitud (cada 15° = 1 hora)
+     */
+    private static function get_timezone_from_coordinates($lat, $lon) {
+        $offset_hours = round($lon / 15);
+
+        if ($offset_hours > 0) {
+            return 'UTC+' . $offset_hours;
+        } elseif ($offset_hours < 0) {
+            return 'UTC' . $offset_hours;
+        } else {
+            return 'UTC+0';
+        }
     }
 
     /**
