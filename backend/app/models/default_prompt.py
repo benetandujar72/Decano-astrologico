@@ -139,7 +139,4 @@ C. SALVAGUARDAS: No dramatizar configuraciones intensas.
 Inicio: MÓDULO [N]: [NOMBRE DEL MÓDULO] [Subtítulo] [Contenido directo]
 Final: CONFIRMACIÓN REQUERIDA: [Resumen]. ¿Procedo al [siguiente punto]?
 """
-Jon Landeta
-Tel: 664.466.388
-"""
 
