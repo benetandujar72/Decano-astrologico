@@ -253,4 +253,77 @@ export const api = {
     });
     if (!res.ok) throw new Error('Error eliminando perfil');
   },
+
+  // GENERIC HTTP METHODS (axios-like interface)
+  get: async (path: string, options?: { params?: Record<string, any> }): Promise<{ data: any }> => {
+    let url = `${API_URL}${path}`;
+    if (options?.params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+    }
+    const res = await fetch(url, {
+      headers: getHeaders()
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Error de servidor' }));
+      const error: any = new Error(errorData.detail || 'Error de servidor');
+      error.response = { data: errorData, status: res.status };
+      throw error;
+    }
+    return { data: await res.json() };
+  },
+
+  post: async (path: string, body?: any): Promise<{ data: any }> => {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Error de servidor' }));
+      const error: any = new Error(errorData.detail || 'Error de servidor');
+      error.response = { data: errorData, status: res.status };
+      throw error;
+    }
+    return { data: await res.json() };
+  },
+
+  put: async (path: string, body?: any): Promise<{ data: any }> => {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Error de servidor' }));
+      const error: any = new Error(errorData.detail || 'Error de servidor');
+      error.response = { data: errorData, status: res.status };
+      throw error;
+    }
+    return { data: await res.json() };
+  },
+
+  delete: async (path: string): Promise<{ data: any }> => {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Error de servidor' }));
+      const error: any = new Error(errorData.detail || 'Error de servidor');
+      error.response = { data: errorData, status: res.status };
+      throw error;
+    }
+    // DELETE might return empty response
+    const text = await res.text();
+    return { data: text ? JSON.parse(text) : {} };
+  },
 };
