@@ -28,12 +28,15 @@ class DA_Loader {
      */
     private function load_dependencies() {
         // Clases Core
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-debug.php';
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-plan-manager.php';
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-limits.php';
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-rest-api.php';
 
         // Admin
         if (is_admin()) {
+            require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-dashboard.php';
+            require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-users.php';
             require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin.php';
         }
 

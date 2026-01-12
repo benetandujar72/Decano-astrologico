@@ -1222,7 +1222,6 @@ class DA_Admin {
                         Incluye solo 3 módulos básicos: Sol, Luna y Ascendente. No se puede eliminar.
                     </p>
                 </div>
-            <?php endif; ?>
         </div>
         <?php
     }
