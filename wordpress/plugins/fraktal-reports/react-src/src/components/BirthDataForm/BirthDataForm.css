@@ -103,6 +103,12 @@
   gap: 4px;
 }
 
+.form-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
 /* Grid layout para fecha/hora y ciudad/país */
 .form-grid {
   display: grid;

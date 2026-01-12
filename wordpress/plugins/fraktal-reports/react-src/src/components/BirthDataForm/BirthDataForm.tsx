@@ -9,6 +9,7 @@ import './BirthDataForm.css';
 
 interface BirthData {
   name: string;
+  email: string;
   birth_date: string;
   birth_time: string;
   birth_place_city: string;
@@ -47,6 +48,7 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<BirthData>({
     name: initialData?.name || '',
+    email: (initialData as any)?.email || '',
     birth_date: initialData?.birth_date || '',
     birth_time: initialData?.birth_time || '',
     birth_place_city: initialData?.birth_place_city || '',
@@ -146,11 +148,22 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
     }
   };
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
       newErrors.name = 'El nombre es obligatorio';
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'El email es obligatorio';
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = 'Por favor, introduce un email válido';
     }
 
     if (!formData.birth_date) {
@@ -202,12 +215,9 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
       const restUrl = wpConfig.restUrl || '/wp-json/';
       const nonce = wpConfig.restNonce || '';
 
-      // Preparar datos para envío
-      const email = formData.name.toLowerCase().replace(/\s+/g, '.') + '@temp.decano.local';
-
       const payload = {
         name: formData.name,
-        email: email, // TODO: Añadir campo email al formulario
+        email: formData.email,
         birth_date: formData.birth_date,
         birth_time: formData.birth_time,
         birth_city: formData.birth_place_city,
@@ -287,6 +297,26 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
             disabled={isLoading}
           />
           {errors.name && <span className="error-message">{errors.name}</span>}
+        </div>
+
+        {/* Email */}
+        <div className="form-group">
+          <label htmlFor="email" className="form-label">
+            Correo electrónico
+            <span className="required">*</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            placeholder="tu@email.com"
+            className={`form-input ${errors.email ? 'error' : ''}`}
+            disabled={isLoading}
+          />
+          {errors.email && <span className="error-message">{errors.email}</span>}
+          <span className="form-hint">Te enviaremos tu informe a este correo</span>
         </div>
 
         {/* Fecha y Hora en Grid */}

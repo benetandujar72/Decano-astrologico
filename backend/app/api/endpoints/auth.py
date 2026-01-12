@@ -307,6 +307,106 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         }
     }
 
+class WordPressLoginRequest(BaseModel):
+    wordpress_user_id: int
+    email: str
+    name: str
+    role: Optional[str] = "user"
+
+
+@router.post("/wordpress-login")
+async def wordpress_login(payload: WordPressLoginRequest):
+    """
+    Endpoint de autenticación para usuarios de WordPress.
+    Crea o actualiza el usuario en el backend y devuelve un JWT token.
+    """
+    import time
+    start_time = time.time()
+
+    print(f"[AUTH] WordPress login for: {payload.email} (WP ID: {payload.wordpress_user_id})")
+
+    # Buscar usuario por email
+    user = await users_collection.find_one({"email": payload.email})
+
+    if not user:
+        # Buscar por wordpress_user_id
+        user = await users_collection.find_one({"wordpress_user_id": payload.wordpress_user_id})
+
+    if not user:
+        # Crear nuevo usuario
+        print(f"[AUTH] Creating new WordPress user: {payload.email}")
+
+        # Determinar el rol
+        backend_role = "admin" if payload.role == "admin" else "user"
+
+        new_user = {
+            "username": payload.email,
+            "email": payload.email,
+            "name": payload.name,
+            "wordpress_user_id": payload.wordpress_user_id,
+            "role": backend_role,
+            "auth_source": "wordpress",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        result = await users_collection.insert_one(new_user)
+        user = new_user
+        user["_id"] = result.inserted_id
+        print(f"[AUTH] Created WordPress user with ID: {result.inserted_id}")
+    else:
+        # Actualizar datos del usuario si es necesario
+        update_data = {
+            "name": payload.name,
+            "wordpress_user_id": payload.wordpress_user_id,
+            "last_wordpress_login": datetime.utcnow().isoformat()
+        }
+
+        # Si viene como admin desde WordPress, actualizar rol
+        if payload.role == "admin" and user.get("role") != "admin":
+            update_data["role"] = "admin"
+            print(f"[AUTH] Upgrading {payload.email} to admin role via WordPress")
+
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+
+        # Actualizar objeto local
+        user.update(update_data)
+
+    # Generar token JWT
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.get("username", user.get("email"))},
+        expires_delta=access_token_expires
+    )
+
+    # Obtener suscripción
+    subscription = await db.user_subscriptions.find_one({"user_id": str(user["_id"])})
+    subscription_tier = "free"
+    if subscription:
+        subscription_tier = subscription.get("tier", "free")
+    elif user.get("role") == "admin":
+        subscription_tier = "enterprise"
+
+    total_time = time.time() - start_time
+    print(f"[AUTH] WordPress login completed in {total_time:.3f}s for {payload.email}")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # En segundos
+        "user": {
+            "id": str(user["_id"]),
+            "username": user.get("username", user.get("email")),
+            "email": user.get("email"),
+            "name": user.get("name", payload.name),
+            "role": user.get("role", "user"),
+            "subscription_tier": subscription_tier
+        }
+    }
+
+
 @router.post("/register")
 async def register(payload: RegisterRequest):
     """Endpoint de registro"""

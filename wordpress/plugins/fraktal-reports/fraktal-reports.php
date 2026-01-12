@@ -3,7 +3,7 @@
  * Plugin Name: Decano Astrológico
  * Plugin URI: https://app.programafraktal.com
  * Description: Sistema completo de generación de informes astrológicos con WooCommerce, múltiples planes (Free/Premium/Enterprise) y panel de administración avanzado.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Decano Team
  * Author URI: https://app.programafraktal.com
  * License: GPL-2.0+
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definir constantes del plugin
-define('DECANO_VERSION', '1.0.0');
+define('DECANO_VERSION', '1.1.0');
 define('DECANO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DECANO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
