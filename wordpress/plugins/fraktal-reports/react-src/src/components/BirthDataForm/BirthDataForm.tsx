@@ -61,6 +61,7 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
   const [geocodeSuccess, setGeocodeSuccess] = useState(false);
   const [showManualCoords, setShowManualCoords] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Auto-geocodificar cuando se introducen ciudad y país
   useEffect(() => {
@@ -190,19 +191,67 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
     }
 
     // Comportamiento por defecto: generar informe Free
+    setIsGenerating(true);
+    setErrors({});
+
     try {
       console.log('[BirthDataForm] Generando informe gratuito...', formData);
 
-      // TODO: Llamar al endpoint de generación de informe
-      // Por ahora solo loguear y redirigir
-      alert('Funcionalidad de generación en desarrollo. Datos capturados correctamente.');
+      // Obtener configuración de WordPress
+      const wpConfig = (window as any).decanoSettings || {};
+      const restUrl = wpConfig.restUrl || '/wp-json/';
+      const nonce = wpConfig.restNonce || '';
 
-      if (redirectAfter) {
+      // Preparar datos para envío
+      const email = formData.name.toLowerCase().replace(/\s+/g, '.') + '@temp.decano.local';
+
+      const payload = {
+        name: formData.name,
+        email: email, // TODO: Añadir campo email al formulario
+        birth_date: formData.birth_date,
+        birth_time: formData.birth_time,
+        birth_city: formData.birth_place_city,
+        birth_country: formData.birth_place_country,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        timezone: formData.timezone
+      };
+
+      console.log('[BirthDataForm] Llamando a WordPress API:', restUrl + 'decano/v1/generate-free-report');
+
+      // Llamar al endpoint de WordPress
+      const response = await fetch(restUrl + 'decano/v1/generate-free-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': nonce
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al generar el informe');
+      }
+
+      const result = await response.json();
+      console.log('[BirthDataForm] Informe iniciado:', result);
+
+      // Redirigir al visualizador con el session_id
+      if (result.viewer_url) {
+        window.location.href = result.viewer_url;
+      } else if (result.session_id) {
+        // Fallback si no hay viewer_url
+        window.location.href = `/tu-informe-gratis/?session_id=${result.session_id}`;
+      } else if (redirectAfter) {
         window.location.href = redirectAfter;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[BirthDataForm] Error generando informe:', error);
-      alert('Error al generar el informe. Por favor, inténtalo de nuevo.');
+      setErrors({
+        submit: error.message || 'Error al generar el informe. Por favor, inténtalo de nuevo.'
+      });
+      setIsGenerating(false);
     }
   };
 
@@ -451,7 +500,7 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
             type="button"
             onClick={onCancel}
             className="btn-secondary"
-            disabled={isLoading}
+            disabled={isLoading || isGenerating}
           >
             Cancelar
           </button>
@@ -459,18 +508,26 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
         <button
           type="submit"
           className="btn-primary"
-          disabled={isLoading || isGeocoding}
+          disabled={isLoading || isGeocoding || isGenerating}
         >
-          {isLoading ? (
+          {(isLoading || isGenerating) ? (
             <>
               <Loader2 className="animate-spin" size={18} />
-              Generando...
+              Generando tu informe...
             </>
           ) : (
             submitButtonText
           )}
         </button>
       </div>
+
+      {/* Error de envío */}
+      {errors.submit && (
+        <div className="form-error">
+          <AlertCircle size={18} />
+          <span>{errors.submit}</span>
+        </div>
+      )}
     </form>
   );
 };

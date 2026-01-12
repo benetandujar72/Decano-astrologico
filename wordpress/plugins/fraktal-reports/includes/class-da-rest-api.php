@@ -77,6 +77,61 @@ class DA_REST_API {
             'callback' => [__CLASS__, 'get_user_limits'],
             'permission_callback' => [__CLASS__, 'check_user_logged_in']
         ]);
+
+        // Endpoint para generar informe gratuito (NO requiere login)
+        register_rest_route('decano/v1', '/generate-free-report', [
+            'methods' => 'POST',
+            'callback' => [__CLASS__, 'generate_free_report'],
+            'permission_callback' => '__return_true', // Permitir acceso anónimo
+            'args' => [
+                'name' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'email' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'validate_callback' => function($param) {
+                        return is_email($param);
+                    },
+                    'sanitize_callback' => 'sanitize_email'
+                ],
+                'birth_date' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'birth_time' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'birth_city' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'birth_country' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'latitude' => [
+                    'required' => true,
+                    'type' => 'number'
+                ],
+                'longitude' => [
+                    'required' => true,
+                    'type' => 'number'
+                ],
+                'timezone' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
+        ]);
     }
 
     /**
@@ -307,7 +362,209 @@ class DA_REST_API {
     }
 
     /**
-     * Obtener o crear token de autenticación para el backend
+     * Generar informe gratuito
+     * Este endpoint crea un usuario si no existe y llama al backend para generar el informe
+     */
+    public static function generate_free_report($request) {
+        $name = $request->get_param('name');
+        $email = $request->get_param('email');
+        $birth_date = $request->get_param('birth_date');
+        $birth_time = $request->get_param('birth_time');
+        $birth_city = $request->get_param('birth_city');
+        $birth_country = $request->get_param('birth_country');
+        $latitude = $request->get_param('latitude');
+        $longitude = $request->get_param('longitude');
+        $timezone = $request->get_param('timezone');
+
+        // Verificar backend configurado
+        $backend_url = get_option('da_api_url');
+        if (empty($backend_url)) {
+            return new WP_Error('backend_not_configured', 'Backend no configurado', ['status' => 500]);
+        }
+
+        // Paso 1: Obtener o crear usuario de WordPress
+        $user_id = null;
+        $is_logged_in = is_user_logged_in();
+
+        if ($is_logged_in) {
+            // Usuario ya está logueado
+            $user_id = get_current_user_id();
+        } else {
+            // Buscar usuario por email
+            $user = get_user_by('email', $email);
+
+            if ($user) {
+                // Usuario existe, usar su ID
+                $user_id = $user->ID;
+            } else {
+                // Crear nuevo usuario
+                $username = sanitize_user(str_replace(' ', '_', strtolower($name)) . '_' . wp_rand(1000, 9999));
+                $password = wp_generate_password(16, true);
+
+                $user_id = wp_create_user($username, $password, $email);
+
+                if (is_wp_error($user_id)) {
+                    return new WP_Error(
+                        'user_creation_failed',
+                        'No se pudo crear el usuario: ' . $user_id->get_error_message(),
+                        ['status' => 500]
+                    );
+                }
+
+                // Actualizar nombre del usuario
+                wp_update_user([
+                    'ID' => $user_id,
+                    'display_name' => $name,
+                    'first_name' => $name
+                ]);
+
+                // Asignar rol de subscriber
+                $user = new WP_User($user_id);
+                $user->set_role('subscriber');
+
+                // Enviar email de bienvenida (opcional)
+                wp_send_new_user_notifications($user_id, 'user');
+            }
+        }
+
+        // Paso 2: Obtener o crear token del backend
+        $token = self::get_or_create_backend_jwt($user_id, $email, $name);
+
+        if (!$token) {
+            return new WP_Error('auth_error', 'No se pudo obtener token de autenticación', ['status' => 401]);
+        }
+
+        // Paso 3: Preparar datos para el backend
+        $birth_datetime = $birth_date . 'T' . $birth_time;
+
+        $payload = [
+            'report_type' => 'gancho_free',
+            'birth_datetime' => $birth_datetime,
+            'latitude' => floatval($latitude),
+            'longitude' => floatval($longitude),
+            'timezone' => $timezone,
+            'city' => $birth_city,
+            'country' => $birth_country,
+            'name' => $name
+        ];
+
+        // Paso 4: Llamar al backend para generar informe
+        $response = wp_remote_post($backend_url . '/reports/queue-full-report', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type' => 'application/json'
+            ],
+            'body' => json_encode($payload),
+            'timeout' => 30
+        ]);
+
+        if (is_wp_error($response)) {
+            return new WP_Error(
+                'backend_error',
+                'Error al conectar con el backend: ' . $response->get_error_message(),
+                ['status' => 502]
+            );
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+
+        if ($response_code !== 200 && $response_code !== 201) {
+            $error_data = json_decode($response_body, true);
+            $error_message = isset($error_data['detail']) ? $error_data['detail'] : 'Error desconocido del backend';
+
+            return new WP_Error(
+                'backend_failed',
+                $error_message,
+                ['status' => $response_code, 'body' => $error_data]
+            );
+        }
+
+        $result = json_decode($response_body, true);
+
+        if (!$result || !isset($result['session_id'])) {
+            return new WP_Error(
+                'invalid_response',
+                'Respuesta inválida del backend',
+                ['status' => 502, 'body' => $response_body]
+            );
+        }
+
+        // Paso 5: Devolver session_id y datos del usuario
+        return rest_ensure_response([
+            'success' => true,
+            'session_id' => $result['session_id'],
+            'user_id' => $user_id,
+            'is_new_user' => !$is_logged_in && !get_user_by('email', $email),
+            'viewer_url' => home_url('/tu-informe-gratis/?session_id=' . $result['session_id']),
+            'message' => 'Informe en proceso de generación'
+        ]);
+    }
+
+    /**
+     * Obtener o crear token JWT del backend para el usuario
+     */
+    private static function get_or_create_backend_jwt($user_id, $email, $name) {
+        // Intentar obtener token existente
+        $token = get_user_meta($user_id, 'da_backend_jwt_token', true);
+        $token_expiry = get_user_meta($user_id, 'da_backend_jwt_expiry', true);
+
+        // Verificar si el token sigue siendo válido (con margen de 1 hora)
+        if (!empty($token) && !empty($token_expiry) && time() < ($token_expiry - 3600)) {
+            return $token;
+        }
+
+        // Necesitamos crear un nuevo token llamando al backend
+        $backend_url = get_option('da_api_url');
+        if (empty($backend_url)) {
+            return false;
+        }
+
+        // Llamar al endpoint de autenticación del backend
+        $response = wp_remote_post($backend_url . '/auth/wordpress-login', [
+            'headers' => [
+                'Content-Type' => 'application/json'
+            ],
+            'body' => json_encode([
+                'wordpress_user_id' => $user_id,
+                'email' => $email,
+                'name' => $name
+            ]),
+            'timeout' => 15
+        ]);
+
+        if (is_wp_error($response)) {
+            error_log('[DA] Error obteniendo JWT: ' . $response->get_error_message());
+            return false;
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+
+        if ($response_code !== 200) {
+            error_log('[DA] Backend auth failed (code ' . $response_code . '): ' . $response_body);
+            return false;
+        }
+
+        $auth_data = json_decode($response_body, true);
+
+        if (!$auth_data || !isset($auth_data['access_token'])) {
+            error_log('[DA] Invalid auth response from backend');
+            return false;
+        }
+
+        $token = $auth_data['access_token'];
+        $expires_in = isset($auth_data['expires_in']) ? intval($auth_data['expires_in']) : 86400; // Default 24h
+
+        // Guardar token y expiración
+        update_user_meta($user_id, 'da_backend_jwt_token', $token);
+        update_user_meta($user_id, 'da_backend_jwt_expiry', time() + $expires_in);
+
+        return $token;
+    }
+
+    /**
+     * Obtener o crear token de autenticación para el backend (método legacy)
      */
     private static function get_or_create_user_token($user_id) {
         // Obtener token existente
