@@ -15,6 +15,7 @@ from app.api.endpoints import (
     admin,
     profiles,
     geolocation,
+    geocoding,
     expert_chat,
     professional_services,
     demo_chat,
@@ -34,6 +35,7 @@ router.include_router(profiles.router, prefix="/profiles", tags=["profiles"])
 router.include_router(config.router, prefix="/config", tags=["config"])
 router.include_router(ephemeris.router, prefix="/ephemeris", tags=["ephemeris"])
 router.include_router(geolocation.router, prefix="/geolocation", tags=["geolocation"])
+router.include_router(geocoding.router, prefix="/geocoding", tags=["geocoding"])
 router.include_router(reports.router, prefix="/reports", tags=["reports"])
 router.include_router(wp_reports.router, prefix="/wp", tags=["wp"])
 router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])

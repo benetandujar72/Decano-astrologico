@@ -1,0 +1,449 @@
+/**
+ * Estilos para la landing page de upgrade
+ * Basado en la segunda imagen proporcionada
+ */
+
+.upgrade-landing {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #2d2d2d;
+  background: #f5f5ed;
+}
+
+/* ========================================
+   HEADER CON IMAGEN MÍSTICA
+   ======================================== */
+
+.upgrade-header {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d3561 50%, #6b4423 100%);
+}
+
+.mystical-background-upgrade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(218, 165, 32, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(65, 105, 225, 0.3) 0%, transparent 50%);
+  opacity: 0.6;
+}
+
+.header-overlay-upgrade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, #f5f5ed);
+}
+
+/* ========================================
+   HERO SECTION
+   ======================================== */
+
+.hero-section {
+  text-align: center;
+  padding: 80px 24px 60px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.hero-content {}
+
+.hero-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #2d2d2d;
+  margin: 0 0 24px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: -1px;
+}
+
+.hero-description {
+  font-size: 18px;
+  color: #4a4a4a;
+  line-height: 1.7;
+  max-width: 700px;
+  margin: 0 auto 40px;
+}
+
+/* Ilustración */
+.hero-illustration {
+  margin: 40px auto;
+  display: flex;
+  justify-content: center;
+}
+
+.illustration-card {
+  width: 280px;
+  height: 160px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  padding: 20px;
+  border: 2px solid #e0e0e0;
+  position: relative;
+  overflow: hidden;
+}
+
+.illustration-card::before {
+  content: '···';
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  color: #999;
+  font-size: 20px;
+  letter-spacing: 4px;
+}
+
+.card-content {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-top: 32px;
+}
+
+.chart-mini {
+  width: 80px;
+  height: 80px;
+  border: 3px solid #daa520;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chart-mini::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  border: 2px solid rgba(218, 165, 32, 0.4);
+  border-radius: 50%;
+}
+
+.graph-lines {
+  flex: 1;
+  height: 80px;
+  background:
+    linear-gradient(to bottom, transparent 0%, transparent 48%, #ddd 48%, #ddd 52%, transparent 52%),
+    linear-gradient(135deg, transparent 0%, transparent 48%, #daa520 48%, #daa520 50%, transparent 50%);
+}
+
+.hero-cta-button {
+  background: #daa520;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  padding: 20px 60px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 6px 25px rgba(218, 165, 32, 0.35);
+}
+
+.hero-cta-button:hover {
+  background: #c59715;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(218, 165, 32, 0.45);
+}
+
+/* ========================================
+   PRICING SECTION
+   ======================================== */
+
+.pricing-section {
+  padding: 80px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pricing-title {
+  text-align: center;
+  font-size: 36px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 60px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Pricing Cards */
+.pricing-card {
+  background: #ffffff;
+  border: 2px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 40px 32px;
+  position: relative;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-card:hover {
+  border-color: #daa520;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.pricing-card.recommended {
+  border-color: #daa520;
+  border-width: 3px;
+  box-shadow: 0 8px 35px rgba(218, 165, 32, 0.2);
+}
+
+.recommended-badge {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #daa520;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 20px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 16px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-description {
+  font-size: 14px;
+  color: #4a4a4a;
+  line-height: 1.6;
+  margin: 0 0 24px;
+  text-align: center;
+  min-height: 60px;
+}
+
+.plan-features {
+  flex: 1;
+  margin-bottom: 32px;
+}
+
+.plan-features ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plan-features li {
+  padding: 10px 0 10px 28px;
+  position: relative;
+  color: #4a4a4a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.plan-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #daa520;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.plan-price {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.price-amount {
+  font-size: 48px;
+  font-weight: 800;
+  color: #2d2d2d;
+}
+
+.plan-cta-button {
+  background: #6b4423;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 16px 32px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 100%;
+}
+
+.plan-cta-button:hover {
+  background: #5a3a1e;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(107, 68, 35, 0.3);
+}
+
+.pricing-card.recommended .plan-cta-button {
+  background: #daa520;
+}
+
+.pricing-card.recommended .plan-cta-button:hover {
+  background: #c59715;
+}
+
+/* ========================================
+   BENEFITS SECTION
+   ======================================== */
+
+.benefits-section {
+  padding: 80px 24px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.benefits-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 60px;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.benefit-card {
+  padding: 32px 24px;
+}
+
+.benefit-icon {
+  font-size: 56px;
+  margin-bottom: 20px;
+}
+
+.benefit-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 12px;
+}
+
+.benefit-card p {
+  font-size: 14px;
+  color: #4a4a4a;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ========================================
+   FINAL CTA SECTION
+   ======================================== */
+
+.final-cta-section {
+  padding: 80px 24px;
+  text-align: center;
+  background: linear-gradient(135deg, #2d3561 0%, #1a1a2e 100%);
+  color: #ffffff;
+}
+
+.final-cta-section h2 {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+.final-cta-section p {
+  font-size: 18px;
+  margin: 0 0 40px;
+  color: #e0e0e0;
+}
+
+.final-cta-button {
+  background: #daa520;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 18px 48px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 6px 25px rgba(218, 165, 32, 0.4);
+}
+
+.final-cta-button:hover {
+  background: #c59715;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(218, 165, 32, 0.5);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 32px;
+  }
+
+  .hero-description {
+    font-size: 16px;
+  }
+
+  .pricing-title,
+  .benefits-title,
+  .final-cta-section h2 {
+    font-size: 28px;
+  }
+
+  .pricing-card {
+    padding: 32px 24px;
+  }
+
+  .plan-name {
+    font-size: 20px;
+  }
+
+  .price-amount {
+    font-size: 40px;
+  }
+
+  .benefits-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}

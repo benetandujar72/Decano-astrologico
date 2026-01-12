@@ -1,0 +1,467 @@
+/**
+ * Estilos para el visualizador de informe gratuito
+ * Basado en el diseño de las imágenes proporcionadas
+ */
+
+.free-report-viewer {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #2d2d2d;
+  background: #ffffff;
+  line-height: 1.6;
+}
+
+/* ========================================
+   HEADER CON IMAGEN MÍSTICA
+   ======================================== */
+
+.report-header {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d3561 50%, #6b4423 100%);
+}
+
+.mystical-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(218, 165, 32, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(65, 105, 225, 0.3) 0%, transparent 50%);
+  opacity: 0.6;
+}
+
+.report-header::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  background:
+    radial-gradient(circle, transparent 35%, rgba(218, 165, 32, 0.1) 35%, transparent 36%),
+    radial-gradient(circle, transparent 45%, rgba(218, 165, 32, 0.1) 45%, transparent 46%);
+  border: 2px solid rgba(218, 165, 32, 0.3);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.header-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, #f5f5ed);
+}
+
+/* ========================================
+   CONTENEDOR PRINCIPAL
+   ======================================== */
+
+.report-container {
+  max-width: 900px;
+  margin: -40px auto 0;
+  padding: 0 24px 60px;
+  background: #f5f5ed;
+  position: relative;
+  z-index: 2;
+}
+
+/* ========================================
+   SECCIÓN INTRO CON CARTA NATAL
+   ======================================== */
+
+.report-intro-section {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 48px;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.intro-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .intro-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* Imagen de la Carta */
+.chart-image-container {
+  position: relative;
+}
+
+.chart-image {
+  width: 100%;
+  border-radius: 50%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.chart-placeholder {
+  width: 320px;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d3561 100%);
+  border-radius: 50%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.chart-circle {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  border: 3px solid #daa520;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-inner-circle {
+  width: 180px;
+  height: 180px;
+  border: 2px solid rgba(218, 165, 32, 0.5);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chart-aspects {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(45deg, transparent 48%, rgba(218, 165, 32, 0.3) 49%, rgba(218, 165, 32, 0.3) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(218, 165, 32, 0.3) 49%, rgba(218, 165, 32, 0.3) 51%, transparent 52%);
+}
+
+/* Contenido intro */
+.intro-content {}
+
+.report-main-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 24px;
+  line-height: 1.2;
+}
+
+.birth-data {
+  background: #f9f9f5;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border-left: 4px solid #daa520;
+}
+
+.birth-data p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #4a4a4a;
+}
+
+.birth-data strong {
+  color: #2d2d2d;
+  font-weight: 600;
+}
+
+.section-subtitle {
+  font-size: 22px;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin: 24px 0 12px;
+}
+
+.intro-text {
+  font-size: 15px;
+  color: #4a4a4a;
+  line-height: 1.7;
+}
+
+/* ========================================
+   MÓDULOS DE CONTENIDO
+   ======================================== */
+
+.report-module {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 40px 48px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.module-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 24px;
+  padding-bottom: 16px;
+  border-bottom: 3px solid #daa520;
+}
+
+.module-content {
+  font-size: 16px;
+  color: #4a4a4a;
+  line-height: 1.8;
+}
+
+.module-content p {
+  margin: 0 0 20px;
+}
+
+.module-content h3.content-subtitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin: 32px 0 16px;
+}
+
+.module-content .reflection-box {
+  background: #f0f7ff;
+  border-left: 4px solid #4169e1;
+  padding: 20px 24px;
+  margin-top: 32px;
+  border-radius: 6px;
+  font-style: italic;
+  color: #2d3561;
+}
+
+.module-content .reflection-box strong {
+  font-style: normal;
+  display: block;
+  margin-bottom: 8px;
+  color: #1a1a2e;
+}
+
+/* ========================================
+   SECCIONES DE RESUMEN
+   ======================================== */
+
+.report-summary-section {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 40px 48px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.summary-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0 0 20px;
+}
+
+.summary-intro {
+  font-size: 15px;
+  color: #4a4a4a;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+/* Aspectos Planetarios - Iconos */
+.aspects-icons {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  margin: 32px 0;
+  padding: 24px 0;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.aspect-icon {
+  font-size: 36px;
+  color: #6b4423;
+  opacity: 0.8;
+  transition: all 0.3s;
+  cursor: default;
+}
+
+.aspect-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Casas - Grid */
+.houses-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 24px 0;
+}
+
+@media (max-width: 768px) {
+  .houses-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.house-item p {
+  font-size: 14px;
+  color: #4a4a4a;
+  line-height: 1.6;
+}
+
+/* Nota de upgrade */
+.upgrade-note {
+  background: #fff8e1;
+  border: 2px dashed #daa520;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 24px;
+  text-align: center;
+}
+
+.upgrade-note p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b4423;
+}
+
+.upgrade-note strong {
+  color: #2d2d2d;
+}
+
+/* ========================================
+   CONCLUSIÓN Y CTA
+   ======================================== */
+
+.report-conclusion {
+  background: linear-gradient(135deg, #2d3561 0%, #1a1a2e 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 48px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.conclusion-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 24px;
+  color: #ffffff;
+}
+
+.conclusion-text {
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 0 0 20px;
+  color: #e0e0e0;
+}
+
+.benefits-list {
+  text-align: left;
+  max-width: 600px;
+  margin: 32px auto;
+  list-style: none;
+  padding: 0;
+}
+
+.benefits-list li {
+  padding: 12px 0 12px 32px;
+  position: relative;
+  color: #e0e0e0;
+  font-size: 15px;
+}
+
+.benefits-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #daa520;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.cta-button {
+  background: #daa520;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 18px 48px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 32px;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(218, 165, 32, 0.3);
+}
+
+.cta-button:hover {
+  background: #c59715;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(218, 165, 32, 0.4);
+}
+
+.cta-button:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+.report-footer {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.footer-text {
+  margin: 0;
+  font-size: 14px;
+}
+
+.footer-text strong {
+  color: #daa520;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .report-container {
+    padding: 0 16px 40px;
+  }
+
+  .report-intro-section,
+  .report-module,
+  .report-summary-section,
+  .report-conclusion {
+    padding: 32px 24px;
+  }
+
+  .report-main-title {
+    font-size: 26px;
+  }
+
+  .module-title,
+  .summary-title,
+  .conclusion-title {
+    font-size: 22px;
+  }
+
+  .chart-placeholder {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+}
