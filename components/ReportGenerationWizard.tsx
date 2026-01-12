@@ -163,8 +163,10 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
     setError(null);
 
     try {
-      const url = `${API_URL}/reports/start-full-generation`;
-      console.log('[WIZARD] Iniciando sesión en:', url);
+      // Usar endpoint correcto: queue-full-report inicia automáticamente la generación en batch
+      const endpoint = autoGenerateAll ? '/reports/queue-full-report' : '/reports/start-full-generation';
+      const url = `${API_URL}${endpoint}`;
+      console.log('[WIZARD] Iniciando sesión en:', url, '(autoGenerateAll:', autoGenerateAll, ')');
 
       const response = await fetch(url, {
         method: 'POST',
