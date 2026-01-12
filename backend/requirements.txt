@@ -17,6 +17,7 @@ pytz>=2023.3
 stripe>=7.0.0
 timezonefinder>=6.1.0
 requests>=2.31.0
+httpx>=0.27.0
 Pillow>=10.0.0
 google-generativeai>=0.3.0
 reportlab>=4.0.0
