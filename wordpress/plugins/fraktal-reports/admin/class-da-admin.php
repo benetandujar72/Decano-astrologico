@@ -1099,7 +1099,11 @@ class DA_Admin {
             }
         }
 
-        $report_types = DA_Admin_Management::get_report_types();
+        // Obtener tipos con fallback
+        $result = DA_Admin_Management::get_report_types_with_fallback();
+        $report_types = $result['data'];
+        $backend_error = $result['error'];
+        $is_fallback = $result['is_fallback'];
         $available_modules = DA_Admin_Management::get_available_modules();
 
         ?>
@@ -1121,12 +1125,16 @@ class DA_Admin {
                 </a>
             </p>
 
-            <?php if (isset($report_types['error'])): ?>
-                <div class="notice notice-error">
-                    <p><strong>Error:</strong> <?php echo esc_html($report_types['error']); ?></p>
-                    <p>Por favor, configura la URL del backend en <a href="<?php echo admin_url('admin.php?page=decano-settings'); ?>">Configuración</a>.</p>
+            <?php if ($backend_error): ?>
+                <div class="notice notice-warning">
+                    <p><strong>⚠️ Aviso:</strong> <?php echo esc_html($backend_error); ?></p>
+                    <?php if ($is_fallback): ?>
+                        <p>Mostrando datos de demostración. Los cambios no se guardarán hasta que el backend esté disponible.</p>
+                    <?php endif; ?>
+                    <p><a href="<?php echo admin_url('admin.php?page=decano-settings'); ?>">Configurar Backend</a> |
+                       <a href="<?php echo esc_url($_SERVER['REQUEST_URI']); ?>">Reintentar</a></p>
                 </div>
-            <?php else: ?>
+            <?php endif; ?>
                 <!-- Tabla de tipos de informe -->
                 <table class="wp-list-table widefat fixed striped">
                     <thead>

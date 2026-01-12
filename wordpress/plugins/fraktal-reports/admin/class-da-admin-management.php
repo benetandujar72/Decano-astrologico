@@ -14,26 +14,56 @@ if (!defined('ABSPATH')) {
 class DA_Admin_Management {
 
     /**
+     * Timeout para llamadas al backend (30s para cold starts de Render)
+     */
+    const API_TIMEOUT = 30;
+
+    /**
      * Obtener todos los tipos de informe desde el backend
      */
     public static function get_report_types() {
         $backend_url = get_option('da_api_url');
         if (empty($backend_url)) {
-            return ['error' => 'Backend no configurado'];
+            return ['error' => 'Backend no configurado. Por favor, configura la URL del backend en Configuración.'];
         }
 
         $response = wp_remote_get($backend_url . '/report-types/', [
-            'timeout' => 15
+            'timeout' => self::API_TIMEOUT,
+            'sslverify' => false // Para desarrollo local
         ]);
 
         if (is_wp_error($response)) {
-            return ['error' => $response->get_error_message()];
+            $error_message = $response->get_error_message();
+
+            // Si es timeout, dar mensaje más claro
+            if (strpos($error_message, 'timed out') !== false || strpos($error_message, 'timeout') !== false) {
+                return [
+                    'error' => 'El backend tardó demasiado en responder. Esto puede ocurrir si el servidor está en "cold start". Intenta de nuevo en unos segundos.',
+                    'timeout' => true
+                ];
+            }
+
+            return ['error' => 'Error de conexión: ' . $error_message];
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            return ['error' => 'El backend respondió con código ' . $response_code . '. Verifica que la URL del backend sea correcta.'];
         }
 
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        return $data ?: [];
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return ['error' => 'Respuesta del backend no es JSON válido'];
+        }
+
+        // Asegurar que devolvemos un array
+        if (!is_array($data)) {
+            return [];
+        }
+
+        return $data;
     }
 
     /**
@@ -46,17 +76,27 @@ class DA_Admin_Management {
         }
 
         $response = wp_remote_get($backend_url . '/report-templates/', [
-            'timeout' => 15
+            'timeout' => self::API_TIMEOUT,
+            'sslverify' => false
         ]);
 
         if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            if (strpos($error_message, 'timeout') !== false) {
+                return ['error' => 'Timeout: El backend tardó demasiado en responder.', 'timeout' => true];
+            }
             return ['error' => $response->get_error_message()];
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            return ['error' => 'Backend respondió con código ' . $response_code];
         }
 
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        return $data ?: [];
+        return is_array($data) ? $data : [];
     }
 
     /**
@@ -69,17 +109,27 @@ class DA_Admin_Management {
         }
 
         $response = wp_remote_get($backend_url . '/report-prompts/', [
-            'timeout' => 15
+            'timeout' => self::API_TIMEOUT,
+            'sslverify' => false
         ]);
 
         if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            if (strpos($error_message, 'timeout') !== false) {
+                return ['error' => 'Timeout: El backend tardó demasiado en responder.', 'timeout' => true];
+            }
             return ['error' => $response->get_error_message()];
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            return ['error' => 'Backend respondió con código ' . $response_code];
         }
 
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        return $data ?: [];
+        return is_array($data) ? $data : [];
     }
 
     /**
@@ -103,7 +153,8 @@ class DA_Admin_Management {
                 'Content-Type' => 'application/json'
             ],
             'body' => json_encode($data),
-            'timeout' => 15
+            'timeout' => self::API_TIMEOUT,
+            'sslverify' => false
         ]);
 
         if (is_wp_error($response)) {
@@ -125,7 +176,8 @@ class DA_Admin_Management {
 
         $response = wp_remote_request($backend_url . '/report-types/' . $type_id, [
             'method' => 'DELETE',
-            'timeout' => 15
+            'timeout' => self::API_TIMEOUT,
+            'sslverify' => false
         ]);
 
         if (is_wp_error($response)) {
@@ -137,8 +189,17 @@ class DA_Admin_Management {
 
     /**
      * Obtener límites configurados por tier
+     * Primero intenta cargar de la base de datos, si no usa los defaults
      */
     public static function get_tier_limits() {
+        // Intentar cargar límites guardados
+        $saved_limits = get_option('da_tier_limits');
+
+        if (!empty($saved_limits) && is_array($saved_limits)) {
+            return $saved_limits;
+        }
+
+        // Defaults
         return [
             'free' => [
                 'reports_per_month' => 1,
@@ -179,10 +240,13 @@ class DA_Admin_Management {
      * Actualizar límites de un tier
      */
     public static function update_tier_limits($tier, $limits) {
-        // Guardar en options de WordPress
+        // Cargar límites actuales
         $all_limits = self::get_tier_limits();
+
+        // Actualizar el tier específico
         $all_limits[$tier] = $limits;
 
+        // Guardar en options de WordPress
         update_option('da_tier_limits', $all_limits);
 
         return ['success' => true, 'limits' => $limits];
@@ -203,6 +267,100 @@ class DA_Admin_Management {
             'modulo_8_urano' => 'Urano - Cambio',
             'modulo_9_ascendente' => 'Ascendente - Primera Impresión',
             'modulo_10_nodos' => 'Nodos Lunares - Destino'
+        ];
+    }
+
+    /**
+     * Verificar conexión con el backend
+     */
+    public static function test_backend_connection() {
+        $backend_url = get_option('da_api_url');
+        if (empty($backend_url)) {
+            return [
+                'success' => false,
+                'error' => 'URL del backend no configurada'
+            ];
+        }
+
+        // Intentar llamar al endpoint de health
+        $response = wp_remote_get($backend_url . '/health', [
+            'timeout' => 10,
+            'sslverify' => false
+        ]);
+
+        if (is_wp_error($response)) {
+            return [
+                'success' => false,
+                'error' => $response->get_error_message()
+            ];
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+
+        if ($response_code === 200) {
+            return [
+                'success' => true,
+                'message' => 'Conexión exitosa con el backend'
+            ];
+        }
+
+        return [
+            'success' => false,
+            'error' => 'Backend respondió con código ' . $response_code
+        ];
+    }
+
+    /**
+     * Obtener tipos de informe con fallback a datos locales
+     */
+    public static function get_report_types_with_fallback() {
+        $types = self::get_report_types();
+
+        // Si hay error, devolver datos de fallback
+        if (isset($types['error'])) {
+            return [
+                'data' => self::get_default_report_types(),
+                'error' => $types['error'],
+                'is_fallback' => true
+            ];
+        }
+
+        return [
+            'data' => $types,
+            'error' => null,
+            'is_fallback' => false
+        ];
+    }
+
+    /**
+     * Tipos de informe por defecto (fallback cuando backend no disponible)
+     */
+    public static function get_default_report_types() {
+        return [
+            [
+                'type_id' => 'gancho_free',
+                'name' => 'Informe Gratuito (Gancho)',
+                'available_for_tiers' => ['free', 'premium', 'enterprise'],
+                'modules' => ['modulo_1_sol', 'modulo_3_luna', 'modulo_9_ascendente'],
+                'is_active' => true,
+                'description' => 'Informe gratuito con Sol, Luna y Ascendente para atraer nuevos usuarios.'
+            ],
+            [
+                'type_id' => 'carta_natal_completa',
+                'name' => 'Carta Natal Completa',
+                'available_for_tiers' => ['premium', 'enterprise'],
+                'modules' => ['modulo_1_sol', 'modulo_2_mercurio', 'modulo_3_luna', 'modulo_4_venus', 'modulo_5_marte', 'modulo_6_jupiter', 'modulo_7_saturno', 'modulo_8_urano', 'modulo_9_ascendente', 'modulo_10_nodos'],
+                'is_active' => true,
+                'description' => 'Análisis completo de la carta natal con todos los planetas y casas.'
+            ],
+            [
+                'type_id' => 'revolucion_solar',
+                'name' => 'Revolución Solar 2026',
+                'available_for_tiers' => ['premium', 'enterprise'],
+                'modules' => ['revolucion_solar'],
+                'is_active' => true,
+                'description' => 'Predicciones y tendencias para el año 2026.'
+            ]
         ];
     }
 }
