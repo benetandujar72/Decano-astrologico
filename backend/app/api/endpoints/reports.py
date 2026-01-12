@@ -185,7 +185,8 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
             await _push_module_step(session_id, module_id, step, True, meta=meta)
 
         # Ejecutar con timeout alto (la clave es NO mantener HTTP abierto)
-        # Aumentado a 40 minutos para módulos complejos que pueden tardar más
+        # Aumentado a 60 minutos para módulos complejos como modulo_2_ejes que pueden requerir
+        # múltiples expansiones/regeneraciones (cada una puede tardar 10 min con Gemini)
         content, is_last, usage_metadata = await asyncio.wait_for(
             full_report_service.generate_single_module(
                 chart_data=session.get("carta_data", {}) or {},
@@ -198,7 +199,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
                 chart_facts=session.get("chart_facts"),
                 chart_config=session.get("calculation_profile"),
             ),
-            timeout=60 * 40,  # 40 minutos por módulo como job (aumentado de 20)
+            timeout=60 * 60,  # 60 minutos por módulo como job
         )
 
         # Guardar módulo generado (limpio para PDF/UI)
@@ -272,7 +273,7 @@ async def _run_module_job(session_id: str, module_id: str, user_id: str) -> None
     except asyncio.TimeoutError:
         await _set_module_run_fields(session_id, module_id, {
             "status": "error",
-            "error": "Timeout generando módulo (job). El módulo tardó más de 40 minutos. Puedes intentar regenerarlo.",
+            "error": "Timeout generando módulo (job). El módulo tardó más de 60 minutos. Puedes intentar regenerarlo.",
             "updated_at": datetime.utcnow().isoformat(),
         })
         await _push_module_step(session_id, module_id, "timeout", False)

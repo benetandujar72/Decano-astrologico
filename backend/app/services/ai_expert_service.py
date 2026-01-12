@@ -173,7 +173,8 @@ Utiliza este informe como contexto para responder las preguntas del usuario de m
                     raise
 
         loop = asyncio.get_event_loop()
-        timeout_seconds = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "240"))
+        # Timeout aumentado a 600s (10 min) para módulos extensos como modulo_2_ejes
+        timeout_seconds = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "600"))
         try:
             return await asyncio.wait_for(
                 loop.run_in_executor(None, _sync_generate),

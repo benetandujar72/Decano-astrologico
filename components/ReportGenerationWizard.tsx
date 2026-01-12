@@ -92,17 +92,19 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Estimación de tiempo por módulo (en segundos)
+  // Actualizado para reflejar mejor los tiempos reales con regeneraciones/expansiones
   const TIME_ESTIMATES: Record<string, number> = {
-    'modulo_1': 300, // 5 minutos
-    'modulo_2_fundamentos': 240, // 4 minutos
-    'modulo_2_personales': 240, // 4 minutos
-    'modulo_2_sociales': 240, // 4 minutos
-    'modulo_2_transpersonales': 300, // 5 minutos
-    'modulo_2_nodos': 180, // 3 minutos
-    'modulo_2_aspectos': 240, // 4 minutos
-    'modulo_2_ejes': 480, // 8 minutos (el más complejo)
-    'modulo_2_sintesis': 240, // 4 minutos
-    'modulo_3_recomendaciones': 240, // 4 minutos
+    'modulo_1': 360, // 6 minutos
+    'modulo_2_fundamentos': 300, // 5 minutos
+    'modulo_2_personales': 300, // 5 minutos
+    'modulo_2_sociales': 300, // 5 minutos
+    'modulo_2_transpersonales': 360, // 6 minutos
+    'modulo_2_nodos': 240, // 4 minutos
+    'modulo_2_aspectos': 300, // 5 minutos
+    'modulo_2_ejes': 720, // 12 minutos (el más complejo - 8000 chars mínimo con plantilla)
+    'modulo_2_sintesis': 300, // 5 minutos
+    'modulo_3_transitos': 360, // 6 minutos
+    'modulo_4_recomendaciones': 300, // 5 minutos
   };
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -559,11 +561,12 @@ const ReportGenerationWizard: React.FC<ReportGenerationWizardProps> = ({
         const data = await res.json();
 
         // Stall detection
+        // Aumentado a 5 minutos para tolerar módulos largos como modulo_2_ejes
         const updatedAt = data.batch_job?.updated_at || data.updated_at;
         if (updatedAt === lastUpdateRef.current) {
           stalledCounterRef.current += 1;
-          // Si no hay cambios durante ~2 min (24 * 5s = 120s)
-          if (stalledCounterRef.current > 24) {
+          // Si no hay cambios durante ~5 min (60 * 5s = 300s)
+          if (stalledCounterRef.current > 60) {
             setIsStalled(true);
           }
         } else {
