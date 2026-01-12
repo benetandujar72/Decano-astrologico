@@ -448,8 +448,9 @@ class DA_REST_API {
             'name' => $name
         ];
 
-        // Paso 4: Llamar al backend para generar informe
-        $response = wp_remote_post($backend_url . '/reports/queue-full-report', [
+        // Paso 4: Llamar al backend para generar informe gratuito
+        // Usa el endpoint específico que calcula la carta desde datos de nacimiento
+        $response = wp_remote_post($backend_url . '/reports/queue-free-report', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $token,
                 'Content-Type' => 'application/json'

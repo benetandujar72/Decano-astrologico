@@ -106,9 +106,21 @@ class QueueFullReportRequest(BaseModel):
     carta_data: dict = Field(..., description="Datos completos de la carta astral")
     nombre: str = Field(default="", description="Nombre del consultante")
     report_mode: str = Field(default="full", description="Modo del informe: full (exhaustivo ~30 págs) | light (ligero 6–8 págs)", example="full")
-    report_type: str = Field(default="individual", description="Tipo de informe: individual | infantil | pareja | familiar | equipo | profesional")
+    report_type: str = Field(default="individual", description="Tipo de informe: individual | infantil | pareja | familiar | equipo | profesional | gancho_free")
     profiles: Optional[list[dict]] = Field(default=None, description="Para informes sistémicos: array de perfiles (cada uno con carta_data)")
     calculation_profile: Optional[dict] = Field(default=None, description="Configuración personalizada de orbes y reglas")
+
+
+class FreeReportRequest(BaseModel):
+    """Datos para generar informe gratuito desde WordPress"""
+    birth_datetime: str = Field(..., description="Fecha y hora de nacimiento (ISO format: YYYY-MM-DDTHH:MM)", example="1990-01-15T14:30")
+    latitude: float = Field(..., description="Latitud del lugar de nacimiento", example=40.4168, ge=-90, le=90)
+    longitude: float = Field(..., description="Longitud del lugar de nacimiento", example=-3.7038, ge=-180, le=180)
+    timezone: str = Field(..., description="Zona horaria (ej: UTC+1, Europe/Madrid)", example="Europe/Madrid")
+    city: str = Field(default="", description="Ciudad de nacimiento")
+    country: str = Field(default="", description="País de nacimiento")
+    name: str = Field(..., description="Nombre del consultante")
+    report_type: str = Field(default="gancho_free", description="Tipo de informe (generalmente gancho_free)")
 
 
 class GenerateModuleRequest(BaseModel):
@@ -683,11 +695,16 @@ async def queue_full_report(
     if report_mode not in {"full", "light"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="report_mode no válido. Usa: full | light")
     report_type = (request.report_type or "individual").lower().strip()
-    if report_type not in {"individual", "adultos", "infantil", "pareja", "familiar", "equipo", "profesional"}:
+    # Aceptar tanto los tipos internos como gancho_free para WordPress
+    if report_type not in {"individual", "adultos", "infantil", "pareja", "familiar", "equipo", "profesional", "gancho_free"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="report_type no válido. Usa: individual | infantil | pareja | familiar | equipo | profesional",
+            detail="report_type no válido. Usa: individual | infantil | pareja | familiar | equipo | profesional | gancho_free",
         )
+    # Para gancho_free, usar configuración de individual pero en modo light
+    if report_type == "gancho_free":
+        report_mode = "light"
+        report_type = "individual"  # Internamente se trata como individual
 
     profiles = request.profiles if isinstance(request.profiles, list) and request.profiles else None
     multi_facts = None
@@ -749,6 +766,122 @@ async def queue_full_report(
         "modules": modules_list,
         "status": "queued",
     }
+
+
+@router.post("/queue-free-report")
+async def queue_free_report(
+    request: FreeReportRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Endpoint para WordPress: genera informe gratuito calculando la carta desde datos de nacimiento.
+    Acepta datos de nacimiento (fecha, hora, coordenadas) y calcula la carta astral internamente.
+    """
+    from app.services.ephemeris import calcular_carta_completa
+
+    user_id = str(current_user.get("_id"))
+    user_name = request.name or current_user.get('full_name') or current_user.get('username') or "Consultante"
+
+    # Parsear fecha y hora del birth_datetime
+    try:
+        # Formato esperado: "YYYY-MM-DDTHH:MM" o "YYYY-MM-DD HH:MM"
+        datetime_str = request.birth_datetime.replace(" ", "T")
+        if "T" in datetime_str:
+            parts = datetime_str.split("T")
+            fecha = parts[0]
+            hora = parts[1][:5]  # Solo HH:MM
+        else:
+            # Fallback: intentar separar por espacio
+            parts = request.birth_datetime.split(" ")
+            fecha = parts[0]
+            hora = parts[1][:5] if len(parts) > 1 else "12:00"
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato de fecha/hora inválido: {request.birth_datetime}. Usa: YYYY-MM-DDTHH:MM"
+        )
+
+    # Convertir timezone a formato válido para ephemeris
+    # Si viene en formato UTC+X, convertir a zona horaria estándar
+    timezone_str = request.timezone
+    if timezone_str.startswith("UTC"):
+        # Para cálculos de efemérides, usamos el offset directamente
+        # pero preferimos usar la zona horaria del país si es posible
+        # Por ahora, usamos Europe/Madrid como default para España/Europa occidental
+        timezone_str = "Europe/Madrid"
+
+    # Calcular carta astral
+    try:
+        print(f"[FREE-REPORT] Calculando carta para {user_name}: {fecha} {hora} en ({request.latitude}, {request.longitude})")
+        carta_data = calcular_carta_completa(
+            fecha=fecha,
+            hora=hora,
+            latitud=request.latitude,
+            longitud=request.longitude,
+            zona_horaria=timezone_str
+        )
+        # Añadir metadata de ubicación
+        carta_data["datos_entrada"]["ciudad"] = request.city
+        carta_data["datos_entrada"]["pais"] = request.country
+        print(f"[FREE-REPORT] ✅ Carta calculada correctamente")
+    except Exception as e:
+        print(f"[FREE-REPORT] ❌ Error calculando carta: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculando carta astral: {str(e)}"
+        )
+
+    # Configurar como informe gratuito (light mode)
+    report_mode = "light"
+    report_type = "individual"  # gancho_free se trata internamente como individual
+
+    sections = full_report_service._get_sections_definition(report_mode=report_mode)
+    modules_list = [{"id": s["id"], "title": s["title"], "expected_min_chars": s["expected_min_chars"]} for s in sections]
+
+    job_id = str(uuid.uuid4())
+
+    session_data = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "carta_data": carta_data,
+        "report_type": report_type,
+        "is_free_report": True,  # Marcar como informe gratuito
+        "original_report_type": request.report_type,
+        "profiles": None,
+        "report_mode": report_mode,
+        "chart_facts": full_report_service.build_chart_facts(carta_data),
+        "calculation_profile": None,
+        "generated_modules": {},
+        "module_runs": {},
+        "current_module_index": 0,
+        "status": "in_progress",
+        "batch_job": {
+            "job_id": job_id,
+            "status": "queued",
+            "queued_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "error": None,
+        },
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    result = await report_sessions_collection.insert_one(session_data)
+    session_id = str(result.inserted_id)
+
+    # Lanzar batch job
+    asyncio.create_task(_run_full_report_job(session_id, user_id, job_id))
+
+    print(f"[FREE-REPORT] ✅ Sesión creada: {session_id}, Job: {job_id}")
+
+    return {
+        "session_id": session_id,
+        "job_id": job_id,
+        "total_modules": len(modules_list),
+        "modules": modules_list,
+        "status": "queued",
+    }
+
 
 @router.post("/resume-generation/{session_id}")
 async def resume_generation(
