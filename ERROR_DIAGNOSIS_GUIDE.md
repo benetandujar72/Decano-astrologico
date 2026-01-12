@@ -1,3 +1,4 @@
+
 # Guía de Diagnóstico de Errores - Decano Astrológico
 
 ## 🚨 El Plugin No Se Activa - ¿Qué Hacer?
