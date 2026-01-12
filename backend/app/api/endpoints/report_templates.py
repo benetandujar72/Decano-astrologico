@@ -91,12 +91,21 @@ async def check_template_limit(user_id: str, user_plan: str):
 
 def template_doc_to_response(doc: dict) -> TemplateResponse:
     """Convertir documento MongoDB a TemplateResponse"""
+    # Extraer nombre con fallback
+    name = doc.get("name")
+    if not name:
+        # Intentar generar un nombre basado en otros campos
+        branding = doc.get("branding", {})
+        name = branding.get("title", "")
+    if not name:
+        name = f"Plantilla {str(doc['_id'])[-6:]}"
+
     return TemplateResponse(
         id=str(doc["_id"]),
-        name=doc["name"],
-        report_type_id=str(doc["report_type_id"]),
+        name=name,
+        report_type_id=str(doc["report_type_id"]) if doc.get("report_type_id") else "",
         report_type_name=doc.get("report_type_name"),
-        owner_id=str(doc["owner_id"]),
+        owner_id=str(doc["owner_id"]) if doc.get("owner_id") else "",
         is_public=doc.get("is_public", False),
         is_default=doc.get("is_default", False),
         branding=BrandingConfig(**doc.get("branding", {})),

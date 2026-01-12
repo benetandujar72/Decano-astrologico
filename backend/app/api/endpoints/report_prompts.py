@@ -63,7 +63,7 @@ def prompt_doc_to_response(doc: dict, user_id: str, user_role: str) -> PromptRes
 
     return PromptResponse(
         id=str(doc["_id"]),
-        report_type_id=str(doc["report_type_id"]),
+        report_type_id=str(doc["report_type_id"]) if doc.get("report_type_id") else "",
         version=doc.get("version", 1),
         system_instruction=doc.get("system_instruction", ""),
         user_prompt_template=doc.get("user_prompt_template", ""),
@@ -80,6 +80,68 @@ def prompt_doc_to_response(doc: dict, user_id: str, user_role: str) -> PromptRes
         updated_at=doc.get("updated_at", datetime.utcnow()),
         can_edit=can_edit
     )
+
+
+@router.get("", response_model=dict)
+async def list_prompts(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Listar todos los prompts disponibles (para admin de WordPress)
+
+    Retorna prompts por defecto y personalizados del usuario
+    """
+    user_id = str(current_user["_id"])
+    user_role = current_user.get("role", "user")
+
+    # Obtener prompts activos: defaults + personalizados del usuario
+    filter_query = {
+        "is_active": True,
+        "$or": [
+            {"is_default": True},
+            {"customized_by": ObjectId(user_id)}
+        ]
+    }
+
+    cursor = prompts_collection.find(filter_query).sort("created_at", -1)
+    docs = await cursor.to_list(length=100)
+
+    prompts = []
+    for doc in docs:
+        # Obtener nombre del tipo de informe si existe
+        report_type_name = None
+        report_type_code = None
+        if doc.get("report_type_id"):
+            report_type = await report_types_collection.find_one(
+                {"_id": doc["report_type_id"]}
+            )
+            if report_type:
+                report_type_name = report_type.get("name", "")
+                report_type_code = report_type.get("code", "")
+
+        prompt_response = prompt_doc_to_response(doc, user_id, user_role)
+
+        # Calcular tokens estimados (aproximación: 1 token ~ 4 caracteres)
+        system_text = doc.get("system_instruction", "")
+        user_text = doc.get("user_prompt_template", "")
+        estimated_tokens = (len(system_text) + len(user_text)) // 4
+
+        # Campos adicionales para compatibilidad con WordPress admin
+        prompts.append({
+            **prompt_response.model_dump(),
+            "report_type_name": report_type_name,
+            "report_type_code": report_type_code,
+            # Campos esperados por WordPress
+            "module_name": report_type_name or "General",
+            "module_id": report_type_code or str(doc["_id"]),
+            "prompt_text": system_text[:200] + "..." if len(system_text) > 200 else system_text,
+            "estimated_tokens": estimated_tokens
+        })
+
+    return {
+        "prompts": prompts,
+        "total": len(prompts)
+    }
 
 
 @router.get("/{report_type_id}", response_model=PromptResponse)

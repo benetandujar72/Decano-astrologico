@@ -202,7 +202,17 @@ class DA_Admin_Management {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) {
+            return [];
+        }
+
+        // El backend devuelve { templates: [...], total: N, user_limit: N }
+        // Extraer solo el array de templates si está presente
+        if (isset($data['templates']) && is_array($data['templates'])) {
+            return $data['templates'];
+        }
+
+        return $data;
     }
 
     /**
@@ -236,7 +246,17 @@ class DA_Admin_Management {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) {
+            return [];
+        }
+
+        // El backend devuelve { prompts: [...], total: N }
+        // Extraer solo el array de prompts si está presente
+        if (isset($data['prompts']) && is_array($data['prompts'])) {
+            return $data['prompts'];
+        }
+
+        return $data;
     }
 
     /**
