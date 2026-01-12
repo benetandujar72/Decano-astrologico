@@ -652,35 +652,97 @@ REGLAS CRÍTICAS:
                 # Continuar al siguiente intento
         
         # En modo FULL, no aceptamos módulos que no cumplan longitud/formato:
-        # hacemos expansiones “append-only” (solo texto nuevo) hasta cumplir o fallar explícitamente.
+        # hacemos expansiones "append-only" (solo texto nuevo) O regeneración completa según el tipo de error.
         if report_mode == "full":
             max_expansions = int(os.getenv("FULL_REPORT_MAX_EXPANSIONS", "6"))
+            max_regenerations = int(os.getenv("FULL_REPORT_MAX_REGENERATIONS", "3"))
             tail_chars = int(os.getenv("FULL_REPORT_EXPANSION_TAIL_CHARS", "1800"))
             expansions_done = 0
+            regenerations_done = 0
 
             while True:
                 is_valid, error_msg = self._validate_section_content(section["id"], response, section["expected_min_chars"])
                 if is_valid:
                     break
-                if expansions_done >= max_expansions:
-                    raise Exception(f"Módulo {section['id']} no cumple criterios FULL: {error_msg}")
 
-                missing = []
-                if len(response) < int(section["expected_min_chars"]):
-                    missing.append(f"EXTENSIÓN: faltan al menos {int(section['expected_min_chars']) - len(response)} caracteres")
-                if "pregunta para reflexionar" not in (response or "").lower():
-                    missing.append("CIERRE: falta 'Pregunta para reflexionar:' al final")
+                # Determinar si necesitamos regeneración completa o solo expansión
+                needs_regeneration = (
+                    "lenguaje determinista" in error_msg.lower() or
+                    "lenguaje dramático" in error_msg.lower() or
+                    "polo a" in error_msg.lower() or
+                    "polo b" in error_msg.lower()
+                )
 
-                expansions_done += 1
-                await _progress("ai_expand_start", {"expansion": expansions_done, "max": max_expansions, "reason": error_msg})
+                if needs_regeneration:
+                    # REGENERACIÓN COMPLETA: el problema está en el contenido existente
+                    if regenerations_done >= max_regenerations:
+                        raise Exception(f"Módulo {section['id']} no cumple criterios FULL después de {max_regenerations} regeneraciones: {error_msg}")
 
-                extra_prompt = f"""
+                    regenerations_done += 1
+                    await _progress("ai_regenerate_start", {
+                        "regeneration": regenerations_done,
+                        "max": max_regenerations,
+                        "reason": error_msg
+                    })
+
+                    # Prompt de regeneración con corrección específica
+                    regen_prompt = f"""
+REESCRIBE COMPLETAMENTE el módulo corrigiendo los siguientes problemas:
+
+❌ PROBLEMA DETECTADO: {error_msg}
+
+✅ INSTRUCCIONES DE CORRECCIÓN:
+- ELIMINA por completo lenguaje determinista: NO uses "es", "será", "siempre", "nunca", "indudablemente"
+- USA SIEMPRE lenguaje de posibilidad: "tiende a", "puede", "frecuentemente", "a menudo", "sugiere"
+- EVITA lenguaje dramático: NO uses "terrible", "catastrófico", "fatal", "maldición"
+- Mantén un tono profesional, empático y abierto a múltiples interpretaciones
+
+REQUISITOS TÉCNICOS:
+- Longitud mínima: {section['expected_min_chars']} caracteres
+- Formato: Mantén títulos/subtítulos del módulo
+- OBLIGATORIO: Termina con "Pregunta para reflexionar: ..."
+{f"- IMPORTANTE: Incluye estructura 'Polo A' y 'Polo B' para cada eje" if "modulo_2_ejes" in section["id"] else ""}
+
+CONTEXTO DE LA CARTA (para rehacer el análisis):
+{base_prompt}
+
+GENERA EL MÓDULO COMPLETO CORREGIDO:
+"""
+
+                    response = await self.ai_service.get_chat_response(regen_prompt, [])
+
+                    # Registrar metadata de tokens de regeneración
+                    last_metadata = self.ai_service.get_last_usage_metadata()
+                    if last_metadata:
+                        usage_metadata_list.append(last_metadata)
+
+                    await _progress("ai_regenerate_done", {
+                        "regeneration": regenerations_done,
+                        "response_chars": len(response)
+                    })
+
+                else:
+                    # EXPANSIÓN: solo falta longitud o pregunta de reflexión
+                    if expansions_done >= max_expansions:
+                        raise Exception(f"Módulo {section['id']} no cumple criterios FULL después de {max_expansions} expansiones: {error_msg}")
+
+                    missing = []
+                    if len(response) < int(section["expected_min_chars"]):
+                        missing.append(f"EXTENSIÓN: faltan al menos {int(section['expected_min_chars']) - len(response)} caracteres")
+                    if "pregunta para reflexionar" not in (response or "").lower():
+                        missing.append("CIERRE: falta 'Pregunta para reflexionar:' al final")
+
+                    expansions_done += 1
+                    await _progress("ai_expand_start", {"expansion": expansions_done, "max": max_expansions, "reason": error_msg})
+
+                    extra_prompt = f"""
 CONTINÚA el texto del módulo y DEVUELVE SOLO TEXTO NUEVO (no repitas nada).
 
 Requisitos:
 - Longitud total mínima del módulo: {section['expected_min_chars']} caracteres (sumando lo ya escrito + lo nuevo).
 - Añade profundidad ensayística: mecánica, psicología, vivencia, proyección y evolución.
 - Mantén el mismo formato (títulos/subtítulos) y el tono.
+- USA lenguaje de posibilidad: "tiende a", "puede", "frecuentemente" (NO uses "es", "será", "siempre")
 - Termina con: "Pregunta para reflexionar: ..."
 - Pendientes: {", ".join(missing) if missing else error_msg}
 
@@ -688,10 +750,16 @@ Requisitos:
 {(response or "")[-tail_chars:]}
 """
 
-                extra = await self.ai_service.get_chat_response(extra_prompt, [])
-                if extra and extra.strip():
-                    response = (response.rstrip() + "\n\n" + extra.strip())
-                await _progress("ai_expand_done", {"expansion": expansions_done, "response_chars": len(response)})
+                    extra = await self.ai_service.get_chat_response(extra_prompt, [])
+
+                    # Registrar metadata de tokens de expansión
+                    last_metadata = self.ai_service.get_last_usage_metadata()
+                    if last_metadata:
+                        usage_metadata_list.append(last_metadata)
+
+                    if extra and extra.strip():
+                        response = (response.rstrip() + "\n\n" + extra.strip())
+                    await _progress("ai_expand_done", {"expansion": expansions_done, "response_chars": len(response)})
 
         if not response or len(response.strip()) == 0:
             raise ValueError("No se pudo generar contenido para el módulo después de todos los intentos")
