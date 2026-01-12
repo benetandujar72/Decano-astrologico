@@ -26,15 +26,93 @@ interface FreeReportData {
 }
 
 interface FreeReportViewerProps {
-  reportData: FreeReportData;
+  reportData?: FreeReportData;
+  sessionId?: string;
+  showUpgradeCta?: string;
   onUpgradeClick?: () => void;
 }
 
 export const FreeReportViewer: React.FC<FreeReportViewerProps> = ({
   reportData,
+  sessionId,
+  showUpgradeCta = 'true',
   onUpgradeClick
 }) => {
-  const { chart_data, modules, chart_image_url } = reportData;
+  const [isLoading, setIsLoading] = React.useState(!reportData);
+  const [error, setError] = React.useState<string | null>(null);
+  const [data, setData] = React.useState<FreeReportData | null>(reportData || null);
+
+  // Si no hay reportData, intentar cargar desde el backend usando sessionId
+  React.useEffect(() => {
+    if (reportData) {
+      setData(reportData);
+      setIsLoading(false);
+      return;
+    }
+
+    // Obtener sessionId del prop o de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sid = sessionId || urlParams.get('session_id');
+
+    if (!sid) {
+      setError('No se encontró el ID de sesión del informe.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Cargar datos del informe desde el backend
+    const loadReport = async () => {
+      try {
+        const wpConfig = (window as any).decanoSettings || {};
+        const restUrl = wpConfig.restUrl || '/wp-json/';
+
+        const response = await fetch(`${restUrl}decano/v1/report/${sid}`);
+
+        if (!response.ok) {
+          throw new Error('No se pudo cargar el informe');
+        }
+
+        const result = await response.json();
+        setData(result);
+      } catch (err: any) {
+        console.error('[FreeReportViewer] Error cargando informe:', err);
+        setError(err.message || 'Error al cargar el informe');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadReport();
+  }, [reportData, sessionId]);
+
+  // Estado de carga
+  if (isLoading) {
+    return (
+      <div className="free-report-viewer loading-state">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Cargando tu informe...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado de error
+  if (error || !data) {
+    return (
+      <div className="free-report-viewer error-state">
+        <div className="error-container">
+          <h2>No se pudo cargar el informe</h2>
+          <p>{error || 'No hay datos disponibles.'}</p>
+          <button onClick={() => window.location.reload()} className="retry-button">
+            Intentar de nuevo
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { chart_data, modules, chart_image_url } = data;
 
   // Módulos organizados
   const solModule = modules.find(m => m.id.includes('sol'));

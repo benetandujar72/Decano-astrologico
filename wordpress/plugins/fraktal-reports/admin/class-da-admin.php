@@ -1140,24 +1140,33 @@ class DA_Admin {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($report_types)): ?>
+                        <?php if (empty($report_types) || !is_array($report_types)): ?>
                             <tr>
                                 <td colspan="6">No se encontraron tipos de informe. Crea uno nuevo o sincroniza desde el backend.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($report_types as $type): ?>
+                                <?php
+                                // Verificar que $type sea un array válido
+                                if (!is_array($type)) {
+                                    continue;
+                                }
+                                $type_id = isset($type['type_id']) ? $type['type_id'] : '';
+                                $type_name = isset($type['name']) ? $type['name'] : $type_id;
+                                ?>
                                 <tr>
-                                    <td><code><?php echo esc_html($type['type_id']); ?></code></td>
+                                    <td><code><?php echo esc_html($type_id); ?></code></td>
                                     <td>
-                                        <strong><?php echo esc_html($type['name']); ?></strong>
-                                        <?php if ($type['type_id'] === 'gancho_free'): ?>
+                                        <strong><?php echo esc_html($type_name); ?></strong>
+                                        <?php if ($type_id === 'gancho_free'): ?>
                                             <span class="dashicons dashicons-star-filled" style="color: #daa520;" title="Informe Gancho para Free"></span>
                                         <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php
-                                        $tiers = isset($type['available_for_tiers']) ? $type['available_for_tiers'] : [];
+                                        $tiers = isset($type['available_for_tiers']) && is_array($type['available_for_tiers']) ? $type['available_for_tiers'] : [];
                                         foreach ($tiers as $tier) {
+                                            if (!is_string($tier)) continue;
                                             $color = $tier === 'free' ? '#95a5a6' : ($tier === 'premium' ? '#3498db' : '#9b59b6');
                                             echo '<span style="background: ' . $color . '; color: white; padding: 2px 8px; border-radius: 3px; margin-right: 5px; font-size: 11px;">' . esc_html(strtoupper($tier)) . '</span>';
                                         }
@@ -1165,7 +1174,7 @@ class DA_Admin {
                                     </td>
                                     <td>
                                         <?php
-                                        $modules = isset($type['modules']) ? $type['modules'] : [];
+                                        $modules = isset($type['modules']) && is_array($type['modules']) ? $type['modules'] : [];
                                         echo '<span class="dashicons dashicons-admin-page" title="' . count($modules) . ' módulos"></span> ' . count($modules);
                                         ?>
                                     </td>
@@ -1177,14 +1186,14 @@ class DA_Admin {
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <a href="<?php echo admin_url('admin.php?page=decano-report-types&action=edit&type_id=' . urlencode($type['type_id'])); ?>" class="button button-small">
+                                        <a href="<?php echo admin_url('admin.php?page=decano-report-types&action=edit&type_id=' . urlencode($type_id)); ?>" class="button button-small">
                                             Editar
                                         </a>
-                                        <?php if ($type['type_id'] !== 'gancho_free'): ?>
+                                        <?php if ($type_id !== 'gancho_free'): ?>
                                             <form method="post" style="display: inline;">
                                                 <?php wp_nonce_field('da_report_types'); ?>
                                                 <input type="hidden" name="da_action" value="delete" />
-                                                <input type="hidden" name="type_id" value="<?php echo esc_attr($type['type_id']); ?>" />
+                                                <input type="hidden" name="type_id" value="<?php echo esc_attr($type_id); ?>" />
                                                 <button type="submit" class="button button-small button-link-delete" onclick="return confirm('¿Estás seguro de eliminar este tipo de informe?');">
                                                     Eliminar
                                                 </button>
@@ -1441,6 +1450,10 @@ class DA_Admin {
                                 </td>
                             </tr>
 
+                            <?php
+                            $tier_data = isset($tier_limits[$tier]) && is_array($tier_limits[$tier]) ? $tier_limits[$tier] : [];
+                            $reports_per_month = isset($tier_data['reports_per_month']) ? $tier_data['reports_per_month'] : 0;
+                            ?>
                             <tr>
                                 <th scope="row">
                                     <label for="reports_per_month_<?php echo $tier; ?>">Informes por Mes</label>
@@ -1450,7 +1463,7 @@ class DA_Admin {
                                         type="number"
                                         id="reports_per_month_<?php echo $tier; ?>"
                                         name="reports_per_month"
-                                        value="<?php echo esc_attr($tier_limits[$tier]['reports_per_month']); ?>"
+                                        value="<?php echo esc_attr($reports_per_month); ?>"
                                         class="regular-text"
                                         min="-1"
                                     />
@@ -1464,12 +1477,21 @@ class DA_Admin {
                                 </th>
                                 <td>
                                     <?php
-                                    $selected_types = $tier_limits[$tier]['report_types'];
+                                    $current_tier_limits = isset($tier_limits[$tier]) && is_array($tier_limits[$tier]) ? $tier_limits[$tier] : [];
+                                    $selected_types = isset($current_tier_limits['report_types']) && is_array($current_tier_limits['report_types']) ? $current_tier_limits['report_types'] : [];
                                     if (!is_array($report_types) || isset($report_types['error'])) {
                                         echo '<p>No se pudieron cargar los tipos de informe.</p>';
                                     } else {
                                         foreach ($report_types as $type) {
-                                            $type_id = $type['type_id'];
+                                            // Verificar que $type sea un array válido
+                                            if (!is_array($type)) {
+                                                continue;
+                                            }
+                                            $type_id = isset($type['type_id']) ? $type['type_id'] : '';
+                                            $type_name = isset($type['name']) ? $type['name'] : $type_id;
+                                            if (empty($type_id)) {
+                                                continue;
+                                            }
                                             $checked = in_array($type_id, $selected_types) || in_array('all', $selected_types);
                                             ?>
                                             <label style="display: block; margin-bottom: 5px;">
@@ -1479,7 +1501,7 @@ class DA_Admin {
                                                     value="<?php echo esc_attr($type_id); ?>"
                                                     <?php checked($checked); ?>
                                                 />
-                                                <?php echo esc_html($type['name']); ?>
+                                                <?php echo esc_html($type_name); ?>
                                                 <code><?php echo esc_html($type_id); ?></code>
                                             </label>
                                             <?php
@@ -1504,7 +1526,7 @@ class DA_Admin {
                                         'priority_support' => 'Soporte prioritario',
                                         'api_access' => 'Acceso a API'
                                     ];
-                                    $selected_features = $tier_limits[$tier]['features'];
+                                    $selected_features = isset($tier_data['features']) && is_array($tier_data['features']) ? $tier_data['features'] : [];
 
                                     foreach ($all_features as $feature_key => $feature_label) {
                                         $checked = isset($selected_features[$feature_key]) && $selected_features[$feature_key];

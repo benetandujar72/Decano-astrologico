@@ -59,17 +59,31 @@ class DA_Public {
             DECANO_VERSION
         );
 
-        // Estilos de React compilados
-        $css_files = glob(DECANO_PLUGIN_DIR . 'public/build/assets/*.css');
-        if (!empty($css_files)) {
-            foreach ($css_files as $index => $css_file) {
-                $css_url = DECANO_PLUGIN_URL . 'public/build/assets/' . basename($css_file);
-                wp_enqueue_style(
-                    'decano-react-' . $index,
-                    $css_url,
-                    [],
-                    DECANO_VERSION
-                );
+        // Estilos de React compilados (da-app.css)
+        $react_css_path = DECANO_PLUGIN_DIR . 'public/build/da-app.css';
+        if (file_exists($react_css_path)) {
+            wp_enqueue_style(
+                'decano-react-app',
+                DECANO_PLUGIN_URL . 'public/build/da-app.css',
+                [],
+                DECANO_VERSION
+            );
+        } else {
+            // Fallback: buscar en assets/ con glob (builds anteriores)
+            $css_dir = DECANO_PLUGIN_DIR . 'public/build/assets/';
+            if (is_dir($css_dir)) {
+                $css_files = glob($css_dir . '*.css');
+                if (!empty($css_files)) {
+                    foreach ($css_files as $index => $css_file) {
+                        $css_url = DECANO_PLUGIN_URL . 'public/build/assets/' . basename($css_file);
+                        wp_enqueue_style(
+                            'decano-react-' . $index,
+                            $css_url,
+                            [],
+                            DECANO_VERSION
+                        );
+                    }
+                }
             }
         }
     }

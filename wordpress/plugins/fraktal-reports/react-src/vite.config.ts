@@ -18,11 +18,15 @@ export default defineConfig({
         entryFileNames: 'da-app.js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') return 'da-app.css';
+          // Todos los archivos CSS van a da-app.css
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'da-app.css';
+          }
           return 'assets/[name]-[hash][extname]';
         }
       }
-    }
+    },
+    cssCodeSplit: false // Combinar todos los CSS en uno solo
   },
   define: {
     'process.env': {}
