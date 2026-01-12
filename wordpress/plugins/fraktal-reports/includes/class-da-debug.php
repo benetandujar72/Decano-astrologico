@@ -190,17 +190,30 @@ class DA_Debug {
         ];
 
         // 9. Verificar clases requeridas
-        $required_classes = [
-            'DA_Activator',
-            'DA_Plan_Manager',
-            'DA_Limits',
-            'DA_Admin',
-            'DA_Public',
-            'DA_Shortcodes'
+        // Algunas clases solo se cargan bajo condiciones específicas, así que las cargamos aquí
+        $class_files = [
+            'DA_Activator' => DECANO_PLUGIN_DIR . 'includes/class-da-activator.php',
+            'DA_Plan_Manager' => DECANO_PLUGIN_DIR . 'includes/class-da-plan-manager.php',
+            'DA_Limits' => DECANO_PLUGIN_DIR . 'includes/class-da-limits.php',
+            'DA_Admin' => DECANO_PLUGIN_DIR . 'admin/class-da-admin.php',
+            'DA_Public' => DECANO_PLUGIN_DIR . 'public/class-da-public.php',
+            'DA_Shortcodes' => DECANO_PLUGIN_DIR . 'public/class-da-shortcodes.php'
         ];
 
         $checks['classes'] = [];
-        foreach ($required_classes as $class) {
+        foreach ($class_files as $class => $file) {
+            // Primero verificar si el archivo existe
+            if (!file_exists($file)) {
+                $checks['classes'][$class] = 'FILE_MISSING';
+                continue;
+            }
+
+            // Cargar el archivo si la clase no está ya cargada
+            if (!class_exists($class)) {
+                require_once $file;
+            }
+
+            // Verificar si la clase existe después de cargar
             $checks['classes'][$class] = class_exists($class) ? 'OK' : 'MISSING';
         }
 
