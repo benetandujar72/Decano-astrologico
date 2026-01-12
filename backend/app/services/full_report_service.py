@@ -645,11 +645,32 @@ REGLAS CRÍTICAS:
                     else:
                         print(f"[MÓDULO {module_index + 1}/{len(sections)}] ⚠️ Contenido inválido después de {max_retries + 1} intentos. Se intentará expansión adicional en modo FULL.")
             except Exception as e:
-                print(f"[MÓDULO {module_index + 1}/{len(sections)}] ❌ Error en intento {attempt + 1}: {type(e).__name__}: {e}")
-                await _progress("ai_attempt_error", {"attempt": attempt + 1, "error": f"{type(e).__name__}: {str(e)}"})
-                if attempt == max_retries:
-                    raise Exception(f"Error generando módulo después de {max_retries + 1} intentos: {str(e)}")
-                # Continuar al siguiente intento
+                error_str = str(e)
+                is_safety_block = "GEMINI_SAFETY_BLOCK" in error_str or "finish_reason: 12" in error_str
+
+                if is_safety_block:
+                    print(f"[MÓDULO {module_index + 1}/{len(sections)}] 🛡️ Bloqueo de seguridad de Gemini detectado en intento {attempt + 1}")
+                    await _progress("ai_safety_block", {
+                        "attempt": attempt + 1,
+                        "module": section["id"],
+                        "message": "Contenido bloqueado por filtros de seguridad. Reintentando con prompt sanitizado..."
+                    })
+
+                    # En el siguiente intento, usar prompt más genérico sin términos problemáticos
+                    if attempt < max_retries:
+                        print(f"[MÓDULO {module_index + 1}/{len(sections)}] Reintentando con prompt sanitizado...")
+                        continue
+                    else:
+                        raise Exception(
+                            f"Módulo {section['id']} bloqueado por filtros de seguridad de Gemini después de {max_retries + 1} intentos. "
+                            "Por favor, contacta al administrador para ajustar los prompts o cambiar de modelo de IA."
+                        )
+                else:
+                    print(f"[MÓDULO {module_index + 1}/{len(sections)}] ❌ Error en intento {attempt + 1}: {type(e).__name__}: {e}")
+                    await _progress("ai_attempt_error", {"attempt": attempt + 1, "error": f"{type(e).__name__}: {str(e)}"})
+                    if attempt == max_retries:
+                        raise Exception(f"Error generando módulo después de {max_retries + 1} intentos: {str(e)}")
+                    # Continuar al siguiente intento
         
         # En modo FULL, no aceptamos módulos que no cumplan longitud/formato:
         # hacemos expansiones "append-only" (solo texto nuevo) O regeneración completa según el tipo de error.

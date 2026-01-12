@@ -126,22 +126,52 @@ Utiliza este informe como contexto para responder las preguntas del usuario de m
         Retorna (texto, metadata) donde metadata incluye información de tokens
         """
         import asyncio
-        
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
         def _sync_generate():
-            response = chat.send_message(message)
-            text = response.text
-            
-            # Extraer información de tokens si está disponible
-            usage_metadata = None
-            if hasattr(response, 'usage_metadata'):
-                usage_metadata = {
-                    'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', 0),
-                    'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', 0),
-                    'total_token_count': getattr(response.usage_metadata, 'total_token_count', 0)
-                }
-            
-            return text, usage_metadata
-        
+            # Configurar safety settings más permisivos para contenido astrológico
+            safety_settings = {
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+
+            try:
+                response = chat.send_message(
+                    message,
+                    safety_settings=safety_settings
+                )
+                text = response.text
+
+                # Extraer información de tokens si está disponible
+                usage_metadata = None
+                if hasattr(response, 'usage_metadata'):
+                    usage_metadata = {
+                        'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', 0),
+                        'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', 0),
+                        'total_token_count': getattr(response.usage_metadata, 'total_token_count', 0)
+                    }
+
+                return text, usage_metadata
+
+            except Exception as e:
+                # Si hay un error de bloqueo (finish_reason: 12 = BLOCKLIST)
+                error_str = str(e)
+                if "finish_reason: 12" in error_str or "BLOCKLIST" in error_str or "content { }" in error_str:
+                    print(f"⚠️ Contenido bloqueado por filtros de seguridad de Gemini")
+                    print(f"⚠️ Error original: {error_str}")
+
+                    # Intentar con prompt más genérico o sanitizado
+                    # Por ahora, lanzar excepción específica que se puede manejar en niveles superiores
+                    raise Exception(
+                        "GEMINI_SAFETY_BLOCK: El contenido fue bloqueado por los filtros de seguridad de Gemini. "
+                        "Esto puede ocurrir con ciertos términos astrológicos. Por favor, intenta reformular la consulta."
+                    )
+                else:
+                    # Otro tipo de error, re-lanzar
+                    raise
+
         loop = asyncio.get_event_loop()
         timeout_seconds = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "240"))
         try:
