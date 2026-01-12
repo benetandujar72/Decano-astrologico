@@ -30,18 +30,20 @@ interface GeocodeResult {
 
 interface BirthDataFormProps {
   initialData?: Partial<BirthData>;
-  onSubmit: (data: BirthData) => void;
+  onSubmit?: (data: BirthData) => void;
   onCancel?: () => void;
   submitButtonText?: string;
   isLoading?: boolean;
+  redirectAfter?: string;
 }
 
 export const BirthDataForm: React.FC<BirthDataFormProps> = ({
   initialData,
   onSubmit,
   onCancel,
-  submitButtonText = 'Generar Informe',
-  isLoading = false
+  submitButtonText = 'Generar Mi Informe Gratuito',
+  isLoading = false,
+  redirectAfter
 }) => {
   const [formData, setFormData] = useState<BirthData>({
     name: initialData?.name || '',
@@ -174,14 +176,34 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    onSubmit(formData);
+    // Si hay callback personalizado, usarlo
+    if (onSubmit) {
+      onSubmit(formData);
+      return;
+    }
+
+    // Comportamiento por defecto: generar informe Free
+    try {
+      console.log('[BirthDataForm] Generando informe gratuito...', formData);
+
+      // TODO: Llamar al endpoint de generación de informe
+      // Por ahora solo loguear y redirigir
+      alert('Funcionalidad de generación en desarrollo. Datos capturados correctamente.');
+
+      if (redirectAfter) {
+        window.location.href = redirectAfter;
+      }
+    } catch (error) {
+      console.error('[BirthDataForm] Error generando informe:', error);
+      alert('Error al generar el informe. Por favor, inténtalo de nuevo.');
+    }
   };
 
   const getTodayDate = () => {
