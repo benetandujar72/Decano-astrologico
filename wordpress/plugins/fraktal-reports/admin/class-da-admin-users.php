@@ -10,6 +10,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Cargar dependencias necesarias
+require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-dashboard.php';
+
 class DA_Admin_Users {
 
     /**
