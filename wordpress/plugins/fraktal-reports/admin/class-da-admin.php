@@ -548,7 +548,61 @@ class DA_Admin {
 
             <h2>Shortcodes Disponibles</h2>
 
-            <h3>Nuevos Shortcodes</h3>
+            <h3>Sistema de Informe Gancho (FREE Users) 🆕</h3>
+            <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Shortcode</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <code>[decano-free-report-form]</code><br>
+                            <small>
+                                Parámetros:<br>
+                                - <code>redirect_after=""</code> (URL de redirección)
+                            </small>
+                        </td>
+                        <td>
+                            <strong>Formulario de informe gratuito para usuarios Free.</strong><br>
+                            Incluye geocodificación automática (ciudad → coordenadas).<br>
+                            Genera informe gancho con módulos: Sol, Luna y Ascendente.<br>
+                            <em>Ideal para página de landing: /informe-gratis</em>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <code>[decano-free-report-viewer]</code>
+                        </td>
+                        <td>
+                            <strong>Visualizador del informe gratuito generado.</strong><br>
+                            Muestra informe con diseño místico profesional.<br>
+                            Incluye CTA "DESCARGAR INFORME COMPLETO" para upgrade.<br>
+                            <em>Ideal para página dinámica: /mi-informe-gratis</em>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <code>[decano-upgrade-landing]</code><br>
+                            <small>
+                                Parámetros:<br>
+                                - <code>show_free_cta="true"</code> (mostrar CTA gratis)<br>
+                                - <code>highlight="revolucion_solar_2026"</code> (plan destacado)
+                            </small>
+                        </td>
+                        <td>
+                            <strong>Landing page de upgrade con pricing.</strong><br>
+                            Muestra planes premium: Carta Natal (49€) y Planificación 2026 (79€).<br>
+                            Hero section con CTA para informe gratuito.<br>
+                            <em>Ideal para página de conversión: /planes-premium</em>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Generador de Informes Completos</h3>
             <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
                 <thead>
                     <tr>
@@ -568,7 +622,8 @@ class DA_Admin {
                         </td>
                         <td>
                             Generador completo de informes con wizard.<br>
-                            Incluye selector de perfiles, tipos de informe y progreso en tiempo real.
+                            Incluye selector de perfiles, tipos de informe y progreso en tiempo real.<br>
+                            <strong>Para usuarios Premium y Enterprise.</strong>
                         </td>
                     </tr>
                     <tr>
@@ -630,7 +685,20 @@ class DA_Admin {
 
             <div class="notice notice-info" style="max-width: 900px; margin-top: 20px;">
                 <p>
-                    <strong>💡 Tip:</strong> Todos los shortcodes (excepto <code>[decano-plans]</code>) requieren que el usuario esté autenticado.
+                    <strong>💡 Tip:</strong> Los shortcodes del sistema de informe gancho están optimizados para convertir usuarios Free en clientes Premium.
+                </p>
+                <p>
+                    <strong>Flujo recomendado:</strong><br>
+                    1. Usuario llega a <code>/informe-gratis</code> → <code>[decano-free-report-form]</code><br>
+                    2. Genera informe → Redirige a <code>/mi-informe-gratis</code> → <code>[decano-free-report-viewer]</code><br>
+                    3. Click en CTA → <code>/planes-premium</code> → <code>[decano-upgrade-landing]</code><br>
+                    4. Selecciona plan → Checkout WooCommerce → CONVERSIÓN ✅
+                </p>
+            </div>
+
+            <div class="notice notice-warning" style="max-width: 900px; margin-top: 20px;">
+                <p>
+                    <strong>⚠️ Importante:</strong> Todos los shortcodes (excepto <code>[decano-plans]</code> y <code>[decano-upgrade-landing]</code>) requieren que el usuario esté autenticado.
                     Si el usuario no ha iniciado sesión, se mostrará un mensaje pidiéndole que lo haga.
                 </p>
             </div>
