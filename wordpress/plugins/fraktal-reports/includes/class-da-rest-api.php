@@ -431,7 +431,19 @@ class DA_REST_API {
         $token = self::get_or_create_backend_jwt($user_id, $email, $name);
 
         if (!$token) {
-            return new WP_Error('auth_error', 'No se pudo obtener token de autenticación', ['status' => 401]);
+            // Log detallado para diagnóstico
+            $backend_url = get_option('da_api_url');
+            error_log('[DA] Auth failed. Backend URL: ' . ($backend_url ?: 'NOT SET'));
+            error_log('[DA] User ID: ' . $user_id . ', Email: ' . $email);
+
+            $error_message = 'No se pudo obtener token de autenticación. ';
+            if (empty($backend_url)) {
+                $error_message .= 'La URL del backend no está configurada.';
+            } else {
+                $error_message .= 'Verifica que el backend esté activo en: ' . $backend_url;
+            }
+
+            return new WP_Error('auth_error', $error_message, ['status' => 401, 'backend_url' => $backend_url]);
         }
 
         // Paso 3: Preparar datos para el backend
@@ -512,14 +524,19 @@ class DA_REST_API {
 
         // Verificar si el token sigue siendo válido (con margen de 1 hora)
         if (!empty($token) && !empty($token_expiry) && time() < ($token_expiry - 3600)) {
+            error_log('[DA] Using cached JWT token for user ' . $user_id);
             return $token;
         }
 
         // Necesitamos crear un nuevo token llamando al backend
         $backend_url = get_option('da_api_url');
         if (empty($backend_url)) {
+            error_log('[DA] Backend URL not configured (da_api_url option is empty)');
             return false;
         }
+
+        error_log('[DA] Requesting new JWT from backend: ' . $backend_url . '/auth/wordpress-login');
+        error_log('[DA] Request payload: wordpress_user_id=' . $user_id . ', email=' . $email);
 
         // Llamar al endpoint de autenticación del backend
         $response = wp_remote_post($backend_url . '/auth/wordpress-login', [
@@ -531,19 +548,22 @@ class DA_REST_API {
                 'email' => $email,
                 'name' => $name
             ]),
-            'timeout' => 15
+            'timeout' => 30,  // Aumentado para cold starts de Render
+            'sslverify' => false  // Para desarrollo/compatibilidad
         ]);
 
         if (is_wp_error($response)) {
-            error_log('[DA] Error obteniendo JWT: ' . $response->get_error_message());
+            error_log('[DA] WP Error obteniendo JWT: ' . $response->get_error_message());
             return false;
         }
 
         $response_code = wp_remote_retrieve_response_code($response);
         $response_body = wp_remote_retrieve_body($response);
 
+        error_log('[DA] Backend auth response code: ' . $response_code);
+
         if ($response_code !== 200) {
-            error_log('[DA] Backend auth failed (code ' . $response_code . '): ' . $response_body);
+            error_log('[DA] Backend auth failed (code ' . $response_code . '): ' . substr($response_body, 0, 500));
             return false;
         }
 
