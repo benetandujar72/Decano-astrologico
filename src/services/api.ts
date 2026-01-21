@@ -1,5 +1,5 @@
 
-import { SavedChart, User, SystemPrompt } from '../types';
+import { SavedChart, User, SystemPrompt } from '@/types';
 
 // En producción, Vite inyecta las variables de entorno en import.meta.env
 // Las variables deben empezar con VITE_ para ser expuestas al cliente

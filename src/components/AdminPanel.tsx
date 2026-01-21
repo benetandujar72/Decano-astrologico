@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, AlertCircle, CheckCircle2, Terminal, ArrowLeft, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
-import { SystemPrompt } from '../types';
+import { SystemPrompt } from '@/types';
 
 interface AdminPanelProps {
   onBack: () => void;

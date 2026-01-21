@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './src/index.css';
+import './index.css';
 import App from './App';
 
 // Silenciar errores de scripts de Vercel en producción
@@ -27,7 +27,7 @@ if (import.meta.env.PROD) {
   console.warn = (...args: any[]) => {
     const warnMessage = args[0]?.toString() || '';
     if (
-      warnMessage.includes('[DEPRECATED]') && 
+      warnMessage.includes('[DEPRECATED]') &&
       warnMessage.includes('zustand') &&
       warnMessage.includes('instrument.')
     ) {

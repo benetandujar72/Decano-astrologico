@@ -1,6 +1,6 @@
 import React from 'react';
-import { PlanetPosition, Language } from '../types';
-import { TRANSLATIONS } from '../constants';
+import { PlanetPosition, Language } from '@/types';
+import { TRANSLATIONS } from '@/lib/constants';
 
 interface PlanetaryTableProps {
   positions: PlanetPosition[];

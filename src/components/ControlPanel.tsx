@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { TRANSLATIONS } from '../constants';
-import { Language } from '../types';
+import { TRANSLATIONS } from '@/lib/constants';
+import { Language } from '@/types';
 
 interface ControlPanelProps {
   lang: Language;

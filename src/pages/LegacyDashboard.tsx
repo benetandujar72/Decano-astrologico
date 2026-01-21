@@ -32,32 +32,32 @@ import {
   Settings,
   CreditCard
 } from 'lucide-react';
-import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION, TRANSLATIONS } from './constants';
-import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User } from './types';
-import NatalChart from './components/NatalChart';
-import PlanetaryTable from './components/PlanetaryTable';
-import CosmicLoader from './components/CosmicLoader';
-import PlanetaryOrbit from './components/PlanetaryOrbit'; // 🆕 Animaciones mejoradas
-import ControlPanel from './components/ControlPanel';
-import GenericModal from './components/GenericModal';
-import AdminPanel from './components/AdminPanel';
-import AdminDashboard from './components/AdminDashboard'; // 🆕 Dashboard admin mejorado
-import ExportSelector from './components/ExportSelector';
-import ReportGenerationWizard from './components/ReportGenerationWizard';
-import MaterialBackground from './components/MaterialBackground';
-import SubscriptionPlans from './components/SubscriptionPlans'; // 🆕 Planes
-import UserProfilePage from './components/UserProfilePage'; // 🆕 Perfil
-import SubscriptionSuccess from './components/SubscriptionSuccess'; // 🆕 Confirmación de pago
-import AdvancedTechniques from './components/AdvancedTechniques'; // 🆕 Técnicas
-import ProfessionalServices from './components/ProfessionalServices';
-import ChartDataDisplay from './components/ChartDataDisplay'; // 🆕 Visualización de datos de carta
-import LandingPage from './components/LandingPage';
-import { HelpButton } from './components/HelpSystem'; // 🆕 Sistema de ayuda contextual
-import { CustomizationPanel } from './components/Customization'; // 🆕 Personalización de informes
-import { calculateChartData } from './astrologyEngine';
-import { api } from './services/api';
-import './styles/material-theme.css';
-import './components/PlanetaryOrbit.css'; // 🆕 Animaciones 
+import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION, TRANSLATIONS } from '@/lib/constants';
+import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User } from '@/types';
+import NatalChart from '@/components/NatalChart';
+import PlanetaryTable from '@/components/PlanetaryTable';
+import CosmicLoader from '@/components/CosmicLoader';
+import PlanetaryOrbit from '@/components/PlanetaryOrbit';
+import ControlPanel from '@/components/ControlPanel';
+import GenericModal from '@/components/GenericModal';
+import AdminPanel from '@/components/AdminPanel';
+import AdminDashboard from '@/components/AdminDashboard';
+import ExportSelector from '@/components/ExportSelector';
+import ReportGenerationWizard from '@/components/ReportGenerationWizard';
+import MaterialBackground from '@/components/MaterialBackground';
+import SubscriptionPlans from '@/components/SubscriptionPlans';
+import UserProfilePage from '@/components/UserProfilePage';
+import SubscriptionSuccess from '@/components/SubscriptionSuccess';
+import AdvancedTechniques from '@/components/AdvancedTechniques';
+import ProfessionalServices from '@/components/ProfessionalServices';
+import ChartDataDisplay from '@/components/ChartDataDisplay';
+import LandingPage from '@/components/LandingPage';
+import { HelpButton } from '@/components/HelpSystem';
+import { CustomizationPanel } from '@/components/Customization';
+import { calculateChartData } from '@/lib/astrologyEngine';
+import { api } from '@/services/api';
+import '@/styles/material-theme.css';
+import '@/components/PlanetaryOrbit.css'; // 🆕 Animaciones 
 
 // Symbol Dictionaries for Legend
 const PLANET_SYMBOLS: Record<string, string> = {
@@ -72,7 +72,7 @@ const ZODIAC_SYMBOLS: Record<string, string> = {
   'Sagitario': '♐', 'Capricornio': '♑', 'Acuario': '♒', 'Piscis': '♓'
 };
 
-const App: React.FC = () => {
+const LegacyDashboard = (): JSX.Element => {
   const [lang, setLang] = useState<Language>('es');
 
   // Auth State
@@ -674,7 +674,7 @@ const App: React.FC = () => {
           try {
             const key = (inputToUse.place || '').trim().toLowerCase();
             if (key) geoCacheRef.current.set(key, { lat, lon, timezone });
-          } catch {}
+          } catch { }
           console.log(`✅ Geocodificado: Lat ${lat}, Lon ${lon}, TZ: ${timezone}`);
         } catch (error: any) {
           console.error('❌ Error geocodificando lugar:', error);
@@ -1406,8 +1406,8 @@ ${analysisText}
                 key={l}
                 onClick={() => setLang(l)}
                 className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border ${lang === l
-                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
-                    : 'text-gray-500 border-transparent hover:bg-white/5'
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
+                  : 'text-gray-500 border-transparent hover:bg-white/5'
                   }`}
                 title={l === 'es' ? 'Español' : l === 'ca' ? 'Català' : 'Euskera'}
               >
@@ -1606,18 +1606,18 @@ ${analysisText}
                   {selectedTechnique === 'electional' && 'Astrología Electiva'}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTechnique(null);
+                  fetchSystemPrompt();
+                }}
+                className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 hover:border-white/20 transition-colors"
+                title="Desactivar técnica"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedTechnique(null);
-                fetchSystemPrompt();
-              }}
-              className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 hover:border-white/20 transition-colors"
-              title="Desactivar técnica"
-            >
-              ✕
-            </button>
           </div>
         )}
 
@@ -2255,7 +2255,7 @@ ${analysisText}
                     if (v === 'individual' || v === 'infantil' || v === 'profesional') {
                       setReportProfilesInput((prev) => (prev && prev.length > 0 ? [prev[0]] : prev));
                     } else {
-                      // Sistémico: asegurar mínimo 2 filas si solo había 1
+                      // Sistémicos: asegurar mínimo 2 filas si solo había 1
                       setReportProfilesInput((prev) => {
                         const base = prev && prev.length > 0 ? prev : [];
                         if (base.length >= 2) return base;
@@ -2704,8 +2704,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.USER_PROFILE)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.USER_PROFILE
-                  ? 'text-indigo-400 bg-indigo-500/10'
-                  : 'text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/5'
+                ? 'text-indigo-400 bg-indigo-500/10'
+                : 'text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/5'
                 }`}
               title="Mi Perfil"
             >
@@ -2715,8 +2715,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.SUBSCRIPTION_PLANS)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.SUBSCRIPTION_PLANS
-                  ? 'text-yellow-400 bg-yellow-500/10'
-                  : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/5'
+                ? 'text-yellow-400 bg-yellow-500/10'
+                : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/5'
                 }`}
               title="Planes"
             >
@@ -2726,8 +2726,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.INPUT)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.INPUT || mode === AppMode.MODE_SELECTION
-                  ? 'text-purple-400 bg-purple-500/10'
-                  : 'text-gray-400 hover:text-purple-400 hover:bg-purple-500/5'
+                ? 'text-purple-400 bg-purple-500/10'
+                : 'text-gray-400 hover:text-purple-400 hover:bg-purple-500/5'
                 }`}
               title="Nueva Carta"
             >
@@ -2737,8 +2737,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.ADVANCED_TECHNIQUES)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.ADVANCED_TECHNIQUES
-                  ? 'text-emerald-400 bg-emerald-500/10'
-                  : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
+                ? 'text-emerald-400 bg-emerald-500/10'
+                : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
                 }`}
               title="Técnicas Avanzadas"
             >
@@ -2748,8 +2748,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.CUSTOMIZATION)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.CUSTOMIZATION
-                  ? 'text-pink-400 bg-pink-500/10'
-                  : 'text-gray-400 hover:text-pink-400 hover:bg-pink-500/5'
+                ? 'text-pink-400 bg-pink-500/10'
+                : 'text-gray-400 hover:text-pink-400 hover:bg-pink-500/5'
                 }`}
               title="Personalización"
             >
@@ -2759,8 +2759,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.LISTING)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.LISTING
-                  ? 'text-blue-400 bg-blue-500/10'
-                  : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/5'
+                ? 'text-blue-400 bg-blue-500/10'
+                : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/5'
                 }`}
               title="Mis Cartas"
             >
@@ -2770,8 +2770,8 @@ ${analysisText}
             <button
               onClick={() => handleNavigation(AppMode.ADMIN_PANEL)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${mode === AppMode.ADMIN_PANEL
-                  ? 'text-red-400 bg-red-500/10'
-                  : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
+                ? 'text-red-400 bg-red-500/10'
+                : 'text-gray-400 hover:text-red-400 hover:bg-red-500/5'
                 }`}
               title="Admin"
             >
@@ -2794,4 +2794,4 @@ ${analysisText}
   );
 };
 
-export default App;
+export default LegacyDashboard;
