@@ -385,8 +385,7 @@ class Fraktal_Supabase_Report_Processor {
 
 		$endpoint = 'rest/v1/reports?id=eq.' . $report_id;
 
-		$this->client->use_service_role()->request(
-			'PATCH',
+		$this->client->use_service_role()->patch(
 			$endpoint,
 			$data,
 			array( 'Prefer' => 'return=minimal' )
@@ -410,8 +409,7 @@ class Fraktal_Supabase_Report_Processor {
 
 		$endpoint = 'rest/v1/reports?id=eq.' . $report_id;
 
-		$this->client->use_service_role()->request(
-			'PATCH',
+		$this->client->use_service_role()->patch(
 			$endpoint,
 			$data,
 			array( 'Prefer' => 'return=minimal' )

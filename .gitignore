@@ -57,3 +57,4 @@ backend/create_admin.py
 
 # Scripts temporals de comprovació
 backend/tmp_check_*.py
+wordpress/plugins/fraktal-reports/lib/

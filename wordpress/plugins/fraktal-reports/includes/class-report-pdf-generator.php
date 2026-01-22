@@ -79,7 +79,7 @@ class Fraktal_Report_PDF_Generator {
 	 * @return string|WP_Error Ruta del archivo PDF generado o error.
 	 */
 	public function generate( $content, $report_data ) {
-		if ( ! Fraktal_PDF_Autoloader::is_available() ) {
+		if ( ! class_exists( 'Fraktal_PDF_Autoloader' ) || ! Fraktal_PDF_Autoloader::is_available() ) {
 			return new WP_Error(
 				'dompdf_missing',
 				'DOMPDF no está instalado. Ve a Decano > Debug en el admin para instalarlo automáticamente, o descarga DOMPDF manualmente de https://github.com/dompdf/dompdf/releases'
@@ -715,7 +715,7 @@ CSS;
 	 * @return string|WP_Error Contenido binario del PDF o error.
 	 */
 	public function generate_content( $content, $report_data ) {
-		if ( ! Fraktal_PDF_Autoloader::is_available() ) {
+		if ( ! class_exists( 'Fraktal_PDF_Autoloader' ) || ! Fraktal_PDF_Autoloader::is_available() ) {
 			return new WP_Error(
 				'dompdf_missing',
 				'DOMPDF no está instalado. Ve a Decano > Debug para instalarlo.'
