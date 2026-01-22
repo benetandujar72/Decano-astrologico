@@ -28,9 +28,9 @@ define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define( 'FRAKTAL_SUPABASE_URL', 'https://zrzhlcbpkpfearltduyw.supabase.co' );
 define( 'FRAKTAL_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyemhsY2Jwa3BmZWFybHRkdXl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Mzc5MjUsImV4cCI6MjA4NDExMzkyNX0.Cs0GQ8t00HTFEzxFpeLrE0XsfEZtZpOreCWXsYy66Vg' );
 
-// SERVICE_KEY para operaciones privilegiadas - CONFIGURAR CON TU CLAVE
-// Obtener de: Supabase Dashboard > Settings > API > service_role key
-define( 'FRAKTAL_SUPABASE_SERVICE_KEY', '' ); // TODO: Agregar tu service_role key aquí
+// SERVICE_KEY para operaciones privilegiadas (Edge Functions, operaciones admin)
+// IMPORTANTE: Esta clave tiene acceso completo - nunca exponer en frontend
+define( 'FRAKTAL_SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZ255Y2theXVzbm1ib3pvY3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg4NTI4MzgsImV4cCI6MjA4NDQyODgzOH0.UQkkZN2nJ6q96ZR86iw4NBTtRY_UcJkBXUnTQ4V-_64' );
 
 // Feature flag: true = usar Supabase, false = usar FastAPI legacy
 define( 'FRAKTAL_USE_SUPABASE', true );
