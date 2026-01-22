@@ -204,8 +204,10 @@ function run_decano() {
  * Mantiene todos los endpoints AJAX existentes funcionando
  */
 class Fraktal_Reports_Plugin {
-    const OPT_API_URL = 'da_api_url'; // Actualizado
-    const OPT_HMAC_SECRET = 'da_hmac_secret'; // Actualizado
+    // NOTA: Estas constantes se mantienen por compatibilidad con código legacy
+    // Ya NO se usan cuando FRAKTAL_USE_SUPABASE = true
+    const OPT_API_URL = 'da_api_url'; // LEGACY - Ya no se usa
+    const OPT_HMAC_SECRET = 'da_hmac_secret'; // LEGACY - Ya no se usa
     const OPT_PRODUCT_ID = 'fraktal_reports_product_id'; // Mantener compatibilidad
     const PLUGIN_VERSION = '1.0.0';
 
@@ -332,6 +334,10 @@ class Fraktal_Reports_Plugin {
         return strval(get_option(self::OPT_HMAC_SECRET, ''));
     }
 
+    /**
+     * LEGACY: Firma de peticiones HMAC para FastAPI
+     * Solo se usa cuando FRAKTAL_USE_SUPABASE = false
+     */
     private static function sign_request($method, $path, $body, $wp_user_id) {
         $ts = time();
         $body_sha = hash('sha256', $body ? $body : '');
@@ -343,6 +349,11 @@ class Fraktal_Reports_Plugin {
         ];
     }
 
+    /**
+     * LEGACY: Peticiones al backend FastAPI
+     * Solo se usa cuando FRAKTAL_USE_SUPABASE = false
+     * Con Supabase activo, se usan las clases Fraktal_Supabase_* en su lugar
+     */
     private static function backend_request($method, $path, $payload = null) {
         $api = self::api_url();
         if (!$api) {
@@ -687,25 +698,37 @@ class Fraktal_Reports_Plugin {
 
         $report_type_id = isset($_POST['report_type_id']) ? sanitize_text_field($_POST['report_type_id']) : null;
 
-        $path = '/templates?include_public=true';
-        if ($report_type_id) {
-            $path .= '&report_type_id=' . urlencode($report_type_id);
+        // Las plantillas ahora están integradas en la configuración de tipos de informe
+        // Ya no se gestionan desde el backend FastAPI
+        if (class_exists('Fraktal_Report_Type_Config')) {
+            $types = Fraktal_Report_Type_Config::get_all_types();
+            $templates = [];
+
+            foreach ($types as $type_id => $config) {
+                // Si se filtra por tipo, solo incluir ese tipo
+                if ($report_type_id && $type_id !== $report_type_id) {
+                    continue;
+                }
+
+                $templates[] = [
+                    'id' => $type_id,
+                    'name' => $config['name'] ?? $type_id,
+                    'description' => $config['description'] ?? '',
+                    'category' => $config['category'] ?? 'natal',
+                    'is_public' => true
+                ];
+            }
+
+            wp_send_json_success(['templates' => $templates]);
+            return;
         }
 
-        $resp = self::backend_request('GET', $path, null);
-
-        if (is_wp_error($resp)) {
-            wp_send_json_error(['message' => $resp->get_error_message()], 500);
-        }
-
-        $code = wp_remote_retrieve_response_code($resp);
-        $body = wp_remote_retrieve_body($resp);
-
-        if ($code >= 200 && $code < 300) {
-            wp_send_json_success(json_decode($body, true));
-        } else {
-            wp_send_json_error(['message' => 'Error backend', 'body' => $body], 500);
-        }
+        // Fallback: devolver templates básicos
+        wp_send_json_success(['templates' => [
+            ['id' => 'individual', 'name' => 'Carta Natal Individual', 'category' => 'natal', 'is_public' => true],
+            ['id' => 'pareja', 'name' => 'Sinastría de Pareja', 'category' => 'synastry', 'is_public' => true],
+            ['id' => 'transitos', 'name' => 'Tránsitos Actuales', 'category' => 'transit', 'is_public' => true]
+        ]]);
     }
 }
 

@@ -55,41 +55,11 @@ class DA_Admin {
             [$this, 'render_reports']
         );
 
-        add_submenu_page(
-            'decano',
-            'Configuración - Decano Astrológico',
-            'Configuración',
-            'manage_options',
-            'decano-settings',
-            [$this, 'render_settings']
-        );
-
-        add_submenu_page(
-            'decano',
-            'Tipos de Informe - Decano Astrológico',
-            'Tipos de Informe',
-            'manage_options',
-            'decano-report-types',
-            [$this, 'render_report_types']
-        );
-
-        add_submenu_page(
-            'decano',
-            'Plantillas - Decano Astrológico',
-            'Plantillas',
-            'manage_options',
-            'decano-templates',
-            [$this, 'render_templates']
-        );
-
-        add_submenu_page(
-            'decano',
-            'Prompts - Decano Astrológico',
-            'Prompts',
-            'manage_options',
-            'decano-prompts',
-            [$this, 'render_prompts']
-        );
+        // NOTA: Páginas eliminadas porque ya no se usa backend FastAPI:
+        // - Configuración (da_api_url, da_hmac_secret ya no necesarios)
+        // - Tipos de Informe (usar class-report-type-config.php)
+        // - Plantillas (no se usan con Supabase)
+        // - Prompts (ya están en class-report-type-config.php)
 
         add_submenu_page(
             'decano',
@@ -512,234 +482,13 @@ class DA_Admin {
     }
 
     /**
-     * Renderizar página de configuración
+     * Renderizar página de configuración (DEPRECADA - Configuración ahora en constantes)
+     * Este método ya no se usa porque la configuración de Supabase está en fraktal-reports.php
      */
     public function render_settings() {
-        // Procesar formulario si se envió
-        if (isset($_POST['da_settings_submit'])) {
-            check_admin_referer('da_settings');
-
-            update_option('da_api_url', sanitize_text_field($_POST['da_api_url']));
-            update_option('da_hmac_secret', sanitize_text_field($_POST['da_hmac_secret']));
-
-            echo '<div class="notice notice-success"><p>Configuración guardada correctamente.</p></div>';
-        }
-
-        $api_url = get_option('da_api_url', '');
-        $hmac_secret = get_option('da_hmac_secret', '');
-
-        ?>
-        <div class="wrap">
-            <h1>Configuración - Decano Astrológico</h1>
-
-            <form method="post" action="">
-                <?php wp_nonce_field('da_settings'); ?>
-
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="da_api_url">Backend API URL</label>
-                        </th>
-                        <td>
-                            <input
-                                type="text"
-                                id="da_api_url"
-                                name="da_api_url"
-                                value="<?php echo esc_attr($api_url); ?>"
-                                class="regular-text"
-                                placeholder="https://tu-backend.onrender.com"
-                            />
-                            <p class="description">URL del backend FastAPI (Motor Fractal).</p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row">
-                            <label for="da_hmac_secret">WP HMAC Secret</label>
-                        </th>
-                        <td>
-                            <input
-                                type="password"
-                                id="da_hmac_secret"
-                                name="da_hmac_secret"
-                                value="<?php echo esc_attr($hmac_secret); ?>"
-                                class="regular-text"
-                            />
-                            <p class="description">Debe coincidir con <code>WP_HMAC_SECRET</code> en el backend.</p>
-                        </td>
-                    </tr>
-                </table>
-
-                <p class="submit">
-                    <input
-                        type="submit"
-                        name="da_settings_submit"
-                        class="button button-primary"
-                        value="Guardar Configuración"
-                    />
-                </p>
-            </form>
-
-            <hr>
-
-            <h2>Shortcodes Disponibles</h2>
-
-            <h3>Sistema de Informe Gancho (FREE Users) 🆕</h3>
-            <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Shortcode</th>
-                        <th>Descripción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <code>[decano-free-report-form]</code><br>
-                            <small>
-                                Parámetros:<br>
-                                - <code>redirect_after=""</code> (URL de redirección)
-                            </small>
-                        </td>
-                        <td>
-                            <strong>Formulario de informe gratuito para usuarios Free.</strong><br>
-                            Incluye geocodificación automática (ciudad → coordenadas).<br>
-                            Genera informe gancho con módulos: Sol, Luna y Ascendente.<br>
-                            <em>Ideal para página de landing: /informe-gratis</em>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <code>[decano-free-report-viewer]</code>
-                        </td>
-                        <td>
-                            <strong>Visualizador del informe gratuito generado.</strong><br>
-                            Muestra informe con diseño místico profesional.<br>
-                            Incluye CTA "DESCARGAR INFORME COMPLETO" para upgrade.<br>
-                            <em>Ideal para página dinámica: /mi-informe-gratis</em>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <code>[decano-upgrade-landing]</code><br>
-                            <small>
-                                Parámetros:<br>
-                                - <code>show_free_cta="true"</code> (mostrar CTA gratis)<br>
-                                - <code>highlight="revolucion_solar_2026"</code> (plan destacado)
-                            </small>
-                        </td>
-                        <td>
-                            <strong>Landing page de upgrade con pricing.</strong><br>
-                            Muestra planes premium: Carta Natal (49€) y Planificación 2026 (79€).<br>
-                            Hero section con CTA para informe gratuito.<br>
-                            <em>Ideal para página de conversión: /planes-premium</em>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3 style="margin-top: 30px;">Generador de Informes Completos</h3>
-            <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Shortcode</th>
-                        <th>Descripción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <code>[decano-report-generator]</code><br>
-                            <small>
-                                Parámetros:<br>
-                                - <code>plan_check="true"</code> (verificar límites)<br>
-                                - <code>show_upgrade="true"</code> (mostrar upgrade)
-                            </small>
-                        </td>
-                        <td>
-                            Generador completo de informes con wizard.<br>
-                            Incluye selector de perfiles, tipos de informe y progreso en tiempo real.<br>
-                            <strong>Para usuarios Premium y Enterprise.</strong>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <code>[decano-user-dashboard]</code>
-                        </td>
-                        <td>
-                            Dashboard del usuario con estadísticas de uso e historial de informes.<br>
-                            Muestra plan actual, informes del mes y últimos informes generados.
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <code>[decano-plans]</code><br>
-                            <small>
-                                Parámetros:<br>
-                                - <code>highlighted="premium"</code> (plan destacado)
-                            </small>
-                        </td>
-                        <td>
-                            Selector de planes con comparación de características.<br>
-                            Permite a usuarios ver y cambiar su plan de suscripción.
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <code>[decano-report-history]</code><br>
-                            <small>
-                                Parámetros:<br>
-                                - <code>limit="10"</code> (número de informes)
-                            </small>
-                        </td>
-                        <td>
-                            Historial de informes generados por el usuario.<br>
-                            Muestra estado, fecha y opción de descarga.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3 style="margin-top: 30px;">Compatibilidad con Versión Anterior</h3>
-            <table class="wp-list-table widefat fixed striped" style="max-width: 900px;">
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Shortcode</th>
-                        <th>Descripción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>[fraktal_panel]</code></td>
-                        <td>
-                            Panel principal del usuario (v0.1.3).<br>
-                            <strong>Nota:</strong> Se recomienda migrar a <code>[decano-report-generator]</code>.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="notice notice-info" style="max-width: 900px; margin-top: 20px;">
-                <p>
-                    <strong>💡 Tip:</strong> Los shortcodes del sistema de informe gancho están optimizados para convertir usuarios Free en clientes Premium.
-                </p>
-                <p>
-                    <strong>Flujo recomendado:</strong><br>
-                    1. Usuario llega a <code>/informe-gratis</code> → <code>[decano-free-report-form]</code><br>
-                    2. Genera informe → Redirige a <code>/mi-informe-gratis</code> → <code>[decano-free-report-viewer]</code><br>
-                    3. Click en CTA → <code>/planes-premium</code> → <code>[decano-upgrade-landing]</code><br>
-                    4. Selecciona plan → Checkout WooCommerce → CONVERSIÓN ✅
-                </p>
-            </div>
-
-            <div class="notice notice-warning" style="max-width: 900px; margin-top: 20px;">
-                <p>
-                    <strong>⚠️ Importante:</strong> Todos los shortcodes (excepto <code>[decano-plans]</code> y <code>[decano-upgrade-landing]</code>) requieren que el usuario esté autenticado.
-                    Si el usuario no ha iniciado sesión, se mostrará un mensaje pidiéndole que lo haga.
-                </p>
-            </div>
-        </div>
-        <?php
+        // Esta página ya no está en el menú, pero mantenemos el método por compatibilidad
+        wp_redirect(admin_url('admin.php?page=decano'));
+        exit;
     }
 
     /**
@@ -792,7 +541,7 @@ class DA_Admin {
                 <form method="post" style="display: inline-block; margin-right: 10px;">
                     <?php wp_nonce_field('da_debug'); ?>
                     <input type="hidden" name="da_debug_action" value="test_backend" />
-                    <button type="submit" class="button">🌐 Test Conexión Backend</button>
+                    <button type="submit" class="button">🌐 Test Conexión Supabase</button>
                 </form>
 
                 <form method="post" style="display: inline-block;">
@@ -966,26 +715,63 @@ class DA_Admin {
                     </tbody>
                 </table>
 
-                <!-- Configuración -->
-                <h3>Configuración</h3>
+                <!-- Configuración Supabase -->
+                <h3>Configuración Supabase</h3>
                 <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
                     <tbody>
                         <tr>
-                            <th style="width: 200px;">API URL</th>
+                            <th style="width: 200px;">Supabase URL</th>
                             <td>
-                                <span class="da-status-badge da-status-<?php echo $checks['configuration']['api_url'] == 'OK' ? 'completed' : 'failed'; ?>">
-                                    <?php echo esc_html($checks['configuration']['api_url']); ?>
+                                <?php
+                                $supabase_url = defined('FRAKTAL_SUPABASE_URL') ? FRAKTAL_SUPABASE_URL : '';
+                                $has_url = !empty($supabase_url);
+                                ?>
+                                <span class="da-status-badge da-status-<?php echo $has_url ? 'completed' : 'failed'; ?>">
+                                    <?php echo $has_url ? 'OK' : 'No configurado'; ?>
                                 </span>
-                                <?php if ($checks['configuration']['api_url'] == 'OK'): ?>
-                                    <code><?php echo esc_html(get_option('da_api_url')); ?></code>
+                                <?php if ($has_url): ?>
+                                    <code><?php echo esc_html($supabase_url); ?></code>
                                 <?php endif; ?>
                             </td>
                         </tr>
                         <tr>
-                            <th>HMAC Secret</th>
+                            <th>Supabase Anon Key</th>
                             <td>
-                                <span class="da-status-badge da-status-<?php echo $checks['configuration']['hmac_secret'] == 'OK' ? 'completed' : 'failed'; ?>">
-                                    <?php echo esc_html($checks['configuration']['hmac_secret']); ?>
+                                <?php
+                                $anon_key = defined('FRAKTAL_SUPABASE_ANON_KEY') ? FRAKTAL_SUPABASE_ANON_KEY : '';
+                                $has_anon = !empty($anon_key);
+                                ?>
+                                <span class="da-status-badge da-status-<?php echo $has_anon ? 'completed' : 'failed'; ?>">
+                                    <?php echo $has_anon ? 'OK' : 'No configurado'; ?>
+                                </span>
+                                <?php if ($has_anon): ?>
+                                    <code><?php echo esc_html(substr($anon_key, 0, 20) . '...'); ?></code>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Supabase Service Key</th>
+                            <td>
+                                <?php
+                                $service_key = defined('FRAKTAL_SUPABASE_SERVICE_KEY') ? FRAKTAL_SUPABASE_SERVICE_KEY : '';
+                                $has_service = !empty($service_key);
+                                ?>
+                                <span class="da-status-badge da-status-<?php echo $has_service ? 'completed' : 'failed'; ?>">
+                                    <?php echo $has_service ? 'OK' : 'No configurado'; ?>
+                                </span>
+                                <?php if ($has_service): ?>
+                                    <code>(oculto por seguridad)</code>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Feature Flag</th>
+                            <td>
+                                <?php
+                                $use_supabase = defined('FRAKTAL_USE_SUPABASE') && FRAKTAL_USE_SUPABASE;
+                                ?>
+                                <span class="da-status-badge da-status-<?php echo $use_supabase ? 'completed' : 'failed'; ?>">
+                                    <?php echo $use_supabase ? 'Supabase Activo' : 'Legacy Mode'; ?>
                                 </span>
                             </td>
                         </tr>
@@ -1078,327 +864,40 @@ class DA_Admin {
     }
 
     /**
-     * Renderizar página de tipos de informe
+     * Renderizar página de tipos de informe (DEPRECADA - Tipos ahora en class-report-type-config.php)
+     * Los tipos de informe ahora se gestionan localmente en Fraktal_Report_Type_Config
      */
     public function render_report_types() {
-        require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-management.php';
-
-        // Procesar acciones
-        if (isset($_POST['da_action'])) {
-            check_admin_referer('da_report_types');
-
-            $action = sanitize_text_field($_POST['da_action']);
-
-            if ($action === 'delete' && isset($_POST['type_id'])) {
-                $result = DA_Admin_Management::delete_report_type(sanitize_text_field($_POST['type_id']));
-                if (isset($result['error'])) {
-                    echo '<div class="notice notice-error"><p>Error: ' . esc_html($result['error']) . '</p></div>';
-                } else {
-                    echo '<div class="notice notice-success"><p>Tipo de informe eliminado correctamente.</p></div>';
-                }
-            }
-        }
-
-        // Obtener tipos con fallback
-        $result = DA_Admin_Management::get_report_types_with_fallback();
-        $report_types = $result['data'];
-        $backend_error = $result['error'];
-        $is_fallback = $result['is_fallback'];
-        $available_modules = DA_Admin_Management::get_available_modules();
-
-        ?>
-        <div class="wrap">
-            <h1>Gestión de Tipos de Informe</h1>
-
-            <p class="description">
-                Gestiona los tipos de informe disponibles para los usuarios. Los tipos de informe determinan qué módulos
-                astrológicos se incluyen en cada informe generado.
-            </p>
-
-            <!-- Botón para añadir nuevo -->
-            <p>
-                <a href="<?php echo admin_url('admin.php?page=decano-report-types&action=new'); ?>" class="button button-primary">
-                    ➕ Añadir Nuevo Tipo
-                </a>
-                <a href="<?php echo admin_url('admin.php?page=decano-report-types&action=sync'); ?>" class="button">
-                    🔄 Sincronizar desde Backend
-                </a>
-            </p>
-
-            <?php if ($backend_error): ?>
-                <div class="notice notice-warning">
-                    <p><strong>⚠️ Aviso:</strong> <?php echo esc_html($backend_error); ?></p>
-                    <?php if ($is_fallback): ?>
-                        <p>Mostrando datos de demostración. Los cambios no se guardarán hasta que el backend esté disponible.</p>
-                    <?php endif; ?>
-                    <p><a href="<?php echo admin_url('admin.php?page=decano-settings'); ?>">Configurar Backend</a> |
-                       <a href="<?php echo esc_url($_SERVER['REQUEST_URI']); ?>">Reintentar</a></p>
-                </div>
-            <?php endif; ?>
-                <!-- Tabla de tipos de informe -->
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th style="width: 20%;">ID del Tipo</th>
-                            <th style="width: 25%;">Nombre</th>
-                            <th style="width: 20%;">Planes Disponibles</th>
-                            <th style="width: 15%;">Módulos</th>
-                            <th style="width: 10%;">Estado</th>
-                            <th style="width: 10%;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($report_types) || !is_array($report_types)): ?>
-                            <tr>
-                                <td colspan="6">No se encontraron tipos de informe. Crea uno nuevo o sincroniza desde el backend.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($report_types as $type): ?>
-                                <?php
-                                // Verificar que $type sea un array válido
-                                if (!is_array($type)) {
-                                    continue;
-                                }
-                                $type_id = isset($type['type_id']) ? $type['type_id'] : '';
-                                $type_name = isset($type['name']) ? $type['name'] : $type_id;
-                                ?>
-                                <tr>
-                                    <td><code><?php echo esc_html($type_id); ?></code></td>
-                                    <td>
-                                        <strong><?php echo esc_html($type_name); ?></strong>
-                                        <?php if ($type_id === 'gancho_free'): ?>
-                                            <span class="dashicons dashicons-star-filled" style="color: #daa520;" title="Informe Gancho para Free"></span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php
-                                        $tiers = isset($type['available_for_tiers']) && is_array($type['available_for_tiers']) ? $type['available_for_tiers'] : [];
-                                        foreach ($tiers as $tier) {
-                                            if (!is_string($tier)) continue;
-                                            $color = $tier === 'free' ? '#95a5a6' : ($tier === 'premium' ? '#3498db' : '#9b59b6');
-                                            echo '<span style="background: ' . $color . '; color: white; padding: 2px 8px; border-radius: 3px; margin-right: 5px; font-size: 11px;">' . esc_html(strtoupper($tier)) . '</span>';
-                                        }
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <?php
-                                        $modules = isset($type['modules']) && is_array($type['modules']) ? $type['modules'] : [];
-                                        echo '<span class="dashicons dashicons-admin-page" title="' . count($modules) . ' módulos"></span> ' . count($modules);
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <?php if (isset($type['is_active']) && $type['is_active']): ?>
-                                            <span class="da-status-badge da-status-completed">Activo</span>
-                                        <?php else: ?>
-                                            <span class="da-status-badge da-status-failed">Inactivo</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <a href="<?php echo admin_url('admin.php?page=decano-report-types&action=edit&type_id=' . urlencode($type_id)); ?>" class="button button-small">
-                                            Editar
-                                        </a>
-                                        <?php if ($type_id !== 'gancho_free'): ?>
-                                            <form method="post" style="display: inline;">
-                                                <?php wp_nonce_field('da_report_types'); ?>
-                                                <input type="hidden" name="da_action" value="delete" />
-                                                <input type="hidden" name="type_id" value="<?php echo esc_attr($type_id); ?>" />
-                                                <button type="submit" class="button button-small button-link-delete" onclick="return confirm('¿Estás seguro de eliminar este tipo de informe?');">
-                                                    Eliminar
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-
-                <!-- Información sobre el informe gancho -->
-                <div class="notice notice-info" style="margin-top: 20px;">
-                    <p>
-                        <strong>ℹ️ Informe Gancho (gancho_free):</strong><br>
-                        Este tipo de informe es especial y está diseñado para convertir usuarios Free en Premium.
-                        Incluye solo 3 módulos básicos: Sol, Luna y Ascendente. No se puede eliminar.
-                    </p>
-                </div>
-        </div>
-        <?php
+        // Esta página ya no está en el menú - redirigir al dashboard
+        wp_redirect(admin_url('admin.php?page=decano'));
+        exit;
     }
 
     /**
-     * Renderizar página de plantillas
+     * Renderizar página de plantillas (DEPRECADA - Ya no se usa con Supabase)
+     * Los PDFs ahora se generan con DOMPDF en class-report-pdf-generator.php
      */
     public function render_templates() {
-        require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-management.php';
-
-        $templates = DA_Admin_Management::get_templates();
-
-        ?>
-        <div class="wrap">
-            <h1>Gestión de Plantillas</h1>
-
-            <p class="description">
-                Las plantillas definen la estructura y formato de los informes generados.
-                Cada plantilla contiene secciones, estilos y el orden de presentación.
-            </p>
-
-            <p>
-                <a href="<?php echo admin_url('admin.php?page=decano-templates&action=new'); ?>" class="button button-primary">
-                    ➕ Añadir Nueva Plantilla
-                </a>
-                <a href="<?php echo admin_url('admin.php?page=decano-templates&action=sync'); ?>" class="button">
-                    🔄 Sincronizar desde Backend
-                </a>
-            </p>
-
-            <?php if (isset($templates['error'])): ?>
-                <div class="notice notice-error">
-                    <p><strong>Error:</strong> <?php echo esc_html($templates['error']); ?></p>
-                    <p>Por favor, configura la URL del backend en <a href="<?php echo admin_url('admin.php?page=decano-settings'); ?>">Configuración</a>.</p>
-                </div>
-            <?php else: ?>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th style="width: 25%;">Nombre</th>
-                            <th style="width: 35%;">Descripción</th>
-                            <th style="width: 15%;">Tipo</th>
-                            <th style="width: 10%;">Versión</th>
-                            <th style="width: 15%;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($templates)): ?>
-                            <tr>
-                                <td colspan="5">No se encontraron plantillas. Sincroniza desde el backend o crea una nueva.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($templates as $template): ?>
-                                <tr>
-                                    <td><strong><?php echo esc_html($template['name'] ?? 'Sin nombre'); ?></strong></td>
-                                    <td><?php echo esc_html($template['description'] ?? '-'); ?></td>
-                                    <td><code><?php echo esc_html($template['type'] ?? 'standard'); ?></code></td>
-                                    <td><?php echo esc_html($template['version'] ?? '1.0'); ?></td>
-                                    <td>
-                                        <a href="#" class="button button-small">Ver</a>
-                                        <a href="#" class="button button-small">Editar</a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-
-            <div class="notice notice-info" style="margin-top: 20px;">
-                <p>
-                    <strong>💡 Tip:</strong> Las plantillas se gestionan principalmente desde el backend de Python.
-                    Desde aquí puedes visualizar y sincronizar las plantillas existentes.
-                </p>
-            </div>
-        </div>
-        <?php
+        // Esta página ya no está en el menú - redirigir al dashboard
+        wp_redirect(admin_url('admin.php?page=decano'));
+        exit;
     }
 
     /**
-     * Renderizar página de prompts
+     * Renderizar página de prompts (DEPRECADA - Prompts ahora en class-report-type-config.php)
+     * Los prompts ahora están integrados en la configuración de tipos de informe
      */
     public function render_prompts() {
-        require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-management.php';
-
-        $prompts = DA_Admin_Management::get_prompts();
-
-        ?>
-        <div class="wrap">
-            <h1>Gestión de Prompts</h1>
-
-            <p class="description">
-                Los prompts son las instrucciones que se envían a la IA (Gemini) para generar el contenido de cada módulo astrológico.
-                Puedes personalizar los prompts para cambiar el tono, estilo y profundidad del análisis.
-            </p>
-
-            <p>
-                <a href="<?php echo admin_url('admin.php?page=decano-prompts&action=new'); ?>" class="button button-primary">
-                    ➕ Añadir Nuevo Prompt
-                </a>
-                <a href="<?php echo admin_url('admin.php?page=decano-prompts&action=sync'); ?>" class="button">
-                    🔄 Sincronizar desde Backend
-                </a>
-            </p>
-
-            <?php if (isset($prompts['error'])): ?>
-                <div class="notice notice-error">
-                    <p><strong>Error:</strong> <?php echo esc_html($prompts['error']); ?></p>
-                    <p>Por favor, configura la URL del backend en <a href="<?php echo admin_url('admin.php?page=decano-settings'); ?>">Configuración</a>.</p>
-                </div>
-            <?php else: ?>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th style="width: 20%;">Módulo</th>
-                            <th style="width: 40%;">Prompt (extracto)</th>
-                            <th style="width: 15%;">Tokens Estimados</th>
-                            <th style="width: 10%;">Activo</th>
-                            <th style="width: 15%;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($prompts)): ?>
-                            <tr>
-                                <td colspan="5">No se encontraron prompts. Sincroniza desde el backend.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($prompts as $prompt): ?>
-                                <tr>
-                                    <td>
-                                        <strong><?php echo esc_html($prompt['module_name'] ?? $prompt['module_id'] ?? 'Desconocido'); ?></strong>
-                                        <?php if (in_array($prompt['module_id'] ?? '', ['modulo_1_sol', 'modulo_3_luna', 'modulo_9_ascendente'])): ?>
-                                            <span class="dashicons dashicons-star-filled" style="color: #daa520;" title="Usado en informe gancho"></span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td style="font-size: 12px; color: #666;">
-                                        <?php
-                                        $text = $prompt['prompt_text'] ?? '';
-                                        echo esc_html(strlen($text) > 100 ? substr($text, 0, 100) . '...' : $text);
-                                        ?>
-                                    </td>
-                                    <td><?php echo number_format($prompt['estimated_tokens'] ?? 0); ?></td>
-                                    <td>
-                                        <?php if (isset($prompt['is_active']) && $prompt['is_active']): ?>
-                                            <span class="da-status-badge da-status-completed">Sí</span>
-                                        <?php else: ?>
-                                            <span class="da-status-badge da-status-failed">No</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <a href="#" class="button button-small">Ver</a>
-                                        <a href="#" class="button button-small">Editar</a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-
-            <div class="notice notice-warning" style="margin-top: 20px;">
-                <p>
-                    <strong>⚠️ Importante:</strong> Modificar los prompts puede afectar significativamente la calidad
-                    y el tono de los informes generados. Se recomienda hacer pruebas exhaustivas antes de activar cambios en producción.
-                </p>
-            </div>
-        </div>
-        <?php
+        // Esta página ya no está en el menú - redirigir al dashboard
+        wp_redirect(admin_url('admin.php?page=decano'));
+        exit;
     }
 
     /**
      * Renderizar página de planes y límites
      */
     public function render_plans_limits() {
-        require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-management.php';
-
-        // Procesar actualizaciones
+        // Procesar actualizaciones - guardamos en opciones de WordPress
         if (isset($_POST['da_update_limits'])) {
             check_admin_referer('da_plans_limits');
 
@@ -1409,12 +908,16 @@ class DA_Admin {
                 'features' => isset($_POST['features']) ? array_map('sanitize_text_field', $_POST['features']) : []
             ];
 
-            DA_Admin_Management::update_tier_limits($tier, $limits);
+            // Guardar en opciones de WordPress
+            update_option("da_tier_limits_{$tier}", $limits);
             echo '<div class="notice notice-success"><p>Límites actualizados correctamente.</p></div>';
         }
 
-        $tier_limits = DA_Admin_Management::get_tier_limits();
-        $report_types = DA_Admin_Management::get_report_types();
+        // Obtener límites desde opciones de WordPress
+        $tier_limits = $this->get_local_tier_limits();
+
+        // Obtener tipos de informe desde configuración local
+        $report_types = $this->get_local_report_types();
 
         ?>
         <div class="wrap">
@@ -1584,5 +1087,87 @@ class DA_Admin {
         }
         </script>
         <?php
+    }
+
+    /**
+     * Obtener límites de tier desde opciones de WordPress
+     */
+    private function get_local_tier_limits() {
+        $defaults = [
+            'free' => [
+                'reports_per_month' => 1,
+                'report_types' => ['gancho_free'],
+                'features' => [
+                    'geocoding' => true,
+                    'save_profiles' => false,
+                    'download_pdf' => false,
+                    'custom_modules' => false,
+                    'priority_support' => false,
+                    'api_access' => false
+                ]
+            ],
+            'premium' => [
+                'reports_per_month' => 10,
+                'report_types' => ['individual', 'pareja', 'transitos'],
+                'features' => [
+                    'geocoding' => true,
+                    'save_profiles' => true,
+                    'download_pdf' => true,
+                    'custom_modules' => false,
+                    'priority_support' => false,
+                    'api_access' => false
+                ]
+            ],
+            'enterprise' => [
+                'reports_per_month' => -1, // ilimitado
+                'report_types' => ['all'],
+                'features' => [
+                    'geocoding' => true,
+                    'save_profiles' => true,
+                    'download_pdf' => true,
+                    'custom_modules' => true,
+                    'priority_support' => true,
+                    'api_access' => true
+                ]
+            ]
+        ];
+
+        $limits = [];
+        foreach (['free', 'premium', 'enterprise'] as $tier) {
+            $saved = get_option("da_tier_limits_{$tier}", null);
+            $limits[$tier] = $saved !== null ? $saved : $defaults[$tier];
+        }
+
+        return $limits;
+    }
+
+    /**
+     * Obtener tipos de informe desde configuración local
+     */
+    private function get_local_report_types() {
+        // Intentar usar Fraktal_Report_Type_Config si existe
+        if (class_exists('Fraktal_Report_Type_Config')) {
+            $types = Fraktal_Report_Type_Config::get_all_types();
+            // Convertir al formato esperado
+            $result = [];
+            foreach ($types as $type_id => $config) {
+                $result[] = [
+                    'type_id' => $type_id,
+                    'name' => $config['name'] ?? $type_id,
+                    'is_active' => true
+                ];
+            }
+            return $result;
+        }
+
+        // Fallback a tipos por defecto
+        return [
+            ['type_id' => 'individual', 'name' => 'Carta Natal Individual', 'is_active' => true],
+            ['type_id' => 'pareja', 'name' => 'Sinastría de Pareja', 'is_active' => true],
+            ['type_id' => 'transitos', 'name' => 'Tránsitos Actuales', 'is_active' => true],
+            ['type_id' => 'revolucion_solar', 'name' => 'Revolución Solar', 'is_active' => true],
+            ['type_id' => 'progresiones', 'name' => 'Progresiones', 'is_active' => true],
+            ['type_id' => 'gancho_free', 'name' => 'Informe Gancho (Free)', 'is_active' => true]
+        ];
     }
 }

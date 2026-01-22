@@ -249,55 +249,69 @@ class DA_REST_API {
 
     /**
      * Geocodificación inversa (coordenadas → ciudad)
+     * Usa Nominatim (OpenStreetMap) directamente - NO requiere backend externo
      */
     public static function reverse_geocode($request) {
         $lat = $request->get_param('lat');
         $lon = $request->get_param('lon');
 
-        $backend_url = get_option('da_api_url');
-        if (empty($backend_url)) {
-            return new WP_Error('backend_not_configured', 'Backend no configurado', ['status' => 500]);
-        }
-
-        $user_id = get_current_user_id();
-        $token = self::get_or_create_user_token($user_id);
-
-        if (!$token) {
-            return new WP_Error('auth_error', 'No se pudo obtener token', ['status' => 401]);
-        }
-
-        $url = add_query_arg([
+        // Llamar a Nominatim (OpenStreetMap) para geocodificación inversa
+        $nominatim_url = 'https://nominatim.openstreetmap.org/reverse';
+        $response = wp_remote_get(add_query_arg([
             'lat' => $lat,
-            'lon' => $lon
-        ], $backend_url . '/geocoding/reverse');
-
-        $response = wp_remote_get($url, [
+            'lon' => $lon,
+            'format' => 'json',
+            'zoom' => 10,
+            'addressdetails' => 1
+        ], $nominatim_url), [
             'headers' => [
-                'Authorization' => 'Bearer ' . $token
+                'User-Agent' => 'Decano-Astrologico-WordPress/1.0'
             ],
             'timeout' => 15
         ]);
 
         if (is_wp_error($response)) {
-            return new WP_Error('geocode_error', $response->get_error_message(), ['status' => 502]);
+            return new WP_Error(
+                'geocode_error',
+                'Error al contactar el servicio de geocodificación: ' . $response->get_error_message(),
+                ['status' => 502]
+            );
         }
 
         $response_code = wp_remote_retrieve_response_code($response);
         $response_body = wp_remote_retrieve_body($response);
 
         if ($response_code !== 200) {
-            $error_data = json_decode($response_body, true);
-            $error_message = isset($error_data['detail']) ? $error_data['detail'] : 'Error desconocido';
-            return new WP_Error('geocode_failed', $error_message, ['status' => $response_code]);
+            return new WP_Error(
+                'geocode_failed',
+                'El servicio de geocodificación no está disponible',
+                ['status' => $response_code]
+            );
         }
 
         $result = json_decode($response_body, true);
 
-        if (!$result) {
-            return new WP_Error('invalid_response', 'Respuesta inválida', ['status' => 502]);
+        if (!$result || isset($result['error'])) {
+            return new WP_Error(
+                'no_results',
+                'No se encontró información para estas coordenadas',
+                ['status' => 404]
+            );
         }
 
-        return rest_ensure_response($result);
+        // Extraer información relevante
+        $address = $result['address'] ?? [];
+
+        return rest_ensure_response([
+            'latitude' => floatval($lat),
+            'longitude' => floatval($lon),
+            'formatted_address' => $result['display_name'] ?? '',
+            'city' => $address['city'] ?? $address['town'] ?? $address['village'] ?? '',
+            'state' => $address['state'] ?? '',
+            'country' => $address['country'] ?? '',
+            'country_code' => $address['country_code'] ?? '',
+            'timezone' => self::get_timezone_from_coordinates($lat, $lon)
+        ]);
     }
 
     /**
@@ -363,7 +377,7 @@ class DA_REST_API {
 
     /**
      * Generar informe gratuito
-     * Este endpoint crea un usuario si no existe y llama al backend para generar el informe
+     * Este endpoint crea un usuario si no existe y usa Supabase para generar el informe
      */
     public static function generate_free_report($request) {
         $name = $request->get_param('name');
@@ -376,15 +390,15 @@ class DA_REST_API {
         $longitude = $request->get_param('longitude');
         $timezone = $request->get_param('timezone');
 
-        // Verificar backend configurado
-        $backend_url = get_option('da_api_url');
-        if (empty($backend_url)) {
-            return new WP_Error('backend_not_configured', 'Backend no configurado', ['status' => 500]);
+        // Verificar que Supabase esté configurado
+        if (!defined('FRAKTAL_SUPABASE_URL') || empty(FRAKTAL_SUPABASE_URL)) {
+            return new WP_Error('supabase_not_configured', 'Supabase no está configurado', ['status' => 500]);
         }
 
         // Paso 1: Obtener o crear usuario de WordPress
         $user_id = null;
         $is_logged_in = is_user_logged_in();
+        $is_new_user = false;
 
         if ($is_logged_in) {
             // Usuario ya está logueado
@@ -424,191 +438,93 @@ class DA_REST_API {
 
                 // Enviar email de bienvenida (opcional)
                 wp_send_new_user_notifications($user_id, 'user');
+
+                $is_new_user = true;
             }
         }
 
-        // Paso 2: Obtener o crear token del backend
-        $token = self::get_or_create_backend_jwt($user_id, $email, $name);
-
-        if (!$token) {
-            // Log detallado para diagnóstico
-            $backend_url = get_option('da_api_url');
-            error_log('[DA] Auth failed. Backend URL: ' . ($backend_url ?: 'NOT SET'));
-            error_log('[DA] User ID: ' . $user_id . ', Email: ' . $email);
-
-            $error_message = 'No se pudo obtener token de autenticación. ';
-            if (empty($backend_url)) {
-                $error_message .= 'La URL del backend no está configurada.';
-            } else {
-                $error_message .= 'Verifica que el backend esté activo en: ' . $backend_url;
+        // Paso 2: Sincronizar usuario con Supabase (si la clase existe)
+        if (class_exists('Fraktal_Supabase_Auth')) {
+            try {
+                $auth = new Fraktal_Supabase_Auth();
+                $auth->sync_wp_user($user_id);
+            } catch (Exception $e) {
+                // Log pero no fallar - el usuario puede existir ya
+                error_log('[DA] Error sincronizando usuario con Supabase: ' . $e->getMessage());
             }
-
-            return new WP_Error('auth_error', $error_message, ['status' => 401, 'backend_url' => $backend_url]);
         }
 
-        // Paso 3: Preparar datos para el backend
-        $birth_datetime = $birth_date . 'T' . $birth_time;
-
-        $payload = [
-            'report_type' => 'gancho_free',
-            'birth_datetime' => $birth_datetime,
+        // Paso 3: Preparar datos del chart
+        $chart_data = [
+            'name' => $name,
+            'email' => $email,
+            'birth_date' => $birth_date,
+            'birth_time' => $birth_time,
+            'birth_city' => $birth_city,
+            'birth_country' => $birth_country,
             'latitude' => floatval($latitude),
             'longitude' => floatval($longitude),
-            'timezone' => $timezone,
-            'city' => $birth_city,
-            'country' => $birth_country,
-            'name' => $name
+            'timezone' => $timezone
         ];
 
-        // Paso 4: Llamar al backend para generar informe gratuito
-        // Usa el endpoint específico que calcula la carta desde datos de nacimiento
-        $response = wp_remote_post($backend_url . '/reports/queue-free-report', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $token,
-                'Content-Type' => 'application/json'
-            ],
-            'body' => json_encode($payload),
-            'timeout' => 30
-        ]);
+        // Paso 4: Crear sesión de generación de reporte
+        if (class_exists('Fraktal_Supabase_Reports')) {
+            // Usar la nueva clase de Supabase
+            try {
+                $reports = new Fraktal_Supabase_Reports();
+                $result = $reports->start_generation($chart_data, 'gancho_free', $user_id);
 
-        if (is_wp_error($response)) {
-            return new WP_Error(
-                'backend_error',
-                'Error al conectar con el backend: ' . $response->get_error_message(),
-                ['status' => 502]
-            );
-        }
+                if (isset($result['error'])) {
+                    return new WP_Error(
+                        'generation_failed',
+                        $result['error'],
+                        ['status' => 500]
+                    );
+                }
 
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_body = wp_remote_retrieve_body($response);
+                $session_id = $result['session_id'] ?? wp_generate_uuid4();
 
-        if ($response_code !== 200 && $response_code !== 201) {
-            $error_data = json_decode($response_body, true);
-            $error_message = isset($error_data['detail']) ? $error_data['detail'] : 'Error desconocido del backend';
+            } catch (Exception $e) {
+                error_log('[DA] Error iniciando generación: ' . $e->getMessage());
+                return new WP_Error(
+                    'generation_failed',
+                    'Error al iniciar la generación del informe: ' . $e->getMessage(),
+                    ['status' => 500]
+                );
+            }
+        } else {
+            // Fallback: crear sesión local en WordPress DB
+            global $wpdb;
+            $table = $wpdb->prefix . 'da_report_sessions';
+            $session_id = wp_generate_uuid4();
 
-            return new WP_Error(
-                'backend_failed',
-                $error_message,
-                ['status' => $response_code, 'body' => $error_data]
-            );
-        }
+            $wpdb->insert($table, [
+                'user_id' => $user_id,
+                'session_id' => $session_id,
+                'report_type' => 'gancho_free',
+                'status' => 'queued',
+                'chart_data' => json_encode($chart_data),
+                'created_at' => current_time('mysql'),
+                'updated_at' => current_time('mysql')
+            ]);
 
-        $result = json_decode($response_body, true);
-
-        if (!$result || !isset($result['session_id'])) {
-            return new WP_Error(
-                'invalid_response',
-                'Respuesta inválida del backend',
-                ['status' => 502, 'body' => $response_body]
-            );
+            if ($wpdb->last_error) {
+                return new WP_Error(
+                    'db_error',
+                    'Error al crear la sesión: ' . $wpdb->last_error,
+                    ['status' => 500]
+                );
+            }
         }
 
         // Paso 5: Devolver session_id y datos del usuario
         return rest_ensure_response([
             'success' => true,
-            'session_id' => $result['session_id'],
+            'session_id' => $session_id,
             'user_id' => $user_id,
-            'is_new_user' => !$is_logged_in && !get_user_by('email', $email),
-            'viewer_url' => home_url('/tu-informe-gratis/?session_id=' . $result['session_id']),
+            'is_new_user' => $is_new_user,
+            'viewer_url' => home_url('/tu-informe-gratis/?session_id=' . $session_id),
             'message' => 'Informe en proceso de generación'
         ]);
-    }
-
-    /**
-     * Obtener o crear token JWT del backend para el usuario
-     */
-    private static function get_or_create_backend_jwt($user_id, $email, $name) {
-        // Intentar obtener token existente
-        $token = get_user_meta($user_id, 'da_backend_jwt_token', true);
-        $token_expiry = get_user_meta($user_id, 'da_backend_jwt_expiry', true);
-
-        // Verificar si el token sigue siendo válido (con margen de 1 hora)
-        if (!empty($token) && !empty($token_expiry) && time() < ($token_expiry - 3600)) {
-            error_log('[DA] Using cached JWT token for user ' . $user_id);
-            return $token;
-        }
-
-        // Necesitamos crear un nuevo token llamando al backend
-        $backend_url = get_option('da_api_url');
-        if (empty($backend_url)) {
-            error_log('[DA] Backend URL not configured (da_api_url option is empty)');
-            return false;
-        }
-
-        error_log('[DA] Requesting new JWT from backend: ' . $backend_url . '/auth/wordpress-login');
-        error_log('[DA] Request payload: wordpress_user_id=' . $user_id . ', email=' . $email);
-
-        // Llamar al endpoint de autenticación del backend
-        $response = wp_remote_post($backend_url . '/auth/wordpress-login', [
-            'headers' => [
-                'Content-Type' => 'application/json'
-            ],
-            'body' => json_encode([
-                'wordpress_user_id' => $user_id,
-                'email' => $email,
-                'name' => $name
-            ]),
-            'timeout' => 30,  // Aumentado para cold starts de Render
-            'sslverify' => false  // Para desarrollo/compatibilidad
-        ]);
-
-        if (is_wp_error($response)) {
-            error_log('[DA] WP Error obteniendo JWT: ' . $response->get_error_message());
-            return false;
-        }
-
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_body = wp_remote_retrieve_body($response);
-
-        error_log('[DA] Backend auth response code: ' . $response_code);
-
-        if ($response_code !== 200) {
-            error_log('[DA] Backend auth failed (code ' . $response_code . '): ' . substr($response_body, 0, 500));
-            return false;
-        }
-
-        $auth_data = json_decode($response_body, true);
-
-        if (!$auth_data || !isset($auth_data['access_token'])) {
-            error_log('[DA] Invalid auth response from backend');
-            return false;
-        }
-
-        $token = $auth_data['access_token'];
-        $expires_in = isset($auth_data['expires_in']) ? intval($auth_data['expires_in']) : 86400; // Default 24h
-
-        // Guardar token y expiración
-        update_user_meta($user_id, 'da_backend_jwt_token', $token);
-        update_user_meta($user_id, 'da_backend_jwt_expiry', time() + $expires_in);
-
-        return $token;
-    }
-
-    /**
-     * Obtener o crear token de autenticación para el backend (método legacy)
-     */
-    private static function get_or_create_user_token($user_id) {
-        // Obtener token existente
-        $token = get_user_meta($user_id, 'da_backend_token', true);
-
-        // Verificar si el token es válido (aquí simplificamos, en producción deberías verificar expiración)
-        if (!empty($token)) {
-            return $token;
-        }
-
-        // Crear nuevo token (JWT simplificado o usar el sistema de tokens del backend)
-        // Por ahora usamos un hash del user_id + secret
-        $secret = get_option('da_hmac_secret');
-        if (empty($secret)) {
-            $secret = wp_generate_password(32, false);
-            update_option('da_hmac_secret', $secret);
-        }
-
-        $token = hash_hmac('sha256', $user_id . time(), $secret);
-
-        // Guardar token
-        update_user_meta($user_id, 'da_backend_token', $token);
-
-        return $token;
     }
 }

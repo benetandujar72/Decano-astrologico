@@ -270,22 +270,30 @@ class DA_Activator {
 
     /**
      * Configuración inicial del plugin
+     * NOTA: Ya no se usan da_api_url, da_api_key, da_hmac_secret
+     * La configuración de Supabase está en constantes en fraktal-reports.php
      */
     private static function initial_setup() {
-        // Configuración por defecto
+        // Configuración por defecto (solo opciones internas, no de backend)
         $defaults = [
-            'da_api_url' => '',
-            'da_api_key' => '',
-            'da_hmac_secret' => '',
             'da_enable_limits' => true,
             'da_enable_cache' => true,
             'da_cache_duration' => 300,
-            'da_version' => '1.0.0'
+            'da_version' => DECANO_VERSION
         ];
 
         foreach ($defaults as $key => $value) {
             if (get_option($key) === false) {
                 update_option($key, $value);
+            }
+        }
+
+        // Limpiar opciones legacy si existen (migración)
+        $legacy_options = ['da_api_url', 'da_api_key', 'da_hmac_secret', 'da_backend_jwt_token', 'da_backend_jwt_expiry'];
+        foreach ($legacy_options as $option) {
+            if (get_option($option) !== false) {
+                delete_option($option);
+                DA_Debug::log("Opción legacy eliminada: $option", 'info');
             }
         }
     }

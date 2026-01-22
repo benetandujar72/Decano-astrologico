@@ -172,10 +172,12 @@ class DA_Debug {
             'enterprise' => get_option('da_product_enterprise_id') ? 'OK' : 'MISSING'
         ];
 
-        // 7. Verificar configuración
+        // 7. Verificar configuración de Supabase
         $checks['configuration'] = [
-            'api_url' => get_option('da_api_url') ? 'OK' : 'MISSING',
-            'hmac_secret' => get_option('da_hmac_secret') ? 'OK' : 'MISSING'
+            'supabase_url' => defined('FRAKTAL_SUPABASE_URL') && FRAKTAL_SUPABASE_URL ? 'OK' : 'MISSING',
+            'supabase_anon_key' => defined('FRAKTAL_SUPABASE_ANON_KEY') && FRAKTAL_SUPABASE_ANON_KEY ? 'OK' : 'MISSING',
+            'supabase_service_key' => defined('FRAKTAL_SUPABASE_SERVICE_KEY') && FRAKTAL_SUPABASE_SERVICE_KEY ? 'OK' : 'MISSING',
+            'use_supabase' => defined('FRAKTAL_USE_SUPABASE') && FRAKTAL_USE_SUPABASE ? 'ENABLED' : 'DISABLED'
         ];
 
         // 8. Verificar archivos React
@@ -241,83 +243,154 @@ class DA_Debug {
     }
 
     /**
-     * Test de conexión al backend
+     * Test de conexión a Supabase
      *
      * @return array Resultado del test
      */
     public static function test_backend_connection() {
-        $api_url = get_option('da_api_url');
-        $hmac_secret = get_option('da_hmac_secret');
+        $result = [
+            'tests' => [],
+            'status' => 'success'
+        ];
 
-        if (empty($api_url)) {
+        // Verificar configuración
+        if (!defined('FRAKTAL_SUPABASE_URL') || empty(FRAKTAL_SUPABASE_URL)) {
             return [
                 'status' => 'error',
-                'message' => 'Backend API URL no configurada'
+                'message' => 'Supabase URL no configurada',
+                'tests' => []
             ];
         }
 
-        // Test 1: Ping básico
-        $response = wp_remote_get($api_url . '/health', [
-            'timeout' => 10
+        if (!defined('FRAKTAL_SUPABASE_ANON_KEY') || empty(FRAKTAL_SUPABASE_ANON_KEY)) {
+            return [
+                'status' => 'error',
+                'message' => 'Supabase Anon Key no configurada',
+                'tests' => []
+            ];
+        }
+
+        $supabase_url = FRAKTAL_SUPABASE_URL;
+        $anon_key = FRAKTAL_SUPABASE_ANON_KEY;
+
+        // Test 1: Conexión básica a Supabase REST API
+        self::log('Iniciando test de conexión a Supabase...', 'info');
+
+        $response = wp_remote_get($supabase_url . '/rest/v1/', [
+            'headers' => [
+                'apikey' => $anon_key,
+                'Authorization' => 'Bearer ' . $anon_key
+            ],
+            'timeout' => 15
         ]);
 
         if (is_wp_error($response)) {
-            return [
+            $result['tests']['rest_api'] = [
                 'status' => 'error',
-                'message' => 'Error al conectar con el backend: ' . $response->get_error_message()
+                'message' => 'Error de conexión: ' . $response->get_error_message()
+            ];
+            $result['status'] = 'error';
+            self::log('Error de conexión REST API: ' . $response->get_error_message(), 'error');
+        } else {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $result['tests']['rest_api'] = [
+                'status' => $status_code >= 200 && $status_code < 300 ? 'success' : 'error',
+                'status_code' => $status_code,
+                'message' => $status_code >= 200 && $status_code < 300 ? 'Conexión REST API OK' : 'Error HTTP ' . $status_code
+            ];
+            if ($status_code >= 400) {
+                $result['status'] = 'error';
+            }
+            self::log('REST API response: HTTP ' . $status_code, 'info');
+        }
+
+        // Test 2: Verificar que podemos consultar la tabla profiles
+        $response = wp_remote_get($supabase_url . '/rest/v1/profiles?select=count&limit=1', [
+            'headers' => [
+                'apikey' => $anon_key,
+                'Authorization' => 'Bearer ' . $anon_key,
+                'Prefer' => 'count=exact'
+            ],
+            'timeout' => 15
+        ]);
+
+        if (is_wp_error($response)) {
+            $result['tests']['profiles_table'] = [
+                'status' => 'warning',
+                'message' => 'No se pudo verificar tabla profiles: ' . $response->get_error_message()
+            ];
+        } else {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $result['tests']['profiles_table'] = [
+                'status' => $status_code >= 200 && $status_code < 300 ? 'success' : 'warning',
+                'status_code' => $status_code,
+                'message' => $status_code >= 200 && $status_code < 300 ? 'Tabla profiles accesible' : 'Tabla profiles no accesible (HTTP ' . $status_code . ')'
             ];
         }
 
-        $status_code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
+        // Test 3: Verificar Edge Functions (si hay service key)
+        if (defined('FRAKTAL_SUPABASE_SERVICE_KEY') && !empty(FRAKTAL_SUPABASE_SERVICE_KEY)) {
+            $result['tests']['service_key'] = [
+                'status' => 'success',
+                'message' => 'Service Key configurada'
+            ];
 
-        $result = [
-            'status' => $status_code == 200 ? 'success' : 'error',
-            'status_code' => $status_code,
-            'response_body' => $body
-        ];
+            // Test Edge Function health check
+            $response = wp_remote_post($supabase_url . '/functions/v1/calculate-chart', [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . FRAKTAL_SUPABASE_SERVICE_KEY
+                ],
+                'body' => json_encode(['health_check' => true]),
+                'timeout' => 15
+            ]);
 
-        // Test 2: Verificar autenticación HMAC
-        if (!empty($hmac_secret)) {
-            $test_payload = ['test' => true];
-            $test_response = self::test_hmac_request($api_url, $hmac_secret, $test_payload);
-            $result['hmac_test'] = $test_response;
+            if (is_wp_error($response)) {
+                $result['tests']['edge_functions'] = [
+                    'status' => 'warning',
+                    'message' => 'No se pudo verificar Edge Functions: ' . $response->get_error_message()
+                ];
+            } else {
+                $status_code = wp_remote_retrieve_response_code($response);
+                // 400 puede ser esperado si la función rechaza health_check
+                $result['tests']['edge_functions'] = [
+                    'status' => $status_code < 500 ? 'success' : 'error',
+                    'status_code' => $status_code,
+                    'message' => $status_code < 500 ? 'Edge Functions accesibles' : 'Error en Edge Functions (HTTP ' . $status_code . ')'
+                ];
+            }
+        } else {
+            $result['tests']['service_key'] = [
+                'status' => 'warning',
+                'message' => 'Service Key no configurada - algunas funciones pueden no estar disponibles'
+            ];
         }
+
+        // Test 4: Verificar Storage
+        $response = wp_remote_get($supabase_url . '/storage/v1/bucket', [
+            'headers' => [
+                'apikey' => $anon_key,
+                'Authorization' => 'Bearer ' . $anon_key
+            ],
+            'timeout' => 15
+        ]);
+
+        if (is_wp_error($response)) {
+            $result['tests']['storage'] = [
+                'status' => 'warning',
+                'message' => 'No se pudo verificar Storage: ' . $response->get_error_message()
+            ];
+        } else {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $result['tests']['storage'] = [
+                'status' => $status_code < 500 ? 'success' : 'error',
+                'status_code' => $status_code,
+                'message' => $status_code < 500 ? 'Storage accesible' : 'Error en Storage (HTTP ' . $status_code . ')'
+            ];
+        }
+
+        self::log('Test de conexión completado: ' . $result['status'], 'info', $result['tests']);
 
         return $result;
-    }
-
-    /**
-     * Test de autenticación HMAC
-     */
-    private static function test_hmac_request($api_url, $secret, $payload) {
-        $timestamp = time();
-        $json_payload = json_encode($payload);
-
-        $signature_base = $json_payload . $timestamp;
-        $signature = hash_hmac('sha256', $signature_base, $secret);
-
-        $response = wp_remote_post($api_url . '/api/test', [
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'X-WP-Signature' => $signature,
-                'X-WP-Timestamp' => $timestamp
-            ],
-            'body' => $json_payload,
-            'timeout' => 10
-        ]);
-
-        if (is_wp_error($response)) {
-            return [
-                'status' => 'error',
-                'message' => $response->get_error_message()
-            ];
-        }
-
-        return [
-            'status' => 'success',
-            'status_code' => wp_remote_retrieve_response_code($response),
-            'response' => wp_remote_retrieve_body($response)
-        ];
     }
 }
