@@ -284,8 +284,8 @@ class Fraktal_Supabase_Report_Processor {
 		$category    = $type_config['category'] ?? 'natal';
 
 		// Obtener prompts.
-		$system_prompt = Fraktal_Report_Type_Config::get_system_prompt( $category );
-		$user_prompt   = Fraktal_Report_Type_Config::get_user_prompt( $report_type );
+		$system_prompt = Fraktal_Report_Type_Config::get_system_prompt( $report_type );
+		$user_prompt   = Fraktal_Report_Type_Config::get_user_prompt_template( $report_type );
 
 		// Preparar datos astrológicos para el prompt.
 		$astro_data = array(
