@@ -24,6 +24,26 @@ define('DECANO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DECANO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+// Configuración de Supabase (Hello World)
+define( 'FRAKTAL_SUPABASE_URL', 'https://zrzhlcbpkpfearltduyw.supabase.co' );
+define( 'FRAKTAL_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyemhsY2Jwa3BmZWFybHRkdXl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Mzc5MjUsImV4cCI6MjA4NDExMzkyNX0.Cs0GQ8t00HTFEzxFpeLrE0XsfEZtZpOreCWXsYy66Vg' );
+
+// SERVICE_KEY para operaciones privilegiadas - CONFIGURAR CON TU CLAVE
+// Obtener de: Supabase Dashboard > Settings > API > service_role key
+define( 'FRAKTAL_SUPABASE_SERVICE_KEY', '' ); // TODO: Agregar tu service_role key aquí
+
+// Feature flag: true = usar Supabase, false = usar FastAPI legacy
+define( 'FRAKTAL_USE_SUPABASE', true );
+
+// Cargar clases de Supabase
+require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-client.php';
+require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-auth.php';
+require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-reports.php';
+require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-storage.php';
+require_once DECANO_PLUGIN_DIR . 'includes/class-report-type-config.php';
+require_once DECANO_PLUGIN_DIR . 'includes/class-report-pdf-generator.php';
+require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-report-processor.php';
+
 /**
  * Activación del plugin con diagnóstico extensivo
  */
@@ -151,6 +171,18 @@ register_activation_hook(__FILE__, 'activate_decano');
 function deactivate_decano() {
     require_once DECANO_PLUGIN_DIR . 'includes/class-da-deactivator.php';
     DA_Deactivator::deactivate();
+
+    // Limpiar eventos de cron de Fraktal
+    $cron_hooks = array(
+        'fraktal_process_report_queue',
+        'fraktal_cleanup_temp_files',
+    );
+    foreach ( $cron_hooks as $hook ) {
+        $timestamp = wp_next_scheduled( $hook );
+        if ( $timestamp ) {
+            wp_unschedule_event( $timestamp, $hook );
+        }
+    }
 }
 register_deactivation_hook(__FILE__, 'deactivate_decano');
 
@@ -215,6 +247,10 @@ class Fraktal_Reports_Plugin {
             'nonce' => wp_create_nonce('fraktal_reports_nonce'),
             'productId' => intval(get_option(self::OPT_PRODUCT_ID, 0)),
             'apiUrl' => self::api_url(),
+            'supabase' => [
+                'url' => FRAKTAL_SUPABASE_URL,
+                'anonKey' => FRAKTAL_SUPABASE_ANON_KEY,
+            ],
             'currentUser' => [
                 'id' => get_current_user_id(),
                 'plan' => DA_Plan_Manager::get_user_plan(get_current_user_id()),
@@ -370,6 +406,20 @@ class Fraktal_Reports_Plugin {
 
     public static function ajax_list_reports() {
         self::require_nonce();
+
+        if ( FRAKTAL_USE_SUPABASE ) {
+            $reports = new Fraktal_Supabase_Reports();
+            $result = $reports->list_user_reports( get_current_user_id() );
+
+            if ( is_wp_error( $result ) ) {
+                wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+            }
+
+            wp_send_json_success( array( 'sessions' => $result ) );
+            return;
+        }
+
+        // Legacy: FastAPI
         $resp = self::backend_request('GET', '/wp/report/my-sessions?limit=100', null);
         if (is_wp_error($resp)) {
             wp_send_json_error(['message' => $resp->get_error_message()], 500);
@@ -387,7 +437,7 @@ class Fraktal_Reports_Plugin {
 
         $user_id = get_current_user_id();
 
-        // NUEVO: Verificar límites
+        // Verificar límites
         if (!DA_Limits::check_monthly_limit($user_id)) {
             $plan = DA_Plan_Manager::get_user_plan($user_id);
             wp_send_json_error([
@@ -402,6 +452,36 @@ class Fraktal_Reports_Plugin {
         $payload = json_decode($payload_raw, true);
         if (!is_array($payload)) $payload = [];
 
+        if ( FRAKTAL_USE_SUPABASE ) {
+            $reports = new Fraktal_Supabase_Reports();
+
+            // Extraer datos de la carta del payload
+            $chart_data = array(
+                'nombre'        => isset( $payload['nombre'] ) ? sanitize_text_field( $payload['nombre'] ) : '',
+                'fecha'         => isset( $payload['fecha'] ) ? sanitize_text_field( $payload['fecha'] ) : '',
+                'hora'          => isset( $payload['hora'] ) ? sanitize_text_field( $payload['hora'] ) : '',
+                'lugar'         => isset( $payload['lugar'] ) ? sanitize_text_field( $payload['lugar'] ) : '',
+                'latitude'      => isset( $payload['latitude'] ) ? floatval( $payload['latitude'] ) : 0,
+                'longitude'     => isset( $payload['longitude'] ) ? floatval( $payload['longitude'] ) : 0,
+                'timezone'      => isset( $payload['timezone'] ) ? sanitize_text_field( $payload['timezone'] ) : 'UTC',
+            );
+
+            $report_type = isset( $payload['report_type'] ) ? sanitize_text_field( $payload['report_type'] ) : 'individual';
+
+            $result = $reports->start_generation( $chart_data, $report_type, $user_id );
+
+            if ( is_wp_error( $result ) ) {
+                wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+            }
+
+            // Incrementar uso
+            DA_Limits::increment_usage( $user_id );
+
+            wp_send_json_success( $result );
+            return;
+        }
+
+        // Legacy: FastAPI
         $payload['wp_user_id'] = strval($user_id);
         $u = wp_get_current_user();
         if ($u) {
@@ -420,7 +500,7 @@ class Fraktal_Reports_Plugin {
             wp_send_json_error(['message' => 'Error backend', 'code' => $code, 'body' => $body], 500);
         }
 
-        // NUEVO: Incrementar uso
+        // Incrementar uso
         DA_Limits::increment_usage($user_id);
 
         wp_send_json_success(json_decode($body, true));
@@ -432,6 +512,29 @@ class Fraktal_Reports_Plugin {
         if (!$session_id) {
             wp_send_json_error(['message' => 'session_id requerido'], 400);
         }
+
+        if ( FRAKTAL_USE_SUPABASE ) {
+            $reports = new Fraktal_Supabase_Reports();
+            $result = $reports->get_session_status( $session_id );
+
+            if ( is_wp_error( $result ) ) {
+                wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+            }
+
+            // Normalizar respuesta para compatibilidad con frontend
+            wp_send_json_success( array(
+                'session_id'       => $result['session_id'],
+                'status'           => $result['status'],
+                'progress_percent' => isset( $result['progress_percent'] ) ? $result['progress_percent'] : 0,
+                'current_module'   => isset( $result['current_module'] ) ? $result['current_module'] : '',
+                'report_type'      => isset( $result['report_type'] ) ? $result['report_type'] : '',
+                'file_url'         => isset( $result['file_url'] ) ? $result['file_url'] : null,
+                'completed_at'     => isset( $result['completed_at'] ) ? $result['completed_at'] : null,
+            ) );
+            return;
+        }
+
+        // Legacy: FastAPI
         $resp = self::backend_request('GET', '/wp/report/status/' . rawurlencode($session_id), null);
         if (is_wp_error($resp)) {
             wp_send_json_error(['message' => $resp->get_error_message()], 500);
@@ -457,6 +560,20 @@ class Fraktal_Reports_Plugin {
             wp_die('session_id requerido', 400);
         }
 
+        if ( FRAKTAL_USE_SUPABASE ) {
+            $reports = new Fraktal_Supabase_Reports();
+            $download_url = $reports->get_download_url( $session_id, get_current_user_id() );
+
+            if ( is_wp_error( $download_url ) ) {
+                wp_die( $download_url->get_error_message(), 500 );
+            }
+
+            // Redirigir a la URL firmada de Supabase Storage
+            wp_redirect( $download_url );
+            exit;
+        }
+
+        // Legacy: FastAPI
         $resp = self::backend_request('GET', '/wp/report/download-pdf/' . rawurlencode($session_id), null);
         if (is_wp_error($resp)) {
             wp_die($resp->get_error_message(), 500);
@@ -531,6 +648,19 @@ class Fraktal_Reports_Plugin {
 
         $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : null;
 
+        if ( FRAKTAL_USE_SUPABASE ) {
+            $reports = new Fraktal_Supabase_Reports();
+            $result = $reports->get_report_types( $category );
+
+            if ( is_wp_error( $result ) ) {
+                wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+            }
+
+            wp_send_json_success( array( 'report_types' => $result ) );
+            return;
+        }
+
+        // Legacy: FastAPI
         $path = '/report-types';
         if ($category) {
             $path .= '?category=' . urlencode($category);
@@ -584,3 +714,114 @@ run_decano();
 
 // Mantener compatibilidad con código existente
 Fraktal_Reports_Plugin::init();
+
+/**
+ * Sincronización automática de usuarios WordPress -> Supabase al login.
+ */
+if ( FRAKTAL_USE_SUPABASE ) {
+	add_action( 'wp_login', function( $user_login, $user ) {
+		try {
+			$auth = new Fraktal_Supabase_Auth();
+			$auth->sync_wp_user( $user->ID );
+		} catch ( Exception $e ) {
+			error_log( 'Fraktal Supabase sync error on login: ' . $e->getMessage() );
+		}
+	}, 10, 2 );
+
+	// También sincronizar al registrarse
+	add_action( 'user_register', function( $user_id ) {
+		try {
+			$auth = new Fraktal_Supabase_Auth();
+			$auth->sync_wp_user( $user_id );
+		} catch ( Exception $e ) {
+			error_log( 'Fraktal Supabase sync error on register: ' . $e->getMessage() );
+		}
+	}, 10, 1 );
+
+	// Sincronizar cuando cambia la suscripción (WooCommerce)
+	add_action( 'woocommerce_subscription_status_changed', function( $subscription_id, $old_status, $new_status ) {
+		$subscription = wcs_get_subscription( $subscription_id );
+		if ( $subscription ) {
+			$user_id = $subscription->get_user_id();
+			try {
+				$auth = new Fraktal_Supabase_Auth();
+				$tier = DA_Plan_Manager::get_user_plan( $user_id );
+				$auth->sync_subscription_tier( $user_id, $tier );
+			} catch ( Exception $e ) {
+				error_log( 'Fraktal Supabase sync error on subscription change: ' . $e->getMessage() );
+			}
+		}
+	}, 10, 3 );
+
+	// ========================================
+	// WP-CRON: Procesamiento de cola de reportes
+	// ========================================
+
+	/**
+	 * Agregar intervalo de 1 minuto para WP-Cron.
+	 */
+	add_filter( 'cron_schedules', function( $schedules ) {
+		$schedules['fraktal_every_minute'] = array(
+			'interval' => 60,
+			'display'  => __( 'Cada minuto (Fraktal Reports)' ),
+		);
+		$schedules['fraktal_hourly'] = array(
+			'interval' => 3600,
+			'display'  => __( 'Cada hora (Fraktal Reports)' ),
+		);
+		return $schedules;
+	} );
+
+	/**
+	 * Hook para procesar cola de reportes.
+	 */
+	add_action( 'fraktal_process_report_queue', function() {
+		// Verificar que tenemos SERVICE_KEY configurado
+		if ( empty( FRAKTAL_SUPABASE_SERVICE_KEY ) ) {
+			error_log( '[Fraktal Cron] SERVICE_KEY no configurado. Saltando procesamiento.' );
+			return;
+		}
+
+		try {
+			$processor = new Fraktal_Supabase_Report_Processor();
+			$results = $processor->process_queue( 5 ); // Procesar hasta 5 reportes por ejecución
+
+			if ( ! empty( $results['errors'] ) ) {
+				error_log( '[Fraktal Cron] Errores en procesamiento: ' . implode( '; ', $results['errors'] ) );
+			}
+		} catch ( Exception $e ) {
+			error_log( '[Fraktal Cron] Error fatal: ' . $e->getMessage() );
+		}
+	} );
+
+	/**
+	 * Hook para limpiar archivos temporales.
+	 */
+	add_action( 'fraktal_cleanup_temp_files', function() {
+		try {
+			$processor = new Fraktal_Supabase_Report_Processor();
+			$deleted = $processor->cleanup_temp_files( 24 ); // Eliminar archivos mayores a 24 horas
+
+			if ( $deleted > 0 ) {
+				error_log( "[Fraktal Cron] Limpieza: {$deleted} archivos temporales eliminados." );
+			}
+		} catch ( Exception $e ) {
+			error_log( '[Fraktal Cron] Error en limpieza: ' . $e->getMessage() );
+		}
+	} );
+
+	/**
+	 * Programar eventos de cron si no están programados.
+	 */
+	add_action( 'init', function() {
+		// Procesamiento de cola cada minuto
+		if ( ! wp_next_scheduled( 'fraktal_process_report_queue' ) ) {
+			wp_schedule_event( time(), 'fraktal_every_minute', 'fraktal_process_report_queue' );
+		}
+
+		// Limpieza de archivos temporales cada hora
+		if ( ! wp_next_scheduled( 'fraktal_cleanup_temp_files' ) ) {
+			wp_schedule_event( time(), 'fraktal_hourly', 'fraktal_cleanup_temp_files' );
+		}
+	} );
+}
