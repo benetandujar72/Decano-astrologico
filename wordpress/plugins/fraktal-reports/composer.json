@@ -1,0 +1,17 @@
+{
+    "name": "fraktal/reports",
+    "description": "Plugin de informes astrológicos con generación de PDF",
+    "type": "wordpress-plugin",
+    "require": {
+        "php": ">=8.0",
+        "dompdf/dompdf": "^2.0"
+    },
+    "autoload": {
+        "classmap": [
+            "includes/"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

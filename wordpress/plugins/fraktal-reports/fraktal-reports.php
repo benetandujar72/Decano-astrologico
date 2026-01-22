@@ -25,8 +25,14 @@ define('DECANO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 // Configuración de Supabase (Hello World)
-define( 'FRAKTAL_SUPABASE_URL', 'https://zrzhlcbpkpfearltduyw.supabase.co' );
-define( 'FRAKTAL_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyemhsY2Jwa3BmZWFybHRkdXl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Mzc5MjUsImV4cCI6MjA4NDExMzkyNX0.Cs0GQ8t00HTFEzxFpeLrE0XsfEZtZpOreCWXsYy66Vg' );
+// Proyecto: asgnyckayusnmbozocxh
+define( 'FRAKTAL_SUPABASE_URL', 'https://asgnyckayusnmbozocxh.supabase.co' );
+
+// ANON_KEY - Para obtener esta clave:
+// 1. Ir a Supabase Dashboard > Settings > API
+// 2. Copiar "anon public" key del proyecto asgnyckayusnmbozocxh
+// NOTA: Temporalmente usando SERVICE_KEY, pero se debe configurar la ANON_KEY correcta
+define( 'FRAKTAL_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZ255Y2theXVzbm1ib3pvY3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg4NTI4MzgsImV4cCI6MjA4NDQyODgzOH0.UQkkZN2nJ6q96ZR86iw4NBTtRY_UcJkBXUnTQ4V-_64' );
 
 // SERVICE_KEY para operaciones privilegiadas (Edge Functions, operaciones admin)
 // IMPORTANTE: Esta clave tiene acceso completo - nunca exponer en frontend
@@ -41,6 +47,9 @@ require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-auth.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-reports.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-storage.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-report-type-config.php';
+
+// Cargar autoloader de PDF (gestiona DOMPDF desde múltiples fuentes)
+require_once DECANO_PLUGIN_DIR . 'includes/class-pdf-autoloader.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-report-pdf-generator.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-report-processor.php';
 
@@ -227,6 +236,7 @@ class Fraktal_Reports_Plugin {
         // NUEVOS endpoints AJAX para planes
         add_action('wp_ajax_fraktal_reports_get_plan', [__CLASS__, 'ajax_get_plan']);
         add_action('wp_ajax_fraktal_reports_get_plans', [__CLASS__, 'ajax_get_plans']);
+        add_action('wp_ajax_nopriv_fraktal_reports_get_plans', [__CLASS__, 'ajax_get_plans_public']); // Público
         add_action('wp_ajax_fraktal_reports_get_types', [__CLASS__, 'ajax_get_report_types']);
         add_action('wp_ajax_fraktal_reports_get_templates', [__CLASS__, 'ajax_get_templates']);
 
@@ -631,27 +641,120 @@ class Fraktal_Reports_Plugin {
         ]);
     }
 
+    /**
+     * Endpoint público para obtener planes (sin login requerido)
+     */
+    public static function ajax_get_plans_public() {
+        // No requiere nonce ni login - es información pública
+        $plans = self::get_plans_list();
+        wp_send_json_success(['plans' => $plans]);
+    }
+
     public static function ajax_get_plans() {
         self::require_nonce();
 
+        $plans = self::get_plans_list();
+        wp_send_json_success(['plans' => $plans]);
+    }
+
+    /**
+     * Obtiene la lista de planes (usado por endpoints públicos y privados)
+     */
+    private static function get_plans_list() {
         $plans = [];
         foreach (['free', 'premium', 'enterprise'] as $tier) {
             $product_id = get_option("da_product_{$tier}_id");
             if ($product_id) {
                 $product = wc_get_product($product_id);
                 if ($product) {
+                    // Obtener features desde WooCommerce meta (usa get_meta, no get_post_meta)
+                    $features = $product->get_meta('da_features');
+                    if (empty($features) || !is_array($features)) {
+                        // Fallback: features por defecto según el tier
+                        $features = self::get_default_plan_features($tier);
+                    }
+
                     $plans[] = [
                         'tier' => $tier,
                         'name' => $product->get_name(),
                         'price' => floatval($product->get_price()),
-                        'features' => get_post_meta($product_id, 'da_features', true) ?: [],
-                        'productId' => $product_id
+                        'features' => $features,
+                        'productId' => $product_id,
+                        'description' => $product->get_short_description()
                     ];
                 }
             }
         }
 
-        wp_send_json_success(['plans' => $plans]);
+        // Si no hay productos creados, devolver planes por defecto
+        if (empty($plans)) {
+            $plans = self::get_default_plans();
+        }
+
+        return $plans;
+    }
+
+    /**
+     * Obtiene features por defecto para un tier
+     */
+    private static function get_default_plan_features($tier) {
+        $defaults = [
+            'free' => [
+                '1 informe resumido/mes',
+                'Carta natal básica',
+                'Posiciones planetarias',
+                'Aspectos principales'
+            ],
+            'premium' => [
+                'Informes ilimitados',
+                'Informes completos y detallados',
+                'Todos los tipos de informe',
+                'Técnicas avanzadas',
+                'Exportación PDF',
+                'Soporte prioritario'
+            ],
+            'enterprise' => [
+                'Todo de Premium',
+                'Informes personalizados',
+                'API REST completa',
+                'Prompts personalizados',
+                'Soporte 24/7',
+                'Plantillas ilimitadas'
+            ]
+        ];
+        return $defaults[$tier] ?? [];
+    }
+
+    /**
+     * Devuelve planes por defecto si no hay productos WooCommerce
+     */
+    private static function get_default_plans() {
+        return [
+            [
+                'tier' => 'free',
+                'name' => 'Plan Gratuito',
+                'price' => 0,
+                'features' => self::get_default_plan_features('free'),
+                'productId' => 0,
+                'description' => 'Perfecto para empezar'
+            ],
+            [
+                'tier' => 'premium',
+                'name' => 'Plan Premium',
+                'price' => 29.99,
+                'features' => self::get_default_plan_features('premium'),
+                'productId' => 0,
+                'description' => 'Para usuarios avanzados'
+            ],
+            [
+                'tier' => 'enterprise',
+                'name' => 'Plan Enterprise',
+                'price' => 99.99,
+                'features' => self::get_default_plan_features('enterprise'),
+                'productId' => 0,
+                'description' => 'Para profesionales'
+            ]
+        ];
     }
 
     public static function ajax_get_report_types() {
@@ -659,38 +762,51 @@ class Fraktal_Reports_Plugin {
 
         $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : null;
 
-        if ( FRAKTAL_USE_SUPABASE ) {
-            $reports = new Fraktal_Supabase_Reports();
-            $result = $reports->get_report_types( $category );
+        // Usar configuración local de tipos de informe
+        if (class_exists('Fraktal_Report_Type_Config')) {
+            $all_types = Fraktal_Report_Type_Config::get_all_types();
+            $report_types = [];
 
-            if ( is_wp_error( $result ) ) {
-                wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+            foreach ($all_types as $type_id => $config) {
+                // Filtrar por categoría si se especifica
+                if ($category && isset($config['category']) && $config['category'] !== $category) {
+                    continue;
+                }
+
+                $report_types[] = [
+                    'id' => $type_id,
+                    'name' => $config['name'] ?? $type_id,
+                    'slug' => $config['slug'] ?? $type_id,
+                    'category' => $config['category'] ?? 'natal',
+                    'description' => $config['description'] ?? '',
+                    'estimated_pages' => $config['estimated_pages'] ?? 10,
+                    'requires' => $config['requires'] ?? []
+                ];
             }
 
-            wp_send_json_success( array( 'report_types' => $result ) );
+            wp_send_json_success(['report_types' => $report_types]);
             return;
         }
 
-        // Legacy: FastAPI
-        $path = '/report-types';
+        // Fallback: tipos básicos si no existe la clase de configuración
+        $default_types = [
+            ['id' => 'individual', 'name' => 'Carta Natal Individual', 'category' => 'natal', 'description' => 'Análisis completo de tu carta natal'],
+            ['id' => 'infantil', 'name' => 'Carta Natal Infantil', 'category' => 'natal', 'description' => 'Análisis orientado a niños'],
+            ['id' => 'pareja', 'name' => 'Sinastría de Pareja', 'category' => 'synastry', 'description' => 'Compatibilidad entre dos personas'],
+            ['id' => 'transits', 'name' => 'Tránsitos Actuales', 'category' => 'transit', 'description' => 'Análisis de tránsitos planetarios'],
+            ['id' => 'solar_return', 'name' => 'Revolución Solar', 'category' => 'solar-return', 'description' => 'Análisis del año solar'],
+            ['id' => 'progressions', 'name' => 'Progresiones', 'category' => 'progressions', 'description' => 'Progresiones secundarias']
+        ];
+
+        // Filtrar por categoría si se especifica
         if ($category) {
-            $path .= '?category=' . urlencode($category);
+            $default_types = array_filter($default_types, function($type) use ($category) {
+                return $type['category'] === $category;
+            });
+            $default_types = array_values($default_types);
         }
 
-        $resp = self::backend_request('GET', $path, null);
-
-        if (is_wp_error($resp)) {
-            wp_send_json_error(['message' => $resp->get_error_message()], 500);
-        }
-
-        $code = wp_remote_retrieve_response_code($resp);
-        $body = wp_remote_retrieve_body($resp);
-
-        if ($code >= 200 && $code < 300) {
-            wp_send_json_success(json_decode($body, true));
-        } else {
-            wp_send_json_error(['message' => 'Error backend', 'body' => $body], 500);
-        }
+        wp_send_json_success(['report_types' => $default_types]);
     }
 
     public static function ajax_get_templates() {
@@ -848,3 +964,113 @@ if ( FRAKTAL_USE_SUPABASE ) {
 		}
 	} );
 }
+
+/**
+ * ========================================
+ * ADMIN: Avisos y acciones para DOMPDF
+ * ========================================
+ */
+
+/**
+ * Mostrar aviso si DOMPDF no está instalado.
+ */
+add_action( 'admin_notices', function() {
+	// Solo mostrar en páginas del plugin
+	$screen = get_current_screen();
+	if ( ! $screen || strpos( $screen->id, 'decano' ) === false ) {
+		return;
+	}
+
+	// Verificar si DOMPDF está disponible
+	if ( class_exists( 'Fraktal_PDF_Autoloader' ) && Fraktal_PDF_Autoloader::is_available() ) {
+		return;
+	}
+
+	// Verificar si el usuario puede instalar plugins
+	if ( ! current_user_can( 'install_plugins' ) ) {
+		return;
+	}
+
+	$install_url = wp_nonce_url(
+		admin_url( 'admin-post.php?action=fraktal_install_dompdf' ),
+		'fraktal_install_dompdf'
+	);
+
+	?>
+	<div class="notice notice-warning is-dismissible">
+		<p><strong>Decano Astrológico:</strong> DOMPDF no está instalado. La generación de PDFs no funcionará sin esta librería.</p>
+		<p>
+			<a href="<?php echo esc_url( $install_url ); ?>" class="button button-primary">
+				Instalar DOMPDF Automáticamente
+			</a>
+			<a href="https://github.com/dompdf/dompdf/releases/latest" class="button" target="_blank">
+				Descargar Manualmente
+			</a>
+		</p>
+		<p class="description">
+			También puedes ejecutar <code>composer install</code> en la carpeta del plugin.
+		</p>
+	</div>
+	<?php
+} );
+
+/**
+ * Handler para instalar DOMPDF automáticamente.
+ */
+add_action( 'admin_post_fraktal_install_dompdf', function() {
+	// Verificar permisos y nonce
+	if ( ! current_user_can( 'install_plugins' ) ) {
+		wp_die( 'No tienes permisos para realizar esta acción.' );
+	}
+
+	check_admin_referer( 'fraktal_install_dompdf' );
+
+	// Intentar instalación automática
+	if ( class_exists( 'Fraktal_PDF_Autoloader' ) ) {
+		$result = Fraktal_PDF_Autoloader::auto_install();
+
+		if ( is_wp_error( $result ) ) {
+			wp_redirect( add_query_arg(
+				array(
+					'page' => 'decano-debug',
+					'dompdf_error' => urlencode( $result->get_error_message() ),
+				),
+				admin_url( 'admin.php' )
+			) );
+			exit;
+		}
+
+		wp_redirect( add_query_arg(
+			array(
+				'page' => 'decano-debug',
+				'dompdf_installed' => '1',
+			),
+			admin_url( 'admin.php' )
+		) );
+		exit;
+	}
+
+	wp_die( 'Error: Clase PDF Autoloader no disponible.' );
+} );
+
+/**
+ * Mostrar mensaje de éxito/error después de instalar DOMPDF.
+ */
+add_action( 'admin_notices', function() {
+	if ( isset( $_GET['dompdf_installed'] ) && $_GET['dompdf_installed'] === '1' ) {
+		?>
+		<div class="notice notice-success is-dismissible">
+			<p><strong>DOMPDF instalado correctamente.</strong> La generación de PDFs está lista.</p>
+		</div>
+		<?php
+	}
+
+	if ( isset( $_GET['dompdf_error'] ) ) {
+		?>
+		<div class="notice notice-error is-dismissible">
+			<p><strong>Error al instalar DOMPDF:</strong> <?php echo esc_html( urldecode( $_GET['dompdf_error'] ) ); ?></p>
+			<p>Puedes intentar la instalación manual descargando DOMPDF de <a href="https://github.com/dompdf/dompdf/releases/latest" target="_blank">GitHub</a> y extrayéndolo en <code><?php echo esc_html( DECANO_PLUGIN_DIR ); ?>lib/dompdf/</code></p>
+		</div>
+		<?php
+	}
+} );

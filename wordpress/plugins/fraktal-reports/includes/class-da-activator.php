@@ -38,6 +38,10 @@ class DA_Activator {
             self::initial_setup();
             DA_Debug::log('Configuración inicial completada', 'info');
 
+            DA_Debug::log('Creando páginas de WordPress...', 'info');
+            self::create_pages();
+            DA_Debug::log('Páginas creadas correctamente', 'info');
+
             flush_rewrite_rules();
 
             DA_Debug::log('=== ACTIVACIÓN COMPLETADA EXITOSAMENTE ===', 'info');
@@ -296,5 +300,47 @@ class DA_Activator {
                 DA_Debug::log("Opción legacy eliminada: $option", 'info');
             }
         }
+    }
+
+    /**
+     * Crear páginas de WordPress necesarias para el plugin
+     */
+    private static function create_pages() {
+        // Solo crear si no se han creado antes
+        if (get_option('da_pages_created')) {
+            DA_Debug::log('Páginas ya fueron creadas anteriormente, saltando...', 'info');
+            return;
+        }
+
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-page-setup.php';
+
+        $results = DA_Page_Setup::create_all_pages();
+
+        DA_Debug::log('Resultado de creación de páginas', 'info', [
+            'created' => count($results['created']),
+            'existing' => count($results['existing']),
+            'errors' => count($results['errors'])
+        ]);
+
+        if (!empty($results['created'])) {
+            foreach ($results['created'] as $key => $page_id) {
+                DA_Debug::log("✓ Página '$key' creada (ID: $page_id)", 'info');
+            }
+        }
+
+        if (!empty($results['existing'])) {
+            foreach ($results['existing'] as $key => $page_id) {
+                DA_Debug::log("→ Página '$key' ya existía (ID: $page_id)", 'info');
+            }
+        }
+
+        if (!empty($results['errors'])) {
+            foreach ($results['errors'] as $key => $error) {
+                DA_Debug::log("✗ Error creando página '$key': $error", 'error');
+            }
+        }
+
+        update_option('da_pages_created', true);
+        DA_Debug::log('Marca de páginas creadas establecida', 'info');
     }
 }

@@ -191,7 +191,24 @@ class DA_Debug {
             'css_size' => file_exists($react_css) ? filesize($react_css) . ' bytes' : 'N/A'
         ];
 
-        // 9. Verificar clases requeridas
+        // 9. Verificar DOMPDF para generación de PDFs
+        if ( class_exists( 'Fraktal_PDF_Autoloader' ) ) {
+            $pdf_info = Fraktal_PDF_Autoloader::get_diagnostic_info();
+            $checks['dompdf'] = [
+                'available' => $pdf_info['available'] ? 'OK' : 'MISSING',
+                'load_method' => $pdf_info['load_method'] ?: 'none',
+                'composer_exists' => $pdf_info['composer_path']['exists'] ? 'YES' : 'NO',
+                'bundled_exists' => $pdf_info['bundled_path']['exists'] ? 'YES' : 'NO',
+                'lib_writable' => $pdf_info['lib_writable'] ? 'YES' : 'NO',
+            ];
+        } else {
+            $checks['dompdf'] = [
+                'available' => 'UNKNOWN',
+                'message' => 'PDF Autoloader no disponible'
+            ];
+        }
+
+        // 10. Verificar clases requeridas
         // Algunas clases solo se cargan bajo condiciones específicas, así que las cargamos aquí
         $class_files = [
             'DA_Activator' => DECANO_PLUGIN_DIR . 'includes/class-da-activator.php',

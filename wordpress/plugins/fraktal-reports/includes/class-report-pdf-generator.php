@@ -9,14 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Cargar DOMPDF via Composer autoload.
-$autoload_path = DECANO_PLUGIN_DIR . 'vendor/autoload.php';
-if ( file_exists( $autoload_path ) ) {
-	require_once $autoload_path;
+// Intentar cargar DOMPDF (el autoloader ya está cargado desde fraktal-reports.php)
+if ( class_exists( 'Fraktal_PDF_Autoloader' ) ) {
+	Fraktal_PDF_Autoloader::load();
 }
-
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 /**
  * Clase para generar PDFs de informes astrológicos con DOMPDF.
@@ -26,7 +22,7 @@ class Fraktal_Report_PDF_Generator {
 	/**
 	 * Instancia de DOMPDF.
 	 *
-	 * @var Dompdf
+	 * @var \Dompdf\Dompdf|null
 	 */
 	private $dompdf;
 
@@ -65,7 +61,14 @@ class Fraktal_Report_PDF_Generator {
 	 * @param array $branding Configuración de branding opcional.
 	 */
 	public function __construct( $branding = array() ) {
-		$this->branding = wp_parse_args( $branding, self::DEFAULT_BRANDING );
+		// Cargar branding guardado en opciones de WordPress
+		$saved_branding = get_option( 'da_pdf_branding', array() );
+
+		// Prioridad: parámetro > guardado en opciones > default
+		$this->branding = wp_parse_args(
+			$branding,
+			wp_parse_args( $saved_branding, self::DEFAULT_BRANDING )
+		);
 	}
 
 	/**
@@ -76,21 +79,24 @@ class Fraktal_Report_PDF_Generator {
 	 * @return string|WP_Error Ruta del archivo PDF generado o error.
 	 */
 	public function generate( $content, $report_data ) {
-		if ( ! class_exists( 'Dompdf\Dompdf' ) ) {
-			return new WP_Error( 'dompdf_missing', 'DOMPDF no está instalado. Ejecuta: composer require dompdf/dompdf' );
+		if ( ! Fraktal_PDF_Autoloader::is_available() ) {
+			return new WP_Error(
+				'dompdf_missing',
+				'DOMPDF no está instalado. Ve a Decano > Debug en el admin para instalarlo automáticamente, o descarga DOMPDF manualmente de https://github.com/dompdf/dompdf/releases'
+			);
 		}
 
 		$this->report_data = $report_data;
 
 		// Configurar DOMPDF.
-		$options = new Options();
+		$options = new \Dompdf\Options();
 		$options->set( 'isHtml5ParserEnabled', true );
 		$options->set( 'isRemoteEnabled', true );
 		$options->set( 'defaultFont', 'DejaVu Sans' );
 		$options->set( 'isFontSubsettingEnabled', true );
 		$options->set( 'tempDir', sys_get_temp_dir() );
 
-		$this->dompdf = new Dompdf( $options );
+		$this->dompdf = new \Dompdf\Dompdf( $options );
 
 		// Si el contenido es string, convertirlo a secciones.
 		if ( is_string( $content ) ) {
@@ -709,18 +715,21 @@ CSS;
 	 * @return string|WP_Error Contenido binario del PDF o error.
 	 */
 	public function generate_content( $content, $report_data ) {
-		if ( ! class_exists( 'Dompdf\Dompdf' ) ) {
-			return new WP_Error( 'dompdf_missing', 'DOMPDF no está instalado.' );
+		if ( ! Fraktal_PDF_Autoloader::is_available() ) {
+			return new WP_Error(
+				'dompdf_missing',
+				'DOMPDF no está instalado. Ve a Decano > Debug para instalarlo.'
+			);
 		}
 
 		$this->report_data = $report_data;
 
-		$options = new Options();
+		$options = new \Dompdf\Options();
 		$options->set( 'isHtml5ParserEnabled', true );
 		$options->set( 'isRemoteEnabled', true );
 		$options->set( 'defaultFont', 'DejaVu Sans' );
 
-		$this->dompdf = new Dompdf( $options );
+		$this->dompdf = new \Dompdf\Dompdf( $options );
 
 		if ( is_string( $content ) ) {
 			$content = $this->parse_content_to_sections( $content );

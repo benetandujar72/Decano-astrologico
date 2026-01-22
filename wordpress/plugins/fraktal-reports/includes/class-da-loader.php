@@ -32,6 +32,7 @@ class DA_Loader {
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-plan-manager.php';
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-limits.php';
         require_once DECANO_PLUGIN_DIR . 'includes/class-da-rest-api.php';
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-page-setup.php';
 
         // Admin
         if (is_admin()) {

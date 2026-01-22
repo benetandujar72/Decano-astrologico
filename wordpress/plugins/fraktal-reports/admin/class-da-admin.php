@@ -72,11 +72,29 @@ class DA_Admin {
 
         add_submenu_page(
             'decano',
+            'Personalización - Decano Astrológico',
+            'Personalización',
+            'manage_options',
+            'decano-customization',
+            [$this, 'render_customization']
+        );
+
+        add_submenu_page(
+            'decano',
             'Debug - Decano Astrológico',
             'Debug',
             'manage_options',
             'decano-debug',
             [$this, 'render_debug']
+        );
+
+        add_submenu_page(
+            'decano',
+            'Páginas - Decano Astrológico',
+            'Páginas',
+            'manage_options',
+            'decano-pages',
+            [$this, 'render_pages']
         );
     }
 
@@ -778,6 +796,66 @@ class DA_Admin {
                     </tbody>
                 </table>
 
+                <!-- DOMPDF para PDFs -->
+                <h3>DOMPDF (Generación de PDFs)</h3>
+                <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                    <tbody>
+                        <?php if (isset($checks['dompdf'])): ?>
+                            <tr>
+                                <th style="width: 200px;">Estado</th>
+                                <td>
+                                    <span class="da-status-badge da-status-<?php echo $checks['dompdf']['available'] === 'OK' ? 'completed' : 'failed'; ?>">
+                                        <?php echo esc_html($checks['dompdf']['available']); ?>
+                                    </span>
+                                    <?php if ($checks['dompdf']['available'] !== 'OK'): ?>
+                                        <?php
+                                        $install_url = wp_nonce_url(
+                                            admin_url('admin-post.php?action=fraktal_install_dompdf'),
+                                            'fraktal_install_dompdf'
+                                        );
+                                        ?>
+                                        <a href="<?php echo esc_url($install_url); ?>" class="button button-small button-primary" style="margin-left: 10px;">
+                                            Instalar DOMPDF
+                                        </a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Método de Carga</th>
+                                <td><code><?php echo esc_html($checks['dompdf']['load_method'] ?: 'ninguno'); ?></code></td>
+                            </tr>
+                            <tr>
+                                <th>Composer (vendor/)</th>
+                                <td>
+                                    <span class="da-status-badge da-status-<?php echo $checks['dompdf']['composer_exists'] === 'YES' ? 'completed' : 'pending'; ?>">
+                                        <?php echo esc_html($checks['dompdf']['composer_exists']); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Bundled (lib/)</th>
+                                <td>
+                                    <span class="da-status-badge da-status-<?php echo $checks['dompdf']['bundled_exists'] === 'YES' ? 'completed' : 'pending'; ?>">
+                                        <?php echo esc_html($checks['dompdf']['bundled_exists']); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Directorio Escribible</th>
+                                <td>
+                                    <span class="da-status-badge da-status-<?php echo $checks['dompdf']['lib_writable'] === 'YES' ? 'completed' : 'failed'; ?>">
+                                        <?php echo esc_html($checks['dompdf']['lib_writable']); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="2">No se pudo verificar el estado de DOMPDF.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
                 <!-- Build de React -->
                 <h3>Build de React</h3>
                 <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
@@ -1139,6 +1217,703 @@ class DA_Admin {
         }
 
         return $limits;
+    }
+
+    /**
+     * Renderizar página de gestión de páginas WordPress
+     */
+    public function render_pages() {
+        require_once DECANO_PLUGIN_DIR . 'includes/class-da-page-setup.php';
+
+        // Procesar acción de crear todas las páginas
+        if (isset($_POST['da_create_all_pages'])) {
+            check_admin_referer('da_pages_management');
+
+            $results = DA_Page_Setup::create_all_pages();
+
+            if (!empty($results['created'])) {
+                echo '<div class="notice notice-success"><p>Se crearon ' . count($results['created']) . ' página(s) correctamente.</p></div>';
+            }
+            if (!empty($results['existing'])) {
+                echo '<div class="notice notice-info"><p>' . count($results['existing']) . ' página(s) ya existían.</p></div>';
+            }
+            if (!empty($results['errors'])) {
+                echo '<div class="notice notice-error"><p>Errores al crear ' . count($results['errors']) . ' página(s).</p></div>';
+            }
+        }
+
+        // Procesar acción de crear página individual
+        if (isset($_POST['da_create_single_page'])) {
+            check_admin_referer('da_pages_management');
+
+            $page_key = sanitize_text_field($_POST['page_key']);
+            $pages_config = DA_Page_Setup::PAGES;
+
+            if (isset($pages_config[$page_key])) {
+                $result = DA_Page_Setup::create_page($page_key, $pages_config[$page_key]);
+
+                if ($result['status'] === 'created') {
+                    echo '<div class="notice notice-success"><p>Página "' . esc_html($pages_config[$page_key]['title']) . '" creada correctamente.</p></div>';
+                } elseif ($result['status'] === 'existing') {
+                    echo '<div class="notice notice-info"><p>La página ya existe.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Error: ' . esc_html($result['error']) . '</p></div>';
+                }
+            }
+        }
+
+        // Obtener estado de las páginas
+        $pages_status = DA_Page_Setup::check_pages_status();
+
+        ?>
+        <div class="wrap">
+            <h1>Gestión de Páginas - Decano Astrológico</h1>
+
+            <p class="description">
+                Aquí puedes crear y gestionar las páginas de WordPress necesarias para el funcionamiento del plugin.
+                Cada página usa un shortcode específico para mostrar la funcionalidad correspondiente.
+            </p>
+
+            <!-- Botón crear todas -->
+            <div style="margin: 20px 0;">
+                <form method="post" style="display: inline-block;">
+                    <?php wp_nonce_field('da_pages_management'); ?>
+                    <input type="hidden" name="da_create_all_pages" value="1" />
+                    <button type="submit" class="button button-primary button-hero">
+                        🚀 Crear Todas las Páginas
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tabla de páginas -->
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Página</th>
+                        <th style="width: 15%;">Slug</th>
+                        <th style="width: 25%;">Shortcode</th>
+                        <th style="width: 10%;">Estado</th>
+                        <th style="width: 15%;">URL</th>
+                        <th style="width: 15%;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $pages_config = DA_Page_Setup::PAGES;
+                    foreach ($pages_status as $key => $page):
+                        $config = $pages_config[$key];
+                    ?>
+                        <tr>
+                            <td>
+                                <strong><?php echo esc_html($page['title']); ?></strong>
+                                <br>
+                                <small class="description">
+                                    <?php
+                                    switch ($key) {
+                                        case 'landing':
+                                            echo 'Página de captación con formulario gratuito';
+                                            break;
+                                        case 'mi_informe':
+                                            echo 'Visualizador del informe free generado';
+                                            break;
+                                        case 'dashboard':
+                                            echo 'Panel de control del usuario';
+                                            break;
+                                        case 'generador':
+                                            echo 'Wizard para generar informes (usuarios de pago)';
+                                            break;
+                                        case 'planes':
+                                            echo 'Comparación de planes y precios';
+                                            break;
+                                        case 'upgrade':
+                                            echo 'Landing para upgrade de Free a Premium';
+                                            break;
+                                        case 'historial':
+                                            echo 'Lista de informes generados por el usuario';
+                                            break;
+                                    }
+                                    ?>
+                                </small>
+                            </td>
+                            <td><code>/<?php echo esc_html($page['slug']); ?></code></td>
+                            <td><code style="font-size: 11px;"><?php echo esc_html($config['shortcode']); ?></code></td>
+                            <td>
+                                <?php if ($page['exists']): ?>
+                                    <span class="da-status-badge da-status-<?php echo $page['status'] === 'publish' ? 'completed' : 'pending'; ?>">
+                                        <?php echo $page['status'] === 'publish' ? '✓ Publicada' : ucfirst($page['status']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="da-status-badge da-status-failed">✗ No existe</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($page['exists'] && $page['url']): ?>
+                                    <a href="<?php echo esc_url($page['url']); ?>" target="_blank" class="button button-small">
+                                        Ver 🔗
+                                    </a>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($page['exists']): ?>
+                                    <a href="<?php echo admin_url('post.php?post=' . $page['page_id'] . '&action=edit'); ?>" class="button button-small">
+                                        Editar
+                                    </a>
+                                <?php else: ?>
+                                    <form method="post" style="display: inline;">
+                                        <?php wp_nonce_field('da_pages_management'); ?>
+                                        <input type="hidden" name="da_create_single_page" value="1" />
+                                        <input type="hidden" name="page_key" value="<?php echo esc_attr($key); ?>" />
+                                        <button type="submit" class="button button-small button-primary">
+                                            Crear
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <!-- Información adicional -->
+            <div class="da-admin-section" style="margin-top: 30px;">
+                <h2>📋 Guía de Uso de las Páginas</h2>
+
+                <div class="card" style="max-width: 800px; padding: 20px; margin-bottom: 15px;">
+                    <h3>🎯 Flujo de Usuario Recomendado</h3>
+                    <ol>
+                        <li><strong>Landing (/informe-gratuito)</strong> → Usuario llega, completa formulario de datos de nacimiento</li>
+                        <li><strong>Mi Informe (/mi-informe)</strong> → Se muestra el informe gratuito con CTA para upgrade</li>
+                        <li><strong>Upgrade (/upgrade)</strong> → Usuario ve beneficios del plan Premium</li>
+                        <li><strong>Planes (/planes)</strong> → Comparación de planes, usuario elige y compra</li>
+                        <li><strong>Dashboard (/mi-cuenta)</strong> → Panel principal del usuario con sus informes</li>
+                        <li><strong>Generador (/generar-informe)</strong> → Usuarios de pago generan informes completos</li>
+                    </ol>
+                </div>
+
+                <div class="card" style="max-width: 800px; padding: 20px; margin-bottom: 15px;">
+                    <h3>🔗 Shortcodes Disponibles</h3>
+                    <table class="wp-list-table widefat" style="margin-top: 10px;">
+                        <thead>
+                            <tr>
+                                <th>Shortcode</th>
+                                <th>Descripción</th>
+                                <th>Parámetros</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>[decano-free-report-form]</code></td>
+                                <td>Formulario para informe gratuito</td>
+                                <td><code>redirect_after="/url"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>[decano-free-report-viewer]</code></td>
+                                <td>Visor de informe gratuito</td>
+                                <td><code>show_upgrade_cta="true/false"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>[decano-user-dashboard]</code></td>
+                                <td>Dashboard del usuario</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td><code>[decano-report-generator]</code></td>
+                                <td>Generador de informes completo</td>
+                                <td><code>plan_check="true/false"</code>, <code>show_upgrade="true/false"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>[decano-plans]</code></td>
+                                <td>Selector de planes</td>
+                                <td><code>highlighted="premium/enterprise"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>[decano-upgrade-landing]</code></td>
+                                <td>Landing de upgrade</td>
+                                <td><code>show_free_cta="true/false"</code>, <code>highlight="plan"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>[decano-report-history]</code></td>
+                                <td>Historial de informes</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td><code>[fraktal_panel]</code></td>
+                                <td>Alias de report-generator (legacy)</td>
+                                <td>-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card" style="max-width: 800px; padding: 20px;">
+                    <h3>⚙️ Configuración del Menú de Navegación</h3>
+                    <p>Para añadir estas páginas al menú de tu sitio:</p>
+                    <ol>
+                        <li>Ve a <strong>Apariencia → Menús</strong></li>
+                        <li>Selecciona las páginas creadas</li>
+                        <li>Añádelas al menú deseado</li>
+                        <li>Organiza el orden según el flujo de usuario</li>
+                    </ol>
+                    <p><strong>Menú sugerido:</strong> Inicio | <a href="#">Informe Gratuito</a> | <a href="#">Planes</a> | <a href="#">Mi Cuenta</a></p>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .da-status-badge {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .da-status-completed { background: #d4edda; color: #155724; }
+            .da-status-pending { background: #fff3cd; color: #856404; }
+            .da-status-failed { background: #f8d7da; color: #721c24; }
+        </style>
+        <?php
+    }
+
+    /**
+     * Renderizar página de personalización de informes
+     */
+    public function render_customization() {
+        // Procesar guardado de configuración
+        if (isset($_POST['da_save_branding'])) {
+            check_admin_referer('da_customization');
+
+            $branding = [
+                'company_name'    => sanitize_text_field($_POST['company_name']),
+                'tagline'         => sanitize_text_field($_POST['tagline']),
+                'primary_color'   => sanitize_hex_color($_POST['primary_color']),
+                'secondary_color' => sanitize_hex_color($_POST['secondary_color']),
+                'accent_color'    => sanitize_hex_color($_POST['accent_color']),
+                'text_color'      => sanitize_hex_color($_POST['text_color']),
+                'logo_url'        => esc_url_raw($_POST['logo_url']),
+                'footer_text'     => sanitize_text_field($_POST['footer_text']),
+                'website'         => esc_url_raw($_POST['website']),
+            ];
+
+            update_option('da_pdf_branding', $branding);
+            echo '<div class="notice notice-success"><p>Configuración de branding guardada correctamente.</p></div>';
+        }
+
+        // Procesar guardado de prompt personalizado
+        if (isset($_POST['da_save_prompt'])) {
+            check_admin_referer('da_customization');
+
+            $report_type = sanitize_text_field($_POST['report_type_prompt']);
+            $custom_prompt = wp_kses_post($_POST['custom_prompt']);
+
+            $prompts = get_option('da_custom_prompts', []);
+            $prompts[$report_type] = $custom_prompt;
+            update_option('da_custom_prompts', $prompts);
+
+            echo '<div class="notice notice-success"><p>Prompt personalizado guardado para "' . esc_html($report_type) . '".</p></div>';
+        }
+
+        // Obtener configuración actual
+        $branding = get_option('da_pdf_branding', []);
+        $defaults = [
+            'company_name'    => 'Programa Fraktal',
+            'tagline'         => 'Astrología Psicológica',
+            'primary_color'   => '#4A55A2',
+            'secondary_color' => '#9370DB',
+            'accent_color'    => '#FFD700',
+            'text_color'      => '#333333',
+            'logo_url'        => '',
+            'footer_text'     => '© Programa Fraktal - Astrología Psicológica',
+            'website'         => 'https://programafraktal.com',
+        ];
+        $branding = wp_parse_args($branding, $defaults);
+
+        // Obtener tipos de informe
+        $report_types = $this->get_local_report_types();
+
+        // Obtener prompts personalizados
+        $custom_prompts = get_option('da_custom_prompts', []);
+
+        ?>
+        <div class="wrap">
+            <h1>Personalización de Informes</h1>
+
+            <p class="description">
+                Personaliza el aspecto visual de los PDFs generados y los prompts utilizados para crear el contenido.
+            </p>
+
+            <!-- Tabs -->
+            <h2 class="nav-tab-wrapper">
+                <a href="#tab-branding" class="nav-tab nav-tab-active" onclick="switchCustomTab(event, 'branding')">Branding PDF</a>
+                <a href="#tab-types" class="nav-tab" onclick="switchCustomTab(event, 'types')">Tipos de Informe</a>
+                <a href="#tab-prompts" class="nav-tab" onclick="switchCustomTab(event, 'prompts')">Prompts IA</a>
+            </h2>
+
+            <!-- Tab: Branding -->
+            <div id="tab-branding" class="tab-content">
+                <h2>🎨 Configuración de Branding para PDFs</h2>
+
+                <form method="post">
+                    <?php wp_nonce_field('da_customization'); ?>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="company_name">Nombre de la Empresa</label></th>
+                            <td>
+                                <input type="text" name="company_name" id="company_name" value="<?php echo esc_attr($branding['company_name']); ?>" class="regular-text" />
+                                <p class="description">Aparece en la portada del PDF.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="tagline">Eslogan</label></th>
+                            <td>
+                                <input type="text" name="tagline" id="tagline" value="<?php echo esc_attr($branding['tagline']); ?>" class="regular-text" />
+                                <p class="description">Subtítulo debajo del nombre de la empresa.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="logo_url">URL del Logo</label></th>
+                            <td>
+                                <input type="url" name="logo_url" id="logo_url" value="<?php echo esc_url($branding['logo_url']); ?>" class="regular-text" />
+                                <button type="button" class="button" onclick="openMediaLibrary('logo_url')">Seleccionar Imagen</button>
+                                <p class="description">Logo que aparece en la portada (recomendado: 200x200px PNG).</p>
+                                <?php if (!empty($branding['logo_url'])): ?>
+                                    <br><img src="<?php echo esc_url($branding['logo_url']); ?>" style="max-width: 150px; margin-top: 10px;" />
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="website">Sitio Web</label></th>
+                            <td>
+                                <input type="url" name="website" id="website" value="<?php echo esc_url($branding['website']); ?>" class="regular-text" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="footer_text">Texto del Pie de Página</label></th>
+                            <td>
+                                <input type="text" name="footer_text" id="footer_text" value="<?php echo esc_attr($branding['footer_text']); ?>" class="large-text" />
+                            </td>
+                        </tr>
+                    </table>
+
+                    <h3>Colores</h3>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="primary_color">Color Primario</label></th>
+                            <td>
+                                <input type="color" name="primary_color" id="primary_color" value="<?php echo esc_attr($branding['primary_color']); ?>" />
+                                <code><?php echo esc_html($branding['primary_color']); ?></code>
+                                <p class="description">Color principal para títulos y encabezados.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="secondary_color">Color Secundario</label></th>
+                            <td>
+                                <input type="color" name="secondary_color" id="secondary_color" value="<?php echo esc_attr($branding['secondary_color']); ?>" />
+                                <code><?php echo esc_html($branding['secondary_color']); ?></code>
+                                <p class="description">Color para acentos y subtítulos.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="accent_color">Color de Acento</label></th>
+                            <td>
+                                <input type="color" name="accent_color" id="accent_color" value="<?php echo esc_attr($branding['accent_color']); ?>" />
+                                <code><?php echo esc_html($branding['accent_color']); ?></code>
+                                <p class="description">Color para destacados y líneas decorativas.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="text_color">Color del Texto</label></th>
+                            <td>
+                                <input type="color" name="text_color" id="text_color" value="<?php echo esc_attr($branding['text_color']); ?>" />
+                                <code><?php echo esc_html($branding['text_color']); ?></code>
+                                <p class="description">Color del texto principal del contenido.</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                        <input type="submit" name="da_save_branding" class="button button-primary" value="Guardar Branding" />
+                    </p>
+                </form>
+
+                <!-- Preview del branding -->
+                <div class="da-branding-preview" style="margin-top: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 600px;">
+                    <h3>Vista Previa de Colores</h3>
+                    <div style="display: flex; gap: 20px; margin-top: 15px;">
+                        <div style="width: 100px; height: 60px; background: <?php echo esc_attr($branding['primary_color']); ?>; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">Primario</div>
+                        <div style="width: 100px; height: 60px; background: <?php echo esc_attr($branding['secondary_color']); ?>; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">Secundario</div>
+                        <div style="width: 100px; height: 60px; background: <?php echo esc_attr($branding['accent_color']); ?>; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: #333; font-size: 12px;">Acento</div>
+                        <div style="width: 100px; height: 60px; background: <?php echo esc_attr($branding['text_color']); ?>; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">Texto</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Tipos de Informe -->
+            <div id="tab-types" class="tab-content" style="display: none;">
+                <h2>📋 Tipos de Informe Disponibles</h2>
+
+                <p class="description">
+                    Los tipos de informe se configuran en el archivo <code>class-report-type-config.php</code>.
+                    Aquí puedes ver los tipos disponibles y sus configuraciones.
+                </p>
+
+                <table class="wp-list-table widefat fixed striped" style="max-width: 1000px;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th>Páginas Est.</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        if (class_exists('Fraktal_Report_Type_Config')) {
+                            $types = Fraktal_Report_Type_Config::get_all_types();
+                            foreach ($types as $type_id => $config) {
+                                ?>
+                                <tr>
+                                    <td><code><?php echo esc_html($type_id); ?></code></td>
+                                    <td><strong><?php echo esc_html($config['name'] ?? $type_id); ?></strong></td>
+                                    <td><span class="da-category-badge"><?php echo esc_html($config['category'] ?? 'natal'); ?></span></td>
+                                    <td><?php echo esc_html($config['estimated_pages'] ?? '10'); ?></td>
+                                    <td>
+                                        <span class="da-status-badge da-status-completed">Activo</span>
+                                    </td>
+                                </tr>
+                                <?php
+                            }
+                        } else {
+                            foreach ($report_types as $type) {
+                                ?>
+                                <tr>
+                                    <td><code><?php echo esc_html($type['type_id']); ?></code></td>
+                                    <td><strong><?php echo esc_html($type['name']); ?></strong></td>
+                                    <td>-</td>
+                                    <td>10</td>
+                                    <td>
+                                        <span class="da-status-badge da-status-completed">Activo</span>
+                                    </td>
+                                </tr>
+                                <?php
+                            }
+                        }
+                        ?>
+                    </tbody>
+                </table>
+
+                <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
+                    <h3>Añadir Nuevos Tipos de Informe</h3>
+                    <p>Para añadir nuevos tipos de informe, edita el archivo:</p>
+                    <code style="display: block; padding: 10px; background: #f5f5f5; margin: 10px 0;">
+                        <?php echo esc_html(DECANO_PLUGIN_DIR); ?>includes/class-report-type-config.php
+                    </code>
+                    <p>Cada tipo de informe requiere:</p>
+                    <ul style="list-style: disc; padding-left: 20px;">
+                        <li><strong>name</strong> - Nombre visible para el usuario</li>
+                        <li><strong>slug</strong> - Identificador único</li>
+                        <li><strong>category</strong> - Categoría (natal, synastry, transit, etc.)</li>
+                        <li><strong>requires</strong> - Campos requeridos (fecha, hora, lugar, etc.)</li>
+                        <li><strong>prompt_template</strong> - Nombre de la plantilla de prompt</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Tab: Prompts IA -->
+            <div id="tab-prompts" class="tab-content" style="display: none;">
+                <h2>🤖 Prompts de Inteligencia Artificial</h2>
+
+                <p class="description">
+                    Personaliza los prompts utilizados para generar el contenido de los informes.
+                    Puedes sobrescribir los prompts por defecto para cada tipo de informe.
+                </p>
+
+                <form method="post">
+                    <?php wp_nonce_field('da_customization'); ?>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="report_type_prompt">Tipo de Informe</label></th>
+                            <td>
+                                <select name="report_type_prompt" id="report_type_prompt" class="regular-text">
+                                    <option value="">-- Selecciona un tipo --</option>
+                                    <?php
+                                    if (class_exists('Fraktal_Report_Type_Config')) {
+                                        $types = Fraktal_Report_Type_Config::get_all_types();
+                                        foreach ($types as $type_id => $config) {
+                                            echo '<option value="' . esc_attr($type_id) . '">' . esc_html($config['name'] ?? $type_id) . '</option>';
+                                        }
+                                    } else {
+                                        foreach ($report_types as $type) {
+                                            echo '<option value="' . esc_attr($type['type_id']) . '">' . esc_html($type['name']) . '</option>';
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="custom_prompt">Prompt Personalizado</label></th>
+                            <td>
+                                <textarea name="custom_prompt" id="custom_prompt" rows="15" class="large-text code" style="font-family: monospace;"><?php
+                                    // Cargar prompt existente si se selecciona uno
+                                ?></textarea>
+                                <p class="description">
+                                    Variables disponibles: <code>{{nombre}}</code>, <code>{{fecha_nacimiento}}</code>, <code>{{hora_nacimiento}}</code>, <code>{{lugar}}</code>, <code>{{signos}}</code>, <code>{{planetas}}</code>, <code>{{casas}}</code>, <code>{{aspectos}}</code>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                        <input type="submit" name="da_save_prompt" class="button button-primary" value="Guardar Prompt" />
+                    </p>
+                </form>
+
+                <!-- Lista de prompts personalizados -->
+                <?php if (!empty($custom_prompts)): ?>
+                    <div class="da-admin-section" style="margin-top: 30px;">
+                        <h3>Prompts Personalizados Guardados</h3>
+                        <table class="wp-list-table widefat fixed striped" style="max-width: 800px;">
+                            <thead>
+                                <tr>
+                                    <th>Tipo de Informe</th>
+                                    <th>Longitud del Prompt</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($custom_prompts as $type_id => $prompt): ?>
+                                    <tr>
+                                        <td><strong><?php echo esc_html($type_id); ?></strong></td>
+                                        <td><?php echo number_format(strlen($prompt)); ?> caracteres</td>
+                                        <td>
+                                            <button type="button" class="button button-small" onclick="loadPrompt('<?php echo esc_js($type_id); ?>')">
+                                                Editar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Ejemplo de prompt -->
+                <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
+                    <h3>Ejemplo de Prompt para Carta Natal</h3>
+                    <pre style="background: #f5f5f5; padding: 15px; overflow-x: auto; font-size: 12px; line-height: 1.5;">Eres un astrólogo profesional experto en astrología psicológica.
+
+Genera un análisis completo y personalizado de la carta natal para:
+
+**Datos del consultante:**
+- Nombre: {{nombre}}
+- Fecha de nacimiento: {{fecha_nacimiento}}
+- Hora de nacimiento: {{hora_nacimiento}}
+- Lugar de nacimiento: {{lugar}}
+
+**Posiciones planetarias:**
+{{planetas}}
+
+**Casas astrológicas:**
+{{casas}}
+
+**Aspectos principales:**
+{{aspectos}}
+
+Estructura el informe con las siguientes secciones:
+1. Introducción personalizada
+2. El Sol: Tu esencia y propósito de vida
+3. La Luna: Tu mundo emocional
+4. El Ascendente: Tu máscara social
+5. Mercurio: Tu mente y comunicación
+6. Venus: Amor y valores
+7. Marte: Acción y deseo
+8. Aspectos más relevantes
+9. Conclusiones y recomendaciones
+
+Utiliza un tono cálido, profesional y empoderador.</pre>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function switchCustomTab(event, tab) {
+            event.preventDefault();
+
+            // Ocultar todos los tabs
+            document.querySelectorAll('.tab-content').forEach(function(el) {
+                el.style.display = 'none';
+            });
+
+            // Remover clase activa
+            document.querySelectorAll('.nav-tab').forEach(function(el) {
+                el.classList.remove('nav-tab-active');
+            });
+
+            // Mostrar tab seleccionado
+            document.getElementById('tab-' + tab).style.display = 'block';
+            event.target.classList.add('nav-tab-active');
+        }
+
+        // Media Library para logo
+        function openMediaLibrary(inputId) {
+            if (typeof wp !== 'undefined' && wp.media) {
+                var frame = wp.media({
+                    title: 'Seleccionar Logo',
+                    button: { text: 'Usar esta imagen' },
+                    multiple: false
+                });
+
+                frame.on('select', function() {
+                    var attachment = frame.state().get('selection').first().toJSON();
+                    document.getElementById(inputId).value = attachment.url;
+                });
+
+                frame.open();
+            } else {
+                alert('El selector de medios no está disponible.');
+            }
+        }
+
+        // Cargar prompt existente
+        var customPrompts = <?php echo json_encode($custom_prompts); ?>;
+        function loadPrompt(typeId) {
+            if (customPrompts[typeId]) {
+                document.getElementById('report_type_prompt').value = typeId;
+                document.getElementById('custom_prompt').value = customPrompts[typeId];
+                // Ir al tab de prompts
+                switchCustomTab({preventDefault: function(){}, target: document.querySelector('[onclick*="prompts"]')}, 'prompts');
+            }
+        }
+        </script>
+
+        <style>
+        .da-category-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .da-status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .da-status-completed { background: #d4edda; color: #155724; }
+        .da-status-pending { background: #fff3cd; color: #856404; }
+        .da-status-failed { background: #f8d7da; color: #721c24; }
+        </style>
+        <?php
+
+        // Enqueue media scripts for logo upload
+        wp_enqueue_media();
     }
 
     /**
