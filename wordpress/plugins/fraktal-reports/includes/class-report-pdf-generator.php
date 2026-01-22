@@ -1,6 +1,6 @@
 <?php
 /**
- * Generador de PDF para informes astrológicos usando TCPDF.
+ * Generador de PDF para informes astrológicos usando DOMPDF.
  *
  * @package FraktalReports
  */
@@ -9,31 +9,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Incluir TCPDF si no está cargado.
-if ( ! class_exists( 'TCPDF' ) ) {
-	$tcpdf_path = DECANO_PLUGIN_DIR . 'vendor/tcpdf/tcpdf.php';
-	if ( file_exists( $tcpdf_path ) ) {
-		require_once $tcpdf_path;
-	} else {
-		// Fallback: intentar cargar desde composer autoload.
-		$composer_autoload = DECANO_PLUGIN_DIR . 'vendor/autoload.php';
-		if ( file_exists( $composer_autoload ) ) {
-			require_once $composer_autoload;
-		}
-	}
+// Cargar DOMPDF via Composer autoload.
+$autoload_path = DECANO_PLUGIN_DIR . 'vendor/autoload.php';
+if ( file_exists( $autoload_path ) ) {
+	require_once $autoload_path;
 }
 
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
 /**
- * Clase para generar PDFs de informes astrológicos.
+ * Clase para generar PDFs de informes astrológicos con DOMPDF.
  */
 class Fraktal_Report_PDF_Generator {
 
 	/**
-	 * Instancia de TCPDF.
+	 * Instancia de DOMPDF.
 	 *
-	 * @var TCPDF
+	 * @var Dompdf
 	 */
-	private $pdf;
+	private $dompdf;
 
 	/**
 	 * Configuración de branding.
@@ -53,15 +48,15 @@ class Fraktal_Report_PDF_Generator {
 	 * Configuración por defecto del branding.
 	 */
 	const DEFAULT_BRANDING = array(
-		'company_name'    => 'Programa Fraktal',
-		'tagline'         => 'Astrología Psicológica',
-		'primary_color'   => array( 74, 85, 162 ),    // #4A55A2
-		'secondary_color' => array( 147, 112, 219 ),  // #9370DB
-		'accent_color'    => array( 255, 215, 0 ),    // #FFD700
-		'text_color'      => array( 51, 51, 51 ),     // #333333
-		'logo_path'       => '',
-		'footer_text'     => '© Programa Fraktal - Astrología Psicológica',
-		'website'         => 'https://programafraktal.com',
+		'company_name'     => 'Programa Fraktal',
+		'tagline'          => 'Astrología Psicológica',
+		'primary_color'    => '#4A55A2',
+		'secondary_color'  => '#9370DB',
+		'accent_color'     => '#FFD700',
+		'text_color'       => '#333333',
+		'logo_url'         => '',
+		'footer_text'      => '© Programa Fraktal - Astrología Psicológica',
+		'website'          => 'https://programafraktal.com',
 	);
 
 	/**
@@ -76,31 +71,43 @@ class Fraktal_Report_PDF_Generator {
 	/**
 	 * Genera el PDF completo del informe.
 	 *
-	 * @param array $content     Contenido del informe (secciones).
-	 * @param array $report_data Datos del informe (chart_data, tipo, etc.).
+	 * @param array|string $content     Contenido del informe (secciones o texto).
+	 * @param array        $report_data Datos del informe (chart_data, tipo, etc.).
 	 * @return string|WP_Error Ruta del archivo PDF generado o error.
 	 */
 	public function generate( $content, $report_data ) {
-		if ( ! class_exists( 'TCPDF' ) ) {
-			return new WP_Error( 'tcpdf_missing', 'TCPDF no está instalado. Ejecuta: composer require tecnickcom/tcpdf' );
+		if ( ! class_exists( 'Dompdf\Dompdf' ) ) {
+			return new WP_Error( 'dompdf_missing', 'DOMPDF no está instalado. Ejecuta: composer require dompdf/dompdf' );
 		}
 
 		$this->report_data = $report_data;
 
-		// Crear instancia de TCPDF.
-		$this->pdf = new TCPDF( 'P', 'mm', 'A4', true, 'UTF-8', false );
+		// Configurar DOMPDF.
+		$options = new Options();
+		$options->set( 'isHtml5ParserEnabled', true );
+		$options->set( 'isRemoteEnabled', true );
+		$options->set( 'defaultFont', 'DejaVu Sans' );
+		$options->set( 'isFontSubsettingEnabled', true );
+		$options->set( 'tempDir', sys_get_temp_dir() );
 
-		// Configurar documento.
-		$this->setup_document();
+		$this->dompdf = new Dompdf( $options );
 
-		// Agregar portada.
-		$this->add_cover_page();
+		// Si el contenido es string, convertirlo a secciones.
+		if ( is_string( $content ) ) {
+			$content = $this->parse_content_to_sections( $content );
+		}
 
-		// Agregar tabla de contenidos (marcador).
-		$this->pdf->Bookmark( 'Índice', 0, 0, '', '', array( 0, 0, 0 ) );
+		// Generar HTML completo.
+		$html = $this->render_html( $content );
 
-		// Agregar secciones de contenido.
-		$this->add_content_sections( $content );
+		// Cargar HTML en DOMPDF.
+		$this->dompdf->loadHtml( $html );
+
+		// Configurar papel A4.
+		$this->dompdf->setPaper( 'A4', 'portrait' );
+
+		// Renderizar PDF.
+		$this->dompdf->render();
 
 		// Generar archivo temporal.
 		$upload_dir = wp_upload_dir();
@@ -108,7 +115,6 @@ class Fraktal_Report_PDF_Generator {
 
 		if ( ! file_exists( $temp_dir ) ) {
 			wp_mkdir_p( $temp_dir );
-			// Crear .htaccess para proteger el directorio.
 			file_put_contents( $temp_dir . '.htaccess', 'deny from all' );
 		}
 
@@ -122,9 +128,10 @@ class Fraktal_Report_PDF_Generator {
 		$file_path = $temp_dir . $filename;
 
 		// Guardar PDF.
-		$this->pdf->Output( $file_path, 'F' );
+		$pdf_content = $this->dompdf->output();
+		$saved = file_put_contents( $file_path, $pdf_content );
 
-		if ( ! file_exists( $file_path ) ) {
+		if ( false === $saved ) {
 			return new WP_Error( 'pdf_save_error', 'No se pudo guardar el PDF.' );
 		}
 
@@ -132,242 +139,424 @@ class Fraktal_Report_PDF_Generator {
 	}
 
 	/**
-	 * Configura el documento PDF.
+	 * Genera el HTML completo del informe.
+	 *
+	 * @param array $sections Secciones del informe.
+	 * @return string HTML completo.
 	 */
-	private function setup_document() {
-		$report_type = $this->report_data['report_type'] ?? 'individual';
-		$chart_name  = $this->report_data['chart_name'] ?? 'Sin nombre';
-
-		// Información del documento.
-		$this->pdf->SetCreator( $this->branding['company_name'] );
-		$this->pdf->SetAuthor( $this->branding['company_name'] );
-		$this->pdf->SetTitle( 'Informe Astrológico - ' . $chart_name );
-		$this->pdf->SetSubject( 'Informe de ' . ucfirst( $report_type ) );
-		$this->pdf->SetKeywords( 'astrología, carta natal, informe, ' . $report_type );
-
-		// Eliminar cabecera y pie de página por defecto.
-		$this->pdf->setPrintHeader( false );
-		$this->pdf->setPrintFooter( false );
-
-		// Márgenes.
-		$this->pdf->SetMargins( 20, 25, 20 );
-		$this->pdf->SetAutoPageBreak( true, 25 );
-
-		// Fuentes.
-		$this->pdf->SetFont( 'helvetica', '', 11 );
-	}
-
-	/**
-	 * Agrega la portada del informe.
-	 */
-	private function add_cover_page() {
-		$this->pdf->AddPage();
-
-		// Fondo con gradiente (simulado con rectángulo).
-		$this->pdf->SetFillColor(
-			$this->branding['primary_color'][0],
-			$this->branding['primary_color'][1],
-			$this->branding['primary_color'][2]
-		);
-		$this->pdf->Rect( 0, 0, 210, 100, 'F' );
-
-		// Logo (si existe).
-		if ( ! empty( $this->branding['logo_path'] ) && file_exists( $this->branding['logo_path'] ) ) {
-			$this->pdf->Image( $this->branding['logo_path'], 75, 20, 60, 0, '', '', '', false, 300 );
-		}
-
-		// Nombre de la empresa.
-		$this->pdf->SetY( 55 );
-		$this->pdf->SetTextColor( 255, 255, 255 );
-		$this->pdf->SetFont( 'helvetica', 'B', 28 );
-		$this->pdf->Cell( 0, 15, $this->branding['company_name'], 0, 1, 'C' );
-
-		// Tagline.
-		$this->pdf->SetFont( 'helvetica', 'I', 14 );
-		$this->pdf->Cell( 0, 8, $this->branding['tagline'], 0, 1, 'C' );
-
-		// Tipo de informe.
+	private function render_html( $sections ) {
 		$report_type  = $this->report_data['report_type'] ?? 'individual';
-		$type_config  = Fraktal_Report_Type_Config::get_type( $report_type );
+		$type_config  = class_exists( 'Fraktal_Report_Type_Config' )
+			? Fraktal_Report_Type_Config::get_type( $report_type )
+			: null;
 		$report_title = $type_config['name'] ?? 'Informe Astrológico';
+		$chart_name   = $this->report_data['chart_name'] ?? 'Sin nombre';
+		$birth_data   = $this->report_data['birth_data'] ?? array();
 
-		$this->pdf->SetY( 120 );
-		$this->pdf->SetTextColor(
-			$this->branding['primary_color'][0],
-			$this->branding['primary_color'][1],
-			$this->branding['primary_color'][2]
-		);
-		$this->pdf->SetFont( 'helvetica', 'B', 24 );
-		$this->pdf->Cell( 0, 12, $report_title, 0, 1, 'C' );
+		ob_start();
+		?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<title><?php echo esc_html( $report_title . ' - ' . $chart_name ); ?></title>
+	<style>
+		<?php echo $this->get_css_styles(); ?>
+	</style>
+</head>
+<body>
+	<!-- PORTADA -->
+	<div class="cover-page">
+		<div class="cover-header">
+			<?php if ( ! empty( $this->branding['logo_url'] ) ) : ?>
+				<img src="<?php echo esc_url( $this->branding['logo_url'] ); ?>" class="logo" alt="Logo">
+			<?php endif; ?>
+			<h1 class="company-name"><?php echo esc_html( $this->branding['company_name'] ); ?></h1>
+			<p class="tagline"><?php echo esc_html( $this->branding['tagline'] ); ?></p>
+		</div>
 
-		// Línea decorativa.
-		$this->pdf->SetY( 140 );
-		$this->pdf->SetDrawColor(
-			$this->branding['accent_color'][0],
-			$this->branding['accent_color'][1],
-			$this->branding['accent_color'][2]
-		);
-		$this->pdf->SetLineWidth( 1 );
-		$this->pdf->Line( 60, 140, 150, 140 );
+		<div class="cover-content">
+			<h2 class="report-title"><?php echo esc_html( $report_title ); ?></h2>
+			<div class="decorative-line"></div>
 
-		// Nombre del consultante.
-		$chart_name = $this->report_data['chart_name'] ?? '';
-		if ( ! empty( $chart_name ) ) {
-			$this->pdf->SetY( 150 );
-			$this->pdf->SetTextColor(
-				$this->branding['text_color'][0],
-				$this->branding['text_color'][1],
-				$this->branding['text_color'][2]
-			);
-			$this->pdf->SetFont( 'helvetica', '', 18 );
-			$this->pdf->Cell( 0, 10, 'para', 0, 1, 'C' );
-			$this->pdf->SetFont( 'helvetica', 'B', 22 );
-			$this->pdf->Cell( 0, 12, $chart_name, 0, 1, 'C' );
-		}
+			<?php if ( ! empty( $chart_name ) ) : ?>
+				<p class="prepared-for">para</p>
+				<h3 class="chart-name"><?php echo esc_html( $chart_name ); ?></h3>
+			<?php endif; ?>
+		</div>
 
-		// Datos de nacimiento.
-		$birth_data = $this->report_data['birth_data'] ?? array();
-		if ( ! empty( $birth_data ) ) {
-			$this->pdf->SetY( 190 );
-			$this->pdf->SetFont( 'helvetica', '', 11 );
-			$this->pdf->SetTextColor( 100, 100, 100 );
+		<div class="cover-birth-data">
+			<?php if ( ! empty( $birth_data['fecha'] ) ) : ?>
+				<p><strong>Fecha:</strong> <?php echo esc_html( $birth_data['fecha'] ); ?></p>
+			<?php endif; ?>
+			<?php if ( ! empty( $birth_data['hora'] ) ) : ?>
+				<p><strong>Hora:</strong> <?php echo esc_html( $birth_data['hora'] ); ?></p>
+			<?php endif; ?>
+			<?php if ( ! empty( $birth_data['lugar'] ) ) : ?>
+				<p><strong>Lugar:</strong> <?php echo esc_html( $birth_data['lugar'] ); ?></p>
+			<?php endif; ?>
+		</div>
 
-			$birth_info = array();
-			if ( ! empty( $birth_data['fecha'] ) ) {
-				$birth_info[] = 'Fecha: ' . $birth_data['fecha'];
-			}
-			if ( ! empty( $birth_data['hora'] ) ) {
-				$birth_info[] = 'Hora: ' . $birth_data['hora'];
-			}
-			if ( ! empty( $birth_data['lugar'] ) ) {
-				$birth_info[] = 'Lugar: ' . $birth_data['lugar'];
-			}
+		<div class="cover-footer">
+			<p>Generado el <?php echo esc_html( gmdate( 'd/m/Y' ) ); ?></p>
+			<p><?php echo esc_html( $this->branding['website'] ); ?></p>
+		</div>
+	</div>
 
-			foreach ( $birth_info as $info ) {
-				$this->pdf->Cell( 0, 6, $info, 0, 1, 'C' );
-			}
-		}
+	<!-- ÍNDICE -->
+	<div class="page-break"></div>
+	<div class="toc-page">
+		<h2 class="toc-title">Índice</h2>
+		<ul class="toc-list">
+			<?php
+			$section_num = 1;
+			foreach ( $sections as $section ) :
+				$title = $section['title'] ?? "Sección {$section_num}";
+			?>
+				<li>
+					<span class="toc-number"><?php echo $section_num; ?>.</span>
+					<span class="toc-text"><?php echo esc_html( $title ); ?></span>
+				</li>
+			<?php
+				$section_num++;
+			endforeach;
+			?>
+		</ul>
+	</div>
 
-		// Fecha de generación.
-		$this->pdf->SetY( 250 );
-		$this->pdf->SetFont( 'helvetica', 'I', 9 );
-		$this->pdf->SetTextColor( 150, 150, 150 );
-		$this->pdf->Cell( 0, 5, 'Generado el ' . gmdate( 'd/m/Y' ), 0, 1, 'C' );
-		$this->pdf->Cell( 0, 5, $this->branding['website'], 0, 1, 'C' );
-	}
-
-	/**
-	 * Agrega las secciones de contenido.
-	 *
-	 * @param array $content Array de secciones con 'title' y 'content'.
-	 */
-	private function add_content_sections( $content ) {
-		// Si el contenido es un string, convertirlo a secciones.
-		if ( is_string( $content ) ) {
-			$content = $this->parse_content_to_sections( $content );
-		}
-
-		if ( empty( $content ) || ! is_array( $content ) ) {
-			return;
-		}
-
-		$section_number = 1;
-
-		foreach ( $content as $section ) {
-			$this->add_section( $section, $section_number );
-			$section_number++;
-		}
-	}
-
-	/**
-	 * Agrega una sección individual.
-	 *
-	 * @param array $section        Datos de la sección.
-	 * @param int   $section_number Número de sección.
-	 */
-	private function add_section( $section, $section_number ) {
-		$this->pdf->AddPage();
-
-		// Agregar bookmark para índice.
-		$title = $section['title'] ?? "Sección {$section_number}";
-		$this->pdf->Bookmark( $title, 0, 0, '', '', array( 0, 0, 0 ) );
-
-		// Cabecera de sección.
-		$this->add_section_header( $title, $section_number );
-
-		// Contenido.
+	<!-- SECCIONES DE CONTENIDO -->
+	<?php
+	$section_num = 1;
+	foreach ( $sections as $section ) :
+		$title   = $section['title'] ?? "Sección {$section_num}";
 		$content = $section['content'] ?? '';
-		$this->add_section_content( $content );
+	?>
+		<div class="page-break"></div>
+		<div class="content-section">
+			<div class="section-header">
+				<span class="section-number"><?php echo $section_num; ?></span>
+				<h2 class="section-title"><?php echo esc_html( $title ); ?></h2>
+			</div>
+			<div class="section-content">
+				<?php echo $this->markdown_to_html( $content ); ?>
+			</div>
+		</div>
+	<?php
+		$section_num++;
+	endforeach;
+	?>
 
-		// Pie de página.
-		$this->add_page_footer();
+	<!-- TABLA DE POSICIONES (si hay datos) -->
+	<?php if ( ! empty( $this->report_data['planets'] ) ) : ?>
+		<div class="page-break"></div>
+		<div class="content-section">
+			<div class="section-header">
+				<span class="section-number">A</span>
+				<h2 class="section-title">Posiciones Planetarias</h2>
+			</div>
+			<div class="section-content">
+				<?php echo $this->render_planets_table( $this->report_data['planets'] ); ?>
+			</div>
+		</div>
+	<?php endif; ?>
+
+	<!-- PIE DE PÁGINA EN CADA PÁGINA (via CSS) -->
+</body>
+</html>
+		<?php
+		return ob_get_clean();
 	}
 
 	/**
-	 * Agrega cabecera de sección.
+	 * Obtiene los estilos CSS para el PDF.
 	 *
-	 * @param string $title          Título de la sección.
-	 * @param int    $section_number Número de sección.
+	 * @return string CSS.
 	 */
-	private function add_section_header( $title, $section_number ) {
-		// Número de sección con círculo.
-		$this->pdf->SetFillColor(
-			$this->branding['primary_color'][0],
-			$this->branding['primary_color'][1],
-			$this->branding['primary_color'][2]
-		);
+	private function get_css_styles() {
+		$primary   = $this->branding['primary_color'];
+		$secondary = $this->branding['secondary_color'];
+		$accent    = $this->branding['accent_color'];
+		$text      = $this->branding['text_color'];
 
-		// Círculo con número.
-		$this->pdf->Circle( 25, 30, 8, 0, 360, 'F' );
-		$this->pdf->SetTextColor( 255, 255, 255 );
-		$this->pdf->SetFont( 'helvetica', 'B', 14 );
-		$this->pdf->SetXY( 17, 26 );
-		$this->pdf->Cell( 16, 8, (string) $section_number, 0, 0, 'C' );
+		return <<<CSS
+/* Reset y base */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
 
-		// Título.
-		$this->pdf->SetTextColor(
-			$this->branding['primary_color'][0],
-			$this->branding['primary_color'][1],
-			$this->branding['primary_color'][2]
-		);
-		$this->pdf->SetFont( 'helvetica', 'B', 18 );
-		$this->pdf->SetXY( 40, 25 );
-		$this->pdf->Cell( 150, 10, $title, 0, 1, 'L' );
+body {
+	font-family: 'DejaVu Sans', Arial, sans-serif;
+	font-size: 11pt;
+	line-height: 1.6;
+	color: {$text};
+}
 
-		// Línea bajo el título.
-		$this->pdf->SetDrawColor(
-			$this->branding['secondary_color'][0],
-			$this->branding['secondary_color'][1],
-			$this->branding['secondary_color'][2]
-		);
-		$this->pdf->SetLineWidth( 0.5 );
-		$this->pdf->Line( 20, 42, 190, 42 );
+/* Saltos de página */
+.page-break {
+	page-break-after: always;
+}
 
-		$this->pdf->SetY( 50 );
+/* PORTADA */
+.cover-page {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	text-align: center;
+	padding: 40px 30px;
+}
+
+.cover-header {
+	background: linear-gradient(135deg, {$primary} 0%, {$secondary} 100%);
+	color: white;
+	padding: 40px 20px;
+	margin: -40px -30px 0 -30px;
+	border-radius: 0 0 30px 30px;
+}
+
+.logo {
+	max-width: 120px;
+	margin-bottom: 15px;
+}
+
+.company-name {
+	font-size: 28pt;
+	font-weight: bold;
+	margin-bottom: 5px;
+}
+
+.tagline {
+	font-size: 14pt;
+	font-style: italic;
+	opacity: 0.9;
+}
+
+.cover-content {
+	padding: 60px 0;
+}
+
+.report-title {
+	font-size: 24pt;
+	color: {$primary};
+	margin-bottom: 20px;
+}
+
+.decorative-line {
+	width: 100px;
+	height: 3px;
+	background: {$accent};
+	margin: 0 auto 30px auto;
+}
+
+.prepared-for {
+	font-size: 14pt;
+	color: #666;
+	margin-bottom: 10px;
+}
+
+.chart-name {
+	font-size: 22pt;
+	color: {$text};
+}
+
+.cover-birth-data {
+	background: #f8f9fa;
+	padding: 20px;
+	border-radius: 10px;
+	margin: 30px 50px;
+}
+
+.cover-birth-data p {
+	margin: 8px 0;
+	font-size: 11pt;
+}
+
+.cover-footer {
+	color: #999;
+	font-size: 9pt;
+}
+
+/* ÍNDICE */
+.toc-page {
+	padding: 40px 30px;
+}
+
+.toc-title {
+	font-size: 20pt;
+	color: {$primary};
+	margin-bottom: 30px;
+	padding-bottom: 10px;
+	border-bottom: 2px solid {$secondary};
+}
+
+.toc-list {
+	list-style: none;
+}
+
+.toc-list li {
+	padding: 12px 0;
+	border-bottom: 1px dotted #ddd;
+	font-size: 12pt;
+}
+
+.toc-number {
+	display: inline-block;
+	width: 30px;
+	color: {$primary};
+	font-weight: bold;
+}
+
+.toc-text {
+	color: {$text};
+}
+
+/* SECCIONES DE CONTENIDO */
+.content-section {
+	padding: 30px;
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 25px;
+	padding-bottom: 15px;
+	border-bottom: 2px solid {$secondary};
+}
+
+.section-number {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	background: {$primary};
+	color: white;
+	border-radius: 50%;
+	font-size: 16pt;
+	font-weight: bold;
+	margin-right: 15px;
+}
+
+.section-title {
+	font-size: 18pt;
+	color: {$primary};
+}
+
+.section-content {
+	text-align: justify;
+}
+
+.section-content p {
+	margin-bottom: 15px;
+}
+
+.section-content h3 {
+	font-size: 14pt;
+	color: {$primary};
+	margin: 25px 0 15px 0;
+}
+
+.section-content h4 {
+	font-size: 12pt;
+	color: {$secondary};
+	margin: 20px 0 10px 0;
+}
+
+.section-content ul, .section-content ol {
+	margin: 15px 0 15px 25px;
+}
+
+.section-content li {
+	margin-bottom: 8px;
+}
+
+.section-content strong {
+	color: {$primary};
+}
+
+.section-content em {
+	color: #555;
+}
+
+/* TABLAS */
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 20px 0;
+}
+
+table th {
+	background: {$primary};
+	color: white;
+	padding: 12px 10px;
+	text-align: left;
+	font-size: 10pt;
+}
+
+table td {
+	padding: 10px;
+	border-bottom: 1px solid #eee;
+	font-size: 10pt;
+}
+
+table tr:nth-child(even) {
+	background: #f9f9f9;
+}
+
+table tr:hover {
+	background: #f0f0f0;
+}
+
+/* PIE DE PÁGINA */
+@page {
+	margin: 2cm 2cm 2.5cm 2cm;
+}
+
+.page-footer {
+	position: fixed;
+	bottom: -1.5cm;
+	left: 0;
+	right: 0;
+	height: 1cm;
+	font-size: 8pt;
+	color: #999;
+	border-top: 1px solid #ddd;
+	padding-top: 5px;
+}
+
+/* Citas y destacados */
+blockquote {
+	background: #f8f9fa;
+	border-left: 4px solid {$accent};
+	padding: 15px 20px;
+	margin: 20px 0;
+	font-style: italic;
+}
+
+.highlight-box {
+	background: linear-gradient(135deg, rgba(74,85,162,0.1) 0%, rgba(147,112,219,0.1) 100%);
+	border: 1px solid {$secondary};
+	border-radius: 8px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+/* Símbolos astrológicos */
+.planet-symbol {
+	font-size: 14pt;
+	margin-right: 5px;
+}
+
+.sign-symbol {
+	color: {$secondary};
+}
+CSS;
 	}
 
 	/**
-	 * Agrega contenido de sección (con soporte para Markdown básico).
-	 *
-	 * @param string $content Contenido en texto o Markdown.
-	 */
-	private function add_section_content( $content ) {
-		$this->pdf->SetTextColor(
-			$this->branding['text_color'][0],
-			$this->branding['text_color'][1],
-			$this->branding['text_color'][2]
-		);
-		$this->pdf->SetFont( 'helvetica', '', 11 );
-
-		// Convertir Markdown básico a HTML.
-		$html = $this->markdown_to_html( $content );
-
-		// Escribir HTML.
-		$this->pdf->writeHTML( $html, true, false, true, false, '' );
-	}
-
-	/**
-	 * Convierte Markdown básico a HTML para TCPDF.
+	 * Convierte Markdown básico a HTML.
 	 *
 	 * @param string $markdown Texto en Markdown.
 	 * @return string HTML.
@@ -378,51 +567,48 @@ class Fraktal_Report_PDF_Generator {
 		// Escapar HTML existente.
 		$html = htmlspecialchars( $html, ENT_NOQUOTES, 'UTF-8' );
 
-		// Headers (## Título -> <h3>).
-		$html = preg_replace( '/^### (.+)$/m', '<h4 style="color: #4A55A2; margin-top: 15px;">$1</h4>', $html );
-		$html = preg_replace( '/^## (.+)$/m', '<h3 style="color: #4A55A2; margin-top: 20px;">$1</h3>', $html );
+		// Headers.
+		$html = preg_replace( '/^#### (.+)$/m', '<h5>$1</h5>', $html );
+		$html = preg_replace( '/^### (.+)$/m', '<h4>$1</h4>', $html );
+		$html = preg_replace( '/^## (.+)$/m', '<h3>$1</h3>', $html );
 
-		// Bold (**texto**).
+		// Bold (**texto** o __texto__).
 		$html = preg_replace( '/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html );
+		$html = preg_replace( '/__(.+?)__/', '<strong>$1</strong>', $html );
 
-		// Italic (*texto*).
-		$html = preg_replace( '/\*(.+?)\*/', '<em>$1</em>', $html );
+		// Italic (*texto* o _texto_).
+		$html = preg_replace( '/\*([^*]+?)\*/', '<em>$1</em>', $html );
+		$html = preg_replace( '/_([^_]+?)_/', '<em>$1</em>', $html );
 
-		// Listas (- item).
+		// Listas con guión (- item).
 		$html = preg_replace( '/^- (.+)$/m', '<li>$1</li>', $html );
-		$html = preg_replace( '/(<li>.*<\/li>\n?)+/', '<ul>$0</ul>', $html );
+
+		// Envolver listas consecutivas en <ul>.
+		$html = preg_replace( '/(<li>.*<\/li>\n?)+/s', '<ul>$0</ul>', $html );
+
+		// Listas numeradas (1. item).
+		$html = preg_replace( '/^\d+\. (.+)$/m', '<oli>$1</oli>', $html );
+		$html = preg_replace( '/(<oli>.*<\/oli>\n?)+/s', '<ol>$0</ol>', $html );
+		$html = str_replace( array( '<oli>', '</oli>' ), array( '<li>', '</li>' ), $html );
+
+		// Blockquotes (> texto).
+		$html = preg_replace( '/^> (.+)$/m', '<blockquote>$1</blockquote>', $html );
 
 		// Párrafos (doble salto de línea).
-		$html = preg_replace( '/\n\n/', '</p><p style="margin-bottom: 10px; line-height: 1.6;">', $html );
+		$html = preg_replace( '/\n\n+/', '</p><p>', $html );
+
+		// Saltos de línea simples.
+		$html = preg_replace( '/\n/', '<br>', $html );
 
 		// Envolver en párrafo.
-		$html = '<p style="margin-bottom: 10px; line-height: 1.6;">' . $html . '</p>';
+		$html = '<p>' . $html . '</p>';
 
-		// Limpiar párrafos vacíos.
-		$html = preg_replace( '/<p[^>]*>\s*<\/p>/', '', $html );
+		// Limpiar párrafos vacíos y mal formados.
+		$html = preg_replace( '/<p>\s*<\/p>/', '', $html );
+		$html = preg_replace( '/<p>\s*<(ul|ol|h[1-6]|blockquote)/', '<$1', $html );
+		$html = preg_replace( '/<\/(ul|ol|h[1-6]|blockquote)>\s*<\/p>/', '</$1>', $html );
 
 		return $html;
-	}
-
-	/**
-	 * Agrega pie de página.
-	 */
-	private function add_page_footer() {
-		$page_num = $this->pdf->getPage();
-
-		$this->pdf->SetY( -20 );
-		$this->pdf->SetTextColor( 150, 150, 150 );
-		$this->pdf->SetFont( 'helvetica', '', 8 );
-
-		// Línea.
-		$this->pdf->SetDrawColor( 200, 200, 200 );
-		$this->pdf->SetLineWidth( 0.2 );
-		$this->pdf->Line( 20, 277, 190, 277 );
-
-		// Texto del pie.
-		$this->pdf->SetY( 280 );
-		$this->pdf->Cell( 85, 5, $this->branding['footer_text'], 0, 0, 'L' );
-		$this->pdf->Cell( 85, 5, 'Página ' . $page_num, 0, 0, 'R' );
 	}
 
 	/**
@@ -437,8 +623,7 @@ class Fraktal_Report_PDF_Generator {
 		// Dividir por headers de nivel 2 (## Título).
 		$parts = preg_split( '/^## /m', $content, -1, PREG_SPLIT_NO_EMPTY );
 
-		foreach ( $parts as $part ) {
-			// El primer elemento antes del primer ## es introducción.
+		foreach ( $parts as $index => $part ) {
 			$lines = explode( "\n", $part, 2 );
 			$title = trim( $lines[0] );
 			$body  = isset( $lines[1] ) ? trim( $lines[1] ) : '';
@@ -447,10 +632,14 @@ class Fraktal_Report_PDF_Generator {
 				continue;
 			}
 
-			// Si no hay título claro, usar uno genérico.
+			// Si el título es muy largo, probablemente no es un título real.
 			if ( strlen( $title ) > 100 || empty( $title ) ) {
-				$title = 'Sección';
-				$body  = $part;
+				if ( $index === 0 ) {
+					$title = 'Introducción';
+				} else {
+					$title = 'Sección ' . ( $index + 1 );
+				}
+				$body = $part;
 			}
 
 			$sections[] = array(
@@ -471,117 +660,102 @@ class Fraktal_Report_PDF_Generator {
 	}
 
 	/**
-	 * Agrega imagen de carta natal al PDF.
-	 *
-	 * @param string $image_path Ruta de la imagen.
-	 * @param string $caption    Título de la imagen.
-	 */
-	public function add_chart_image( $image_path, $caption = 'Carta Natal' ) {
-		if ( ! file_exists( $image_path ) ) {
-			return;
-		}
-
-		$this->pdf->AddPage();
-		$this->pdf->Bookmark( $caption, 0, 0, '', '', array( 0, 0, 0 ) );
-
-		// Título.
-		$this->pdf->SetTextColor(
-			$this->branding['primary_color'][0],
-			$this->branding['primary_color'][1],
-			$this->branding['primary_color'][2]
-		);
-		$this->pdf->SetFont( 'helvetica', 'B', 16 );
-		$this->pdf->Cell( 0, 15, $caption, 0, 1, 'C' );
-
-		// Imagen centrada.
-		$this->pdf->Image( $image_path, 30, 50, 150, 0, '', '', '', false, 300, '', false, false, 1 );
-
-		$this->add_page_footer();
-	}
-
-	/**
-	 * Agrega tabla de posiciones planetarias.
+	 * Renderiza tabla de posiciones planetarias.
 	 *
 	 * @param array $planets Array de posiciones planetarias.
+	 * @return string HTML de la tabla.
 	 */
-	public function add_planets_table( $planets ) {
+	private function render_planets_table( $planets ) {
 		if ( empty( $planets ) ) {
-			return;
+			return '';
 		}
 
-		$this->pdf->AddPage();
-		$this->pdf->Bookmark( 'Posiciones Planetarias', 0, 0, '', '', array( 0, 0, 0 ) );
-
-		// Título.
-		$this->pdf->SetTextColor(
-			$this->branding['primary_color'][0],
-			$this->branding['primary_color'][1],
-			$this->branding['primary_color'][2]
-		);
-		$this->pdf->SetFont( 'helvetica', 'B', 16 );
-		$this->pdf->Cell( 0, 15, 'Posiciones Planetarias', 0, 1, 'C' );
-
-		// Tabla.
-		$html = '<table border="1" cellpadding="5" style="border-collapse: collapse;">';
-		$html .= '<thead>';
-		$html .= '<tr style="background-color: #4A55A2; color: white;">';
-		$html .= '<th width="25%"><b>Planeta</b></th>';
-		$html .= '<th width="20%"><b>Signo</b></th>';
-		$html .= '<th width="20%"><b>Grado</b></th>';
-		$html .= '<th width="15%"><b>Casa</b></th>';
-		$html .= '<th width="20%"><b>Estado</b></th>';
-		$html .= '</tr>';
-		$html .= '</thead>';
+		$html = '<table>';
+		$html .= '<thead><tr>';
+		$html .= '<th>Planeta</th>';
+		$html .= '<th>Signo</th>';
+		$html .= '<th>Grado</th>';
+		$html .= '<th>Casa</th>';
+		$html .= '<th>Estado</th>';
+		$html .= '</tr></thead>';
 		$html .= '<tbody>';
 
 		foreach ( $planets as $planet => $data ) {
 			$degree = isset( $data['degree'] ) ? $data['degree'] : 0;
 			$minute = isset( $data['minute'] ) ? $data['minute'] : 0;
+			$sign   = isset( $data['sign'] ) ? $data['sign'] : '-';
+			$house  = isset( $data['house'] ) ? $data['house'] : '-';
 			$retro  = ! empty( $data['retrograde'] ) ? 'Retrógrado' : 'Directo';
 
 			$html .= '<tr>';
-			$html .= '<td><b>' . esc_html( $planet ) . '</b></td>';
-			$html .= '<td>' . esc_html( $data['sign'] ?? '-' ) . '</td>';
+			$html .= '<td><strong>' . esc_html( $planet ) . '</strong></td>';
+			$html .= '<td>' . esc_html( $sign ) . '</td>';
 			$html .= '<td>' . $degree . '° ' . $minute . "'</td>";
-			$html .= '<td style="text-align: center;">' . esc_html( $data['house'] ?? '-' ) . '</td>';
+			$html .= '<td style="text-align: center;">' . esc_html( $house ) . '</td>';
 			$html .= '<td>' . $retro . '</td>';
 			$html .= '</tr>';
 		}
 
 		$html .= '</tbody></table>';
 
-		$this->pdf->SetTextColor(
-			$this->branding['text_color'][0],
-			$this->branding['text_color'][1],
-			$this->branding['text_color'][2]
-		);
-		$this->pdf->SetFont( 'helvetica', '', 10 );
-		$this->pdf->writeHTML( $html, true, false, true, false, '' );
-
-		$this->add_page_footer();
+		return $html;
 	}
 
 	/**
 	 * Obtiene el contenido binario del PDF (sin guardarlo en archivo).
 	 *
-	 * @param array $content     Contenido del informe.
-	 * @param array $report_data Datos del informe.
+	 * @param array|string $content     Contenido del informe.
+	 * @param array        $report_data Datos del informe.
 	 * @return string|WP_Error Contenido binario del PDF o error.
 	 */
 	public function generate_content( $content, $report_data ) {
-		if ( ! class_exists( 'TCPDF' ) ) {
-			return new WP_Error( 'tcpdf_missing', 'TCPDF no está instalado.' );
+		if ( ! class_exists( 'Dompdf\Dompdf' ) ) {
+			return new WP_Error( 'dompdf_missing', 'DOMPDF no está instalado.' );
 		}
 
 		$this->report_data = $report_data;
-		$this->pdf         = new TCPDF( 'P', 'mm', 'A4', true, 'UTF-8', false );
 
-		$this->setup_document();
-		$this->add_cover_page();
-		$this->pdf->Bookmark( 'Índice', 0, 0, '', '', array( 0, 0, 0 ) );
-		$this->add_content_sections( $content );
+		$options = new Options();
+		$options->set( 'isHtml5ParserEnabled', true );
+		$options->set( 'isRemoteEnabled', true );
+		$options->set( 'defaultFont', 'DejaVu Sans' );
 
-		// Retornar como string.
-		return $this->pdf->Output( '', 'S' );
+		$this->dompdf = new Dompdf( $options );
+
+		if ( is_string( $content ) ) {
+			$content = $this->parse_content_to_sections( $content );
+		}
+
+		$html = $this->render_html( $content );
+
+		$this->dompdf->loadHtml( $html );
+		$this->dompdf->setPaper( 'A4', 'portrait' );
+		$this->dompdf->render();
+
+		return $this->dompdf->output();
+	}
+
+	/**
+	 * Establece una plantilla HTML personalizada.
+	 *
+	 * @param string $template_path Ruta a la plantilla HTML.
+	 * @return self
+	 */
+	public function set_template( $template_path ) {
+		if ( file_exists( $template_path ) ) {
+			$this->custom_template = $template_path;
+		}
+		return $this;
+	}
+
+	/**
+	 * Establece el branding personalizado.
+	 *
+	 * @param array $branding Array de configuración de branding.
+	 * @return self
+	 */
+	public function set_branding( $branding ) {
+		$this->branding = wp_parse_args( $branding, self::DEFAULT_BRANDING );
+		return $this;
 	}
 }
