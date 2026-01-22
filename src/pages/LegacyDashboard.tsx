@@ -30,10 +30,14 @@ import {
   ChevronDown,
   Calendar,
   Settings,
-  CreditCard
+  CreditCard,
+  Eye,
+  EyeOff,
+  User,
+  Mail
 } from 'lucide-react';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION, TRANSLATIONS } from '@/lib/constants';
-import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User } from '@/types';
+import { AppMode, UserInput, AnalysisResult, AnalysisType, Language, SavedChart, PlanetPosition, User as UserType } from '@/types';
 import NatalChart from '@/components/NatalChart';
 import PlanetaryTable from '@/components/PlanetaryTable';
 import CosmicLoader from '@/components/CosmicLoader';
@@ -57,7 +61,13 @@ import { CustomizationPanel } from '@/components/Customization';
 import { calculateChartData } from '@/lib/astrologyEngine';
 import { api } from '@/services/api';
 import '@/styles/material-theme.css';
-import '@/components/PlanetaryOrbit.css'; // 🆕 Animaciones 
+import '@/components/PlanetaryOrbit.css'; // 🆕 Animaciones
+
+// Shadcn UI Components
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 // Symbol Dictionaries for Legend
 const PLANET_SYMBOLS: Record<string, string> = {
@@ -80,8 +90,9 @@ const LegacyDashboard = (): JSX.Element => {
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false); // Nuevo estado Admin
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
 
   // System Prompt State (Dynamic)
   const [systemInstruction, setSystemInstruction] = useState<string>(DEFAULT_SYSTEM_INSTRUCTION);
@@ -1506,74 +1517,111 @@ ${analysisText}
         <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]"></div>
       </div>
 
-      <div className="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up border border-indigo-500/30">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
-            <Lock size={32} className="text-indigo-400" />
-          </div>
-        </div>
-
-        <h2 className="text-2xl font-serif text-center text-white mb-2">
-          {isRegistering ? t.authRegisterTitle : t.authLoginTitle}
-        </h2>
-        <p className="text-center text-gray-400 text-xs font-mono uppercase tracking-widest mb-8">FRAKTAL ACCESS CONTROL</p>
-
-        <form onSubmit={handleAuth} className="space-y-4">
-          <div>
-            <label htmlFor="auth-username" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authUser}</label>
-            <div className="relative">
-              <input id="auth-username" required type="text"
-                placeholder="Usuario"
-                value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
-              <UserIcon className="absolute left-3 top-3.5 text-gray-500" size={16} />
+      <Card className="w-full max-w-md relative z-10 animate-slide-up bg-slate-900/50 backdrop-blur-xl border-indigo-500/30">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+              <Lock size={32} className="text-indigo-400" />
             </div>
           </div>
-          <div>
-            <label htmlFor="auth-password" className="block text-xs text-indigo-300 mb-1.5 font-bold uppercase tracking-wider">{t.authPass}</label>
-            <div className="relative">
-              <input id="auth-password" required type="password"
-                placeholder="Contraseña"
-                value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none" />
-              <Lock className="absolute left-3 top-3.5 text-gray-500" size={16} />
+          <CardTitle className="text-2xl font-serif text-white">
+            {isRegistering ? t.authRegisterTitle : t.authLoginTitle}
+          </CardTitle>
+          <CardDescription className="text-gray-400 text-xs font-mono uppercase tracking-widest">
+            FRAKTAL ACCESS CONTROL
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleAuth} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="auth-username" className="text-indigo-300 uppercase tracking-wider text-xs font-bold">
+                {t.authUser}
+              </Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400" size={18} />
+                <Input
+                  id="auth-username"
+                  type="text"
+                  placeholder="Usuario"
+                  value={authForm.username}
+                  onChange={e => setAuthForm({ ...authForm, username: e.target.value })}
+                  className="pl-10 bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/50"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          {errorMsg && <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded border border-red-500/20">{errorMsg}</div>}
+            <div className="space-y-2">
+              <Label htmlFor="auth-password" className="text-indigo-300 uppercase tracking-wider text-xs font-bold">
+                {t.authPass}
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400" size={18} />
+                <Input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Contraseña"
+                  value={authForm.password}
+                  onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
+                  className="pl-10 pr-12 bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/50"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-white hover:bg-transparent"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </Button>
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={isAuthLoading}
-            className={`w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center ${isAuthLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-          >
-            {isAuthLoading ? (
-              <>
-                <CircleDashed className="animate-spin mr-2" size={20} />
-                {isRegistering ? 'Registrando...' : 'Iniciando sesión...'}
-              </>
-            ) : (
-              isRegistering ? t.authBtnRegister : t.authBtnLogin
+            {errorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                <AlertCircle size={16} />
+                {errorMsg}
+              </div>
             )}
-          </button>
-        </form>
 
-        <div className="mt-6 text-center">
-          <button onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); }} className="text-xs text-gray-400 hover:text-white underline decoration-gray-600 underline-offset-4">
+            <Button
+              type="submit"
+              disabled={isAuthLoading}
+              className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20"
+              size="lg"
+            >
+              {isAuthLoading ? (
+                <>
+                  <CircleDashed className="animate-spin mr-2" size={20} />
+                  {isRegistering ? 'Registrando...' : 'Iniciando sesión...'}
+                </>
+              ) : (
+                isRegistering ? t.authBtnRegister : t.authBtnLogin
+              )}
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="flex flex-col gap-4 pt-6">
+          <Button
+            variant="link"
+            onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); }}
+            className="text-gray-400 hover:text-white text-xs"
+          >
             {isRegistering ? t.authSwitchToLog : t.authSwitchToReg}
-          </button>
-        </div>
+          </Button>
 
-        <div className="mt-4 text-center">
-          <button
-            type="button"
+          <Button
+            variant="link"
             onClick={() => setMode(AppMode.LANDING)}
-            className="text-xs text-indigo-300 hover:text-indigo-200 underline decoration-indigo-500/40 underline-offset-4"
+            className="text-indigo-300 hover:text-indigo-200 text-xs"
           >
             Ver la web (servicios, planes y contacto)
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 
