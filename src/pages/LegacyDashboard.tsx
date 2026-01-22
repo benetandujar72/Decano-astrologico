@@ -82,7 +82,7 @@ const ZODIAC_SYMBOLS: Record<string, string> = {
   'Sagitario': '♐', 'Capricornio': '♑', 'Acuario': '♒', 'Piscis': '♓'
 };
 
-const LegacyDashboard = (): JSX.Element => {
+const LegacyDashboard = () => {
   const [lang, setLang] = useState<Language>('es');
 
   // Auth State
@@ -807,7 +807,7 @@ const LegacyDashboard = (): JSX.Element => {
       } catch (directParseError) {
         // Si falla, intentar extraer el JSON del texto
         console.log("⚠️ Parse directo falló, intentando extraer JSON del texto");
-        console.log("Error del parse directo:", directParseError?.message || directParseError);
+        console.log("Error del parse directo:", (directParseError as any)?.message || directParseError);
 
         // Método 1: Buscar JSON con regex (más simple y robusto)
         // Buscar desde el primer { hasta el último } (puede haber texto antes/después)
@@ -817,7 +817,7 @@ const LegacyDashboard = (): JSX.Element => {
             aiData = JSON.parse(jsonMatch[0]);
             console.log("✅ JSON encontrado y parseado con regex (método principal)");
           } catch (regexError) {
-            console.warn("⚠️ Parse con regex falló:", regexError?.message);
+            console.warn("⚠️ Parse con regex falló:", (regexError as any)?.message);
             // Continuar con método de balanceo
           }
         }
@@ -876,7 +876,7 @@ const LegacyDashboard = (): JSX.Element => {
               aiData = JSON.parse(jsonString);
               console.log("✅ JSON parseado después de balanceo de llaves");
             } catch (extractError) {
-              console.error("❌ Error parseando JSON extraído con balanceo:", extractError?.message);
+              console.error("❌ Error parseando JSON extraído con balanceo:", (extractError as any)?.message);
               console.error("JSON string (primeros 500 chars):", jsonString?.substring(0, 500));
               console.error("JSON string (últimos 500 chars):", jsonString?.substring(Math.max(0, jsonString.length - 500)));
             }
