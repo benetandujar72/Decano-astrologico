@@ -44,11 +44,14 @@ class Fraktal_PDF_Autoloader {
 			return true;
 		}
 
+		// Usar include en lugar de require para evitar errores fatales si el archivo tiene problemas
+		// Suprimir warnings con @ ya que verificamos class_exists después
+
 		// 1. Intentar Composer autoload
 		$composer_path = DECANO_PLUGIN_DIR . 'vendor/autoload.php';
 		if ( file_exists( $composer_path ) ) {
-			require_once $composer_path;
-			if ( class_exists( '\Dompdf\Dompdf' ) ) {
+			@include_once $composer_path;
+			if ( class_exists( '\Dompdf\Dompdf', false ) ) {
 				self::$loaded = true;
 				self::$load_method = 'composer';
 				return true;
@@ -58,8 +61,8 @@ class Fraktal_PDF_Autoloader {
 		// 2. Intentar librería bundled en el plugin
 		$bundled_path = DECANO_PLUGIN_DIR . 'lib/dompdf/autoload.inc.php';
 		if ( file_exists( $bundled_path ) ) {
-			require_once $bundled_path;
-			if ( class_exists( '\Dompdf\Dompdf' ) ) {
+			@include_once $bundled_path;
+			if ( class_exists( '\Dompdf\Dompdf', false ) ) {
 				self::$loaded = true;
 				self::$load_method = 'bundled';
 				return true;
@@ -69,8 +72,8 @@ class Fraktal_PDF_Autoloader {
 		// 3. Intentar instalación compartida en WordPress
 		$shared_path = WP_CONTENT_DIR . '/lib/dompdf/autoload.inc.php';
 		if ( file_exists( $shared_path ) ) {
-			require_once $shared_path;
-			if ( class_exists( '\Dompdf\Dompdf' ) ) {
+			@include_once $shared_path;
+			if ( class_exists( '\Dompdf\Dompdf', false ) ) {
 				self::$loaded = true;
 				self::$load_method = 'shared';
 				return true;
@@ -81,7 +84,7 @@ class Fraktal_PDF_Autoloader {
 		$alt_bundled = DECANO_PLUGIN_DIR . 'lib/dompdf/src/Dompdf.php';
 		if ( file_exists( $alt_bundled ) ) {
 			self::register_psr4_autoloader();
-			if ( class_exists( '\Dompdf\Dompdf' ) ) {
+			if ( class_exists( '\Dompdf\Dompdf', false ) ) {
 				self::$loaded = true;
 				self::$load_method = 'manual';
 				return true;

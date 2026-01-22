@@ -9,10 +9,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Intentar cargar DOMPDF (el autoloader ya está cargado desde fraktal-reports.php)
-if ( class_exists( 'Fraktal_PDF_Autoloader' ) ) {
-	Fraktal_PDF_Autoloader::load();
-}
+// NOTA: DOMPDF se carga de forma diferida (lazy loading) en los métodos generate() y generate_content()
+// para evitar errores fatales si DOMPDF no está instalado o tiene problemas de compatibilidad.
 
 /**
  * Clase para generar PDFs de informes astrológicos con DOMPDF.
