@@ -1,0 +1,25 @@
+{
+  "name": "fraktal-api",
+  "version": "1.0.0",
+  "description": "Fraktal Reports API - Astrological report generation backend",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "circular-natal-horoscope-js": "^1.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "keywords": ["astrology", "natal-chart", "gemini", "ai"],
+  "author": "Fraktal",
+  "license": "MIT"
+}
