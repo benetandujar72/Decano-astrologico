@@ -78,6 +78,20 @@ class DA_REST_API {
             'permission_callback' => [__CLASS__, 'check_user_logged_in']
         ]);
 
+        // Endpoint para obtener datos de un informe por session_id
+        register_rest_route('decano/v1', '/report/(?P<session_id>[a-zA-Z0-9-]+)', [
+            'methods' => 'GET',
+            'callback' => [__CLASS__, 'get_report_by_session'],
+            'permission_callback' => '__return_true', // Permitir acceso anónimo
+            'args' => [
+                'session_id' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
+        ]);
+
         // Endpoint para generar informe gratuito (NO requiere login)
         register_rest_route('decano/v1', '/generate-free-report', [
             'methods' => 'POST',
@@ -525,6 +539,162 @@ class DA_REST_API {
             'is_new_user' => $is_new_user,
             'viewer_url' => home_url('/mi-informe/?session_id=' . $session_id),
             'message' => 'Informe en proceso de generación'
+        ]);
+    }
+
+    /**
+     * Obtener datos de un informe por session_id
+     * Este endpoint es llamado por FreeReportViewer para mostrar el informe
+     */
+    public static function get_report_by_session($request) {
+        $session_id = $request->get_param('session_id');
+
+        if (empty($session_id)) {
+            return new WP_Error('missing_session', 'ID de sesión requerido', ['status' => 400]);
+        }
+
+        // Primero intentar obtener de Supabase
+        if (defined('FRAKTAL_USE_SUPABASE') && FRAKTAL_USE_SUPABASE && class_exists('Fraktal_Supabase_Client')) {
+            try {
+                $client = new Fraktal_Supabase_Client();
+                $client->use_service_role();
+
+                // Buscar el reporte en Supabase
+                $response = $client->get('/rest/v1/reports', [
+                    'session_id' => 'eq.' . $session_id,
+                    'select' => '*'
+                ]);
+
+                if (!empty($response) && is_array($response) && count($response) > 0) {
+                    $report = $response[0];
+
+                    // Verificar el status del reporte
+                    $status = $report['status'] ?? 'unknown';
+
+                    if ($status === 'completed') {
+                        // Reporte completado - devolver datos formateados
+                        return self::format_report_response($report);
+                    } elseif ($status === 'processing' || $status === 'queued') {
+                        // Reporte en proceso
+                        return rest_ensure_response([
+                            'status' => $status,
+                            'progress_percent' => $report['progress_percent'] ?? 0,
+                            'current_module' => $report['current_module'] ?? null,
+                            'message' => 'El informe se está generando...'
+                        ]);
+                    } elseif ($status === 'failed') {
+                        return new WP_Error(
+                            'report_failed',
+                            $report['error_message'] ?? 'Error al generar el informe',
+                            ['status' => 500]
+                        );
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('[DA] Error obteniendo reporte de Supabase: ' . $e->getMessage());
+                // Continuar para intentar con WordPress DB
+            }
+        }
+
+        // Fallback: buscar en WordPress DB
+        global $wpdb;
+        $table = $wpdb->prefix . 'da_report_sessions';
+
+        $report = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE session_id = %s",
+            $session_id
+        ));
+
+        if (!$report) {
+            return new WP_Error('not_found', 'Informe no encontrado', ['status' => 404]);
+        }
+
+        $status = $report->status;
+
+        if ($status === 'completed') {
+            // Formatear respuesta desde WordPress DB
+            $chart_data = json_decode($report->chart_data, true) ?? [];
+            $report_content = json_decode($report->report_content, true) ?? [];
+
+            return rest_ensure_response([
+                'chart_data' => [
+                    'name' => $chart_data['name'] ?? 'Usuario',
+                    'birth_date' => $chart_data['birth_date'] ?? '',
+                    'birth_time' => $chart_data['birth_time'] ?? '',
+                    'birth_place' => ($chart_data['birth_city'] ?? '') . ', ' . ($chart_data['birth_country'] ?? ''),
+                    'latitude' => $chart_data['latitude'] ?? 0,
+                    'longitude' => $chart_data['longitude'] ?? 0
+                ],
+                'modules' => $report_content['modules'] ?? [],
+                'chart_image_url' => $report_content['chart_image_url'] ?? null,
+                'status' => 'completed'
+            ]);
+        } elseif ($status === 'processing' || $status === 'queued') {
+            return rest_ensure_response([
+                'status' => $status,
+                'progress_percent' => 0,
+                'message' => 'El informe se está generando...'
+            ]);
+        } else {
+            return new WP_Error('report_failed', 'Error al generar el informe', ['status' => 500]);
+        }
+    }
+
+    /**
+     * Formatear respuesta del reporte desde Supabase
+     */
+    private static function format_report_response($report) {
+        $birth_data = $report['birth_data'] ?? [];
+
+        // Si es un array JSON string, decodificarlo
+        if (is_string($birth_data)) {
+            $birth_data = json_decode($birth_data, true) ?? [];
+        }
+
+        // Obtener contenido del reporte
+        $modules = [];
+
+        // Intentar obtener módulos desde report_content si existe
+        $report_content = $report['report_content'] ?? null;
+        if (is_string($report_content)) {
+            $report_content = json_decode($report_content, true);
+        }
+
+        if ($report_content && isset($report_content['modules'])) {
+            $modules = $report_content['modules'];
+        } else {
+            // Generar módulos de ejemplo si no hay contenido
+            $modules = [
+                [
+                    'id' => 'sol',
+                    'title' => 'Tu Identidad Solar',
+                    'content' => $report_content['sol'] ?? 'Tu Sol representa tu esencia, tu identidad más profunda y tu propósito vital. Es la energía central que te impulsa y define quién eres en tu núcleo más auténtico.'
+                ],
+                [
+                    'id' => 'luna',
+                    'title' => 'Tu Naturaleza Emocional',
+                    'content' => $report_content['luna'] ?? 'Tu Luna revela tu mundo emocional interno, tus necesidades de seguridad y cómo procesas tus sentimientos. Es tu lado más íntimo y vulnerable.'
+                ],
+                [
+                    'id' => 'ascendente',
+                    'title' => 'Tu Ascendente',
+                    'content' => $report_content['ascendente'] ?? 'Tu Ascendente es la máscara que presentas al mundo, tu primera impresión y cómo inicias nuevas experiencias. Es tu estilo natural de aproximarte a la vida.'
+                ]
+            ];
+        }
+
+        return rest_ensure_response([
+            'chart_data' => [
+                'name' => $birth_data['name'] ?? $report['chart_name'] ?? 'Usuario',
+                'birth_date' => $birth_data['birth_date'] ?? '',
+                'birth_time' => $birth_data['birth_time'] ?? '',
+                'birth_place' => ($birth_data['birth_city'] ?? '') . ', ' . ($birth_data['birth_country'] ?? ''),
+                'latitude' => $birth_data['latitude'] ?? 0,
+                'longitude' => $birth_data['longitude'] ?? 0
+            ],
+            'modules' => $modules,
+            'chart_image_url' => $report['chart_image_url'] ?? null,
+            'status' => 'completed'
         ]);
     }
 }
