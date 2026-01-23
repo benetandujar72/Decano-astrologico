@@ -28,15 +28,13 @@ define('DECANO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 // Proyecto: asgnyckayusnmbozocxh
 define( 'FRAKTAL_SUPABASE_URL', 'https://asgnyckayusnmbozocxh.supabase.co' );
 
-// ANON_KEY - Para obtener esta clave:
-// 1. Ir a Supabase Dashboard > Settings > API
-// 2. Copiar "anon public" key del proyecto asgnyckayusnmbozocxh
-// NOTA: Temporalmente usando SERVICE_KEY, pero se debe configurar la ANON_KEY correcta
-define( 'FRAKTAL_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZ255Y2theXVzbm1ib3pvY3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg4NTI4MzgsImV4cCI6MjA4NDQyODgzOH0.UQkkZN2nJ6q96ZR86iw4NBTtRY_UcJkBXUnTQ4V-_64' );
+// ANON_KEY - Clave pública para operaciones del lado del cliente
+// Configurada correctamente con la clave "anon" del proyecto
+define( 'FRAKTAL_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZ255Y2theXVzbm1ib3pvY3hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTI4MzgsImV4cCI6MjA4NDQyODgzOH0.oVypfs6gy8eJAk3yjKywYR5M4IdevANa2sEJsBLefA8' );
 
 // SERVICE_KEY para operaciones privilegiadas (Edge Functions, operaciones admin)
 // IMPORTANTE: Esta clave tiene acceso completo - nunca exponer en frontend
-define( 'FRAKTAL_SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZ255Y2theXVzbm1ib3pvY3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg4NTI4MzgsImV4cCI6MjA4NDQyODgzOH0.UQkkZN2nJ6q96ZR86iw4NBTtRY_UcJkBXUnTQ4V-_64' );
+define( 'FRAKTAL_SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZ255Y2theXVzbm1ib3pvY3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg1MjgzOCwiZXhwIjoyMDg0NDI4ODM4fQ.UQkkZN2nJ6q96ZR86iw4NBTtRY_UcJkBXUnTQ4V-_64' );
 
 // Feature flag: true = usar Supabase, false = usar FastAPI legacy
 define( 'FRAKTAL_USE_SUPABASE', true );
