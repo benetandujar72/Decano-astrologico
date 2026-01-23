@@ -51,6 +51,9 @@ require_once DECANO_PLUGIN_DIR . 'includes/class-pdf-autoloader.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-report-pdf-generator.php';
 require_once DECANO_PLUGIN_DIR . 'includes/class-supabase-report-processor.php';
 
+// Cargar configuración de Gemini API (admin)
+require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-gemini.php';
+
 /**
  * Activación del plugin con diagnóstico extensivo
  */

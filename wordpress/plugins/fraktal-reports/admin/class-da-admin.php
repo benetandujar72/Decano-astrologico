@@ -61,6 +61,16 @@ class DA_Admin {
         // - Plantillas (no se usan con Supabase)
         // - Prompts (ya están en class-report-type-config.php)
 
+        // Configuración de Gemini API (IA)
+        add_submenu_page(
+            'decano',
+            'Gemini API - Decano Astrológico',
+            '⚡ Gemini API',
+            'manage_options',
+            'decano-gemini',
+            [$this, 'render_gemini_settings']
+        );
+
         add_submenu_page(
             'decano',
             'Planes y Límites - Decano Astrológico',
@@ -327,6 +337,14 @@ class DA_Admin {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    /**
+     * Renderizar página de configuración de Gemini API
+     */
+    public function render_gemini_settings() {
+        require_once DECANO_PLUGIN_DIR . 'admin/class-da-admin-gemini.php';
+        DA_Admin_Gemini::render_settings_page();
     }
 
     /**

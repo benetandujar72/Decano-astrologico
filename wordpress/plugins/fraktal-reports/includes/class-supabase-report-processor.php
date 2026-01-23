@@ -310,6 +310,18 @@ class Fraktal_Supabase_Report_Processor {
 			$astro_data['synastryAspects'] = $chart_data['synastryAspects'];
 		}
 
+		// PRIORIDAD 1: Usar API key de Gemini configurada en WordPress.
+		if ( class_exists( 'DA_Admin_Gemini' ) ) {
+			$gemini_api_key = DA_Admin_Gemini::get_api_key();
+			if ( ! empty( $gemini_api_key ) ) {
+				$this->log( 'Usando Gemini API key configurada en WordPress' );
+				return $this->call_gemini_directly( $gemini_api_key, $system_prompt, $user_prompt, $astro_data, $report_type );
+			}
+		}
+
+		// PRIORIDAD 2: Fallback a Edge Function (requiere GEMINI_API_KEY en Supabase).
+		$this->log( 'Fallback: Llamando generate-report-content Edge Function para tipo: ' . $report_type );
+
 		$payload = array(
 			'prompt'         => $user_prompt,
 			'systemPrompt'   => $system_prompt,
@@ -319,8 +331,6 @@ class Fraktal_Supabase_Report_Processor {
 			'reportCategory' => $category,
 			'astroData'      => $astro_data,
 		);
-
-		$this->log( 'Llamando generate-report-content para tipo: ' . $report_type );
 
 		$response = $this->client->use_service_role()->invoke_function( 'generate-report-content', $payload );
 
@@ -339,6 +349,135 @@ class Fraktal_Supabase_Report_Processor {
 		) );
 
 		return $response['text'];
+	}
+
+	/**
+	 * Llama directamente a la API de Gemini desde WordPress.
+	 *
+	 * @param string $api_key       API key de Gemini.
+	 * @param string $system_prompt Prompt del sistema.
+	 * @param string $user_prompt   Prompt del usuario.
+	 * @param array  $astro_data    Datos astrológicos.
+	 * @param string $report_type   Tipo de informe.
+	 * @return string|WP_Error Contenido generado o error.
+	 */
+	private function call_gemini_directly( $api_key, $system_prompt, $user_prompt, $astro_data, $report_type ) {
+		// Obtener modelo configurado.
+		$model = 'gemini-2.0-flash';
+		if ( class_exists( 'DA_Admin_Gemini' ) ) {
+			$model = DA_Admin_Gemini::get_model();
+		}
+
+		$url = sprintf(
+			'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
+			$model,
+			$api_key
+		);
+
+		// Construir el prompt completo con los datos astrológicos.
+		$full_prompt = $user_prompt . "\n\n";
+		$full_prompt .= "## Datos de la Carta Natal\n\n";
+		$full_prompt .= "**Nombre:** " . ( $astro_data['name'] ?? 'Consultante' ) . "\n";
+		$full_prompt .= "**Fecha de nacimiento:** " . ( $astro_data['birthDate'] ?? 'No especificada' ) . "\n";
+		$full_prompt .= "**Hora de nacimiento:** " . ( $astro_data['birthTime'] ?? 'No especificada' ) . "\n";
+		$full_prompt .= "**Lugar de nacimiento:** " . ( $astro_data['birthPlace'] ?? 'No especificado' ) . "\n\n";
+
+		// Agregar posiciones planetarias.
+		if ( ! empty( $astro_data['planets'] ) ) {
+			$full_prompt .= "### Posiciones Planetarias\n\n";
+			foreach ( $astro_data['planets'] as $planet => $data ) {
+				if ( is_array( $data ) ) {
+					$sign   = $data['sign'] ?? '';
+					$degree = isset( $data['degree'] ) ? round( $data['degree'], 2 ) : '';
+					$house  = $data['house'] ?? '';
+					$full_prompt .= "- **{$planet}:** {$sign} {$degree}° (Casa {$house})\n";
+				}
+			}
+			$full_prompt .= "\n";
+		}
+
+		// Agregar aspectos principales.
+		if ( ! empty( $astro_data['aspects'] ) && is_array( $astro_data['aspects'] ) ) {
+			$full_prompt .= "### Aspectos Principales\n\n";
+			$count = 0;
+			foreach ( $astro_data['aspects'] as $aspect ) {
+				if ( is_array( $aspect ) && $count < 15 ) {
+					$p1   = $aspect['planet1'] ?? $aspect['p1'] ?? '';
+					$p2   = $aspect['planet2'] ?? $aspect['p2'] ?? '';
+					$type = $aspect['type'] ?? $aspect['aspect'] ?? '';
+					$orb  = isset( $aspect['orb'] ) ? round( $aspect['orb'], 1 ) : '';
+					$full_prompt .= "- {$p1} {$type} {$p2} (orbe: {$orb}°)\n";
+					$count++;
+				}
+			}
+			$full_prompt .= "\n";
+		}
+
+		$body = array(
+			'contents'         => array(
+				array(
+					'role'  => 'user',
+					'parts' => array(
+						array( 'text' => $full_prompt ),
+					),
+				),
+			),
+			'systemInstruction' => array(
+				'parts' => array(
+					array( 'text' => $system_prompt ),
+				),
+			),
+			'generationConfig'  => array(
+				'maxOutputTokens' => 8000,
+				'temperature'     => 0.7,
+			),
+		);
+
+		$this->log( 'Llamando Gemini API directamente, modelo: ' . $model );
+
+		$response = wp_remote_post( $url, array(
+			'timeout' => 120,
+			'headers' => array(
+				'Content-Type' => 'application/json',
+			),
+			'body'    => wp_json_encode( $body ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log( 'Error de conexión con Gemini: ' . $response->get_error_message() );
+			return new WP_Error( 'gemini_connection_error', 'Error de conexión con Gemini: ' . $response->get_error_message() );
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body_raw    = wp_remote_retrieve_body( $response );
+		$data        = json_decode( $body_raw, true );
+
+		if ( $status_code !== 200 ) {
+			$error_msg = isset( $data['error']['message'] ) ? $data['error']['message'] : 'Error HTTP ' . $status_code;
+			$this->log( 'Error de Gemini API: ' . $error_msg );
+			return new WP_Error( 'gemini_api_error', 'Error de Gemini API: ' . $error_msg );
+		}
+
+		// Extraer texto de la respuesta.
+		$text = '';
+		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
+			$text = $data['candidates'][0]['content']['parts'][0]['text'];
+		}
+
+		if ( empty( $text ) ) {
+			$this->log( 'Gemini no devolvió texto en la respuesta' );
+			return new WP_Error( 'gemini_empty_response', 'Gemini no devolvió contenido en la respuesta.' );
+		}
+
+		$tokens_used = isset( $data['usageMetadata']['totalTokenCount'] ) ? $data['usageMetadata']['totalTokenCount'] : 0;
+
+		$this->log( sprintf(
+			'Contenido generado con Gemini: %d caracteres, %d tokens',
+			strlen( $text ),
+			$tokens_used
+		) );
+
+		return $text;
 	}
 
 	/**
