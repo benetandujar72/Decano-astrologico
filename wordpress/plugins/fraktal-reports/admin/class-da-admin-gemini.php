@@ -67,7 +67,7 @@ class DA_Admin_Gemini {
 	 * @return string Modelo de Gemini.
 	 */
 	public static function get_model() {
-		return get_option( self::OPTION_MODEL, 'gemini-2.0-flash' );
+		return get_option( self::OPTION_MODEL, 'gemini-3-flash-preview' );
 	}
 
 	/**
@@ -135,7 +135,7 @@ class DA_Admin_Gemini {
 		}
 
 		$api_key = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
-		$model   = isset( $_POST['model'] ) ? sanitize_text_field( wp_unslash( $_POST['model'] ) ) : 'gemini-2.0-flash';
+		$model   = isset( $_POST['model'] ) ? sanitize_text_field( wp_unslash( $_POST['model'] ) ) : 'gemini-3-flash-preview';
 
 		if ( empty( $api_key ) ) {
 			wp_send_json_error( array( 'message' => 'La API key no puede estar vacía.' ), 400 );
@@ -206,7 +206,7 @@ class DA_Admin_Gemini {
 	 * @param string $model   Modelo a usar.
 	 * @return array|WP_Error Resultado del test o error.
 	 */
-	public static function test_gemini_api( $api_key, $model = 'gemini-2.0-flash' ) {
+	public static function test_gemini_api( $api_key, $model = 'gemini-3-flash-preview' ) {
 		$url = sprintf(
 			'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
 			$model,
@@ -307,10 +307,8 @@ class DA_Admin_Gemini {
 		$model      = self::get_model();
 
 		$available_models = array(
-			'gemini-2.0-flash'         => 'Gemini 2.0 Flash (Rápido, recomendado)',
-			'gemini-1.5-flash'         => 'Gemini 1.5 Flash (Estable)',
-			'gemini-1.5-pro'           => 'Gemini 1.5 Pro (Más potente)',
-			'gemini-2.0-flash-lite'    => 'Gemini 2.0 Flash Lite (Ultra rápido)',
+			'gemini-3-flash-preview'   => 'Gemini 3 Flash (Rápido, recomendado)',
+			'gemini-3-pro-preview'     => 'Gemini 3 Pro (Más potente)',
 		);
 
 		?>
@@ -393,7 +391,7 @@ class DA_Admin_Gemini {
 										<?php endforeach; ?>
 									</select>
 									<p class="description">
-										Gemini 2.0 Flash ofrece el mejor equilibrio entre velocidad y calidad.
+										Gemini 3 Flash ofrece el mejor equilibrio entre velocidad y calidad.
 									</p>
 								</td>
 							</tr>
@@ -423,7 +421,7 @@ class DA_Admin_Gemini {
 						<li><strong>Gratis:</strong> Google ofrece un nivel gratuito generoso para Gemini API.</li>
 						<li><strong>Límites:</strong> El plan gratuito permite hasta 60 peticiones por minuto.</li>
 						<li><strong>Privacidad:</strong> Los datos se procesan en los servidores de Google.</li>
-						<li><strong>Modelos:</strong> Gemini 2.0 Flash es el más reciente y eficiente.</li>
+						<li><strong>Modelos:</strong> Gemini 3 Flash es el más reciente y eficiente.</li>
 					</ul>
 					<p>
 						<a href="https://ai.google.dev/pricing" target="_blank">Ver precios y límites de Gemini API →</a>

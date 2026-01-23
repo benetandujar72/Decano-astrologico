@@ -363,7 +363,7 @@ class Fraktal_Supabase_Report_Processor {
 	 */
 	private function call_gemini_directly( $api_key, $system_prompt, $user_prompt, $astro_data, $report_type ) {
 		// Obtener modelo configurado.
-		$model = 'gemini-2.0-flash';
+		$model = 'gemini-3-flash-preview';
 		if ( class_exists( 'DA_Admin_Gemini' ) ) {
 			$model = DA_Admin_Gemini::get_model();
 		}
