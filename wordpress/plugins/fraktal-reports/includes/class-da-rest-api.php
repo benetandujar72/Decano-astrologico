@@ -559,11 +559,11 @@ class DA_REST_API {
                 $client = new Fraktal_Supabase_Client();
                 $client->use_service_role();
 
-                // Buscar el reporte en Supabase
-                $response = $client->get('/rest/v1/reports', [
+                // Construir query correctamente y buscar el reporte en Supabase
+                $endpoint = $client->build_query('reports', [
                     'session_id' => 'eq.' . $session_id,
-                    'select' => '*'
-                ]);
+                ], ['select' => '*']);
+                $response = $client->get($endpoint);
 
                 if (!empty($response) && is_array($response) && count($response) > 0) {
                     $report = $response[0];
