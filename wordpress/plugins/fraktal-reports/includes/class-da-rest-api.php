@@ -523,7 +523,7 @@ class DA_REST_API {
             'session_id' => $session_id,
             'user_id' => $user_id,
             'is_new_user' => $is_new_user,
-            'viewer_url' => home_url('/tu-informe-gratis/?session_id=' . $session_id),
+            'viewer_url' => home_url('/mi-informe/?session_id=' . $session_id),
             'message' => 'Informe en proceso de generación'
         ]);
     }

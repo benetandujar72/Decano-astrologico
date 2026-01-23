@@ -252,7 +252,7 @@ export const BirthDataForm: React.FC<BirthDataFormProps> = ({
         window.location.href = result.viewer_url;
       } else if (result.session_id) {
         // Fallback si no hay viewer_url
-        window.location.href = `/tu-informe-gratis/?session_id=${result.session_id}`;
+        window.location.href = `/mi-informe/?session_id=${result.session_id}`;
       } else if (redirectAfter) {
         window.location.href = redirectAfter;
       }
