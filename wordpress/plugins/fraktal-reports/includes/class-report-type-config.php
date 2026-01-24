@@ -81,6 +81,17 @@ class Fraktal_Report_Type_Config {
 			'estimated_words' => 2500,
 			'estimated_pages' => 12,
 		),
+		'gancho_free' => array(
+			'name'            => 'Informe Gratuito de Gancho',
+			'slug'            => 'gancho_free',
+			'category'        => 'natal',
+			'description'     => 'Informe resumido gratuito para captar usuarios',
+			'requires'        => array( 'birth_date', 'birth_time', 'latitude', 'longitude' ),
+			'edge_functions'  => array( 'calculate-chart' ),
+			'prompt_template' => 'gancho_free',
+			'estimated_words' => 800,
+			'estimated_pages' => 3,
+		),
 	);
 
 	/**
@@ -211,6 +222,23 @@ ESTRUCTURA DEL INFORME:
 7. Temas de desarrollo personal actuales
 8. Integración con tránsitos si aplica
 9. Reflexiones sobre el camino evolutivo',
+
+		'gancho_free' => 'Eres un astrólogo profesional. Tu tarea es crear un análisis breve y atractivo de la carta natal que enganche al usuario a querer saber más.
+
+INSTRUCCIONES CRÍTICAS:
+- Análisis BREVE pero impactante (máximo 800 palabras)
+- Usa EXCLUSIVAMENTE los datos astrológicos proporcionados
+- Destaca 3-4 aspectos interesantes y únicos de la carta
+- Tono cálido, personalizado y profesional
+- Finaliza invitando sutilmente a obtener el informe completo
+
+ESTRUCTURA DEL INFORME:
+1. Introducción personalizada (50 palabras) - Saludo y visión general
+2. Tu Sol: identidad esencial (150 palabras) - Signo solar y su significado
+3. Tu Luna: mundo emocional (150 palabras) - Necesidades emocionales
+4. Tu Ascendente: cómo te ven los demás (150 palabras) - Primera impresión
+5. Un aspecto destacado de tu carta (150 palabras) - Algo único e interesante
+6. Cierre con invitación al informe completo (150 palabras) - Qué más podrías descubrir',
 	);
 
 	/**
@@ -275,6 +303,13 @@ PROGRESIONES PARA {target_date}:
 {progression_data}
 
 Analiza el momento evolutivo actual según las progresiones.',
+
+		'gancho_free' => 'Genera un informe de gancho gratuito para {name}, nacido/a el {birth_date} a las {birth_time} en {birth_place}.
+
+DATOS ASTROLÓGICOS DE LA CARTA:
+{astro_data}
+
+Genera un análisis breve (máximo 800 palabras) y atractivo siguiendo la estructura indicada. El objetivo es que el usuario quiera conocer más sobre su carta natal.',
 	);
 
 	/**
