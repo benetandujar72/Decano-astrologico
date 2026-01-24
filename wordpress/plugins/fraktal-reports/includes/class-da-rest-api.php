@@ -103,6 +103,20 @@ class DA_REST_API {
             ]
         ]);
 
+        // Endpoint para verificar estado de un informe (usado por FreeReportViewer)
+        register_rest_route('decano/v1', '/report-status/(?P<session_id>[a-zA-Z0-9-]+)', [
+            'methods' => 'GET',
+            'callback' => [__CLASS__, 'get_report_status'],
+            'permission_callback' => '__return_true', // Permitir acceso anónimo
+            'args' => [
+                'session_id' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
+        ]);
+
         // Endpoint para generar informe gratuito (NO requiere login)
         register_rest_route('decano/v1', '/generate-free-report', [
             'methods' => 'POST',
@@ -160,7 +174,7 @@ class DA_REST_API {
 
         // DEBUG: Log de rutas registradas
         error_log('[DA REST API] All routes registered successfully');
-        error_log('[DA REST API] Available endpoints: /geocode, /geocode/reverse, /user/plan, /user/limits, /report/{session_id}, /generate-free-report');
+        error_log('[DA REST API] Available endpoints: /geocode, /geocode/reverse, /user/plan, /user/limits, /report/{session_id}, /report-status/{session_id}, /generate-free-report');
 
         // Flush rewrite rules si es necesario (despues de activacion o actualizacion)
         self::maybe_flush_rewrite_rules();
@@ -718,6 +732,77 @@ class DA_REST_API {
         } else {
             return new WP_Error('report_failed', 'Error al generar el informe', ['status' => 500]);
         }
+    }
+
+    /**
+     * Obtener estado de un informe por session_id
+     * Este endpoint es usado por FreeReportViewer para polling del estado
+     */
+    public static function get_report_status($request) {
+        $session_id = $request->get_param('session_id');
+
+        if (empty($session_id)) {
+            return new WP_Error('missing_session', 'ID de sesión requerido', ['status' => 400]);
+        }
+
+        error_log('[DA DEBUG] get_report_status called for session_id: ' . $session_id);
+
+        // Primero intentar obtener de Supabase
+        if (defined('FRAKTAL_USE_SUPABASE') && FRAKTAL_USE_SUPABASE && class_exists('Fraktal_Supabase_Client')) {
+            try {
+                $client = new Fraktal_Supabase_Client();
+                $client->use_service_role();
+
+                // Buscar el reporte en Supabase
+                $endpoint = $client->build_query('reports', [
+                    'session_id' => 'eq.' . $session_id,
+                ], ['select' => 'session_id,status,progress_percent,current_module,error_message,created_at,updated_at']);
+                $response = $client->get($endpoint);
+
+                error_log('[DA DEBUG] Supabase response for status: ' . json_encode($response));
+
+                if (!empty($response) && is_array($response) && count($response) > 0) {
+                    $report = $response[0];
+                    $status = $report['status'] ?? 'unknown';
+
+                    return rest_ensure_response([
+                        'session_id' => $session_id,
+                        'status' => $status,
+                        'progress_percent' => $report['progress_percent'] ?? 0,
+                        'current_module' => $report['current_module'] ?? null,
+                        'error_message' => $status === 'failed' ? ($report['error_message'] ?? 'Error desconocido') : null,
+                        'created_at' => $report['created_at'] ?? null,
+                        'updated_at' => $report['updated_at'] ?? null
+                    ]);
+                }
+            } catch (Exception $e) {
+                error_log('[DA] Error obteniendo estado de reporte de Supabase: ' . $e->getMessage());
+                // Continuar para intentar con WordPress DB
+            }
+        }
+
+        // Fallback: buscar en WordPress DB
+        global $wpdb;
+        $table = $wpdb->prefix . 'da_report_sessions';
+
+        $report = $wpdb->get_row($wpdb->prepare(
+            "SELECT session_id, status, created_at, updated_at FROM $table WHERE session_id = %s",
+            $session_id
+        ));
+
+        if (!$report) {
+            return new WP_Error('not_found', 'Informe no encontrado', ['status' => 404]);
+        }
+
+        return rest_ensure_response([
+            'session_id' => $session_id,
+            'status' => $report->status,
+            'progress_percent' => 0,
+            'current_module' => null,
+            'error_message' => null,
+            'created_at' => $report->created_at,
+            'updated_at' => $report->updated_at
+        ]);
     }
 
     /**
