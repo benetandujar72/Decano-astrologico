@@ -42,17 +42,29 @@ class Fraktal_Supabase_Reports {
 	 * @return array|WP_Error Respuesta con session_id o error.
 	 */
 	public function start_generation( $chart_data, $report_type, $wp_user_id ) {
+		error_log('[DA DEBUG] ====== start_generation CALLED ======');
+		error_log('[DA DEBUG] chart_data: ' . json_encode($chart_data));
+		error_log('[DA DEBUG] report_type: ' . $report_type);
+		error_log('[DA DEBUG] wp_user_id: ' . $wp_user_id);
+
 		// Asegurar que el usuario existe en Supabase
+		error_log('[DA DEBUG] Getting supabase_user_id for wp_user_id: ' . $wp_user_id);
 		$supabase_user_id = $this->auth->get_supabase_user_id( $wp_user_id );
+		error_log('[DA DEBUG] supabase_user_id result: ' . ($supabase_user_id ?: 'NULL'));
+
 		if ( ! $supabase_user_id ) {
+			error_log('[DA DEBUG] No supabase_user_id, syncing wp_user...');
 			$profile = $this->auth->sync_wp_user( $wp_user_id );
 			if ( is_wp_error( $profile ) ) {
+				error_log('[DA DEBUG] sync_wp_user ERROR: ' . $profile->get_error_message());
 				return $profile;
 			}
 			$supabase_user_id = $profile['id'];
+			error_log('[DA DEBUG] synced supabase_user_id: ' . $supabase_user_id);
 		}
 
 		$wp_user = get_userdata( $wp_user_id );
+		error_log('[DA DEBUG] wp_user email: ' . ($wp_user ? $wp_user->user_email : 'N/A'));
 
 		$payload = array(
 			'chart_data'       => $chart_data,
@@ -65,6 +77,10 @@ class Fraktal_Supabase_Reports {
 		);
 
 		// Llamar a la Edge Function
+		error_log('[DA DEBUG] Calling Edge Function: wordpress-report-webhook');
+		error_log('[DA DEBUG] Payload: ' . json_encode($payload));
+		error_log('[DA DEBUG] Supabase URL: ' . (defined('FRAKTAL_SUPABASE_URL') ? FRAKTAL_SUPABASE_URL : 'NOT DEFINED'));
+
 		$result = $this->client->use_service_role()->invoke_function(
 			'wordpress-report-webhook',
 			$payload,
@@ -73,6 +89,11 @@ class Fraktal_Supabase_Reports {
 				'X-WP-Site-URL' => home_url(),
 			)
 		);
+
+		error_log('[DA DEBUG] Edge Function result: ' . json_encode($result));
+		if (is_wp_error($result)) {
+			error_log('[DA DEBUG] Edge Function ERROR: ' . $result->get_error_message());
+		}
 
 		return $result;
 	}

@@ -17,6 +17,17 @@ class DA_REST_API {
      * Registrar los endpoints REST
      */
     public static function register_routes() {
+        // DEBUG: Log que las rutas se están registrando
+        error_log('[DA REST API] ====== register_routes() CALLED ======');
+        error_log('[DA REST API] Registering endpoints for namespace: decano/v1');
+
+        // Endpoint de diagnóstico (siempre público para verificar que REST API funciona)
+        register_rest_route('decano/v1', '/health', [
+            'methods' => 'GET',
+            'callback' => [__CLASS__, 'health_check'],
+            'permission_callback' => '__return_true'
+        ]);
+
         // Endpoint de geocodificación (NO requiere login para usuarios Free)
         register_rest_route('decano/v1', '/geocode', [
             'methods' => 'POST',
@@ -146,6 +157,30 @@ class DA_REST_API {
                 ]
             ]
         ]);
+
+        // DEBUG: Log de rutas registradas
+        error_log('[DA REST API] All routes registered successfully');
+        error_log('[DA REST API] Available endpoints: /geocode, /geocode/reverse, /user/plan, /user/limits, /report/{session_id}, /generate-free-report');
+
+        // Flush rewrite rules si es necesario (despues de activacion o actualizacion)
+        self::maybe_flush_rewrite_rules();
+    }
+
+    /**
+     * Flush rewrite rules si es necesario
+     * Esto asegura que las rutas REST esten disponibles despues de activar/actualizar el plugin
+     */
+    private static function maybe_flush_rewrite_rules() {
+        $version_key = 'da_rest_api_version';
+        $current_version = defined('DECANO_VERSION') ? DECANO_VERSION : '1.0.0';
+        $stored_version = get_option($version_key);
+
+        // Solo flush si es la primera vez o si la version cambio
+        if ($stored_version !== $current_version) {
+            error_log('[DA REST API] Flushing rewrite rules (version changed from ' . ($stored_version ?: 'none') . ' to ' . $current_version . ')');
+            flush_rewrite_rules(false);
+            update_option($version_key, $current_version);
+        }
     }
 
     /**
@@ -153,6 +188,27 @@ class DA_REST_API {
      */
     public static function check_user_logged_in($request) {
         return is_user_logged_in();
+    }
+
+    /**
+     * Endpoint de diagnóstico - verifica que la REST API funciona
+     */
+    public static function health_check($request) {
+        return rest_ensure_response([
+            'status' => 'ok',
+            'plugin' => 'decano-astrologico',
+            'version' => defined('DECANO_VERSION') ? DECANO_VERSION : 'unknown',
+            'timestamp' => current_time('mysql'),
+            'supabase_configured' => defined('FRAKTAL_SUPABASE_URL') && !empty(FRAKTAL_SUPABASE_URL),
+            'endpoints' => [
+                '/decano/v1/health',
+                '/decano/v1/geocode',
+                '/decano/v1/generate-free-report',
+                '/decano/v1/report/{session_id}',
+                '/decano/v1/user/plan',
+                '/decano/v1/user/limits'
+            ]
+        ]);
     }
 
     /**
@@ -404,6 +460,24 @@ class DA_REST_API {
         $longitude = $request->get_param('longitude');
         $timezone = $request->get_param('timezone');
 
+        // DEBUG: Log de parametros recibidos
+        error_log('[DA DEBUG] ====== generate_free_report CALLED ======');
+        error_log('[DA DEBUG] name: ' . $name);
+        error_log('[DA DEBUG] email: ' . $email);
+        error_log('[DA DEBUG] birth_date: ' . $birth_date);
+        error_log('[DA DEBUG] birth_time: ' . $birth_time);
+        error_log('[DA DEBUG] birth_city: ' . $birth_city);
+        error_log('[DA DEBUG] birth_country: ' . $birth_country);
+        error_log('[DA DEBUG] latitude: ' . $latitude);
+        error_log('[DA DEBUG] longitude: ' . $longitude);
+        error_log('[DA DEBUG] timezone: ' . $timezone);
+
+        // DEBUG: Log de configuracion Supabase
+        error_log('[DA DEBUG] FRAKTAL_SUPABASE_URL defined: ' . (defined('FRAKTAL_SUPABASE_URL') ? 'yes' : 'no'));
+        error_log('[DA DEBUG] FRAKTAL_SUPABASE_URL value: ' . (defined('FRAKTAL_SUPABASE_URL') ? FRAKTAL_SUPABASE_URL : 'N/A'));
+        error_log('[DA DEBUG] FRAKTAL_SUPABASE_ANON_KEY defined: ' . (defined('FRAKTAL_SUPABASE_ANON_KEY') ? 'yes' : 'no'));
+        error_log('[DA DEBUG] FRAKTAL_SUPABASE_SERVICE_KEY defined: ' . (defined('FRAKTAL_SUPABASE_SERVICE_KEY') ? 'yes' : 'no'));
+
         // Verificar que Supabase esté configurado
         if (!defined('FRAKTAL_SUPABASE_URL') || empty(FRAKTAL_SUPABASE_URL)) {
             return new WP_Error('supabase_not_configured', 'Supabase no está configurado', ['status' => 500]);
@@ -482,11 +556,17 @@ class DA_REST_API {
         ];
 
         // Paso 4: Crear sesión de generación de reporte
+        error_log('[DA DEBUG] Fraktal_Supabase_Reports class exists: ' . (class_exists('Fraktal_Supabase_Reports') ? 'yes' : 'no'));
+        error_log('[DA DEBUG] chart_data: ' . json_encode($chart_data));
+
         if (class_exists('Fraktal_Supabase_Reports')) {
             // Usar la nueva clase de Supabase
             try {
+                error_log('[DA DEBUG] Creating Fraktal_Supabase_Reports instance...');
                 $reports = new Fraktal_Supabase_Reports();
+                error_log('[DA DEBUG] Calling start_generation with user_id: ' . $user_id);
                 $result = $reports->start_generation($chart_data, 'gancho_free', $user_id);
+                error_log('[DA DEBUG] start_generation result: ' . json_encode($result));
 
                 if (isset($result['error'])) {
                     return new WP_Error(

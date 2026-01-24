@@ -131,11 +131,21 @@ class Fraktal_Supabase_Client {
 	 * @return array|WP_Error
 	 */
 	private function request( $method, $endpoint, $body = null, $custom_headers = array(), $is_function = false ) {
+		error_log('[DA DEBUG] ====== Supabase request ======');
+		error_log('[DA DEBUG] Method: ' . $method . ', Endpoint: ' . $endpoint);
+		error_log('[DA DEBUG] Is function: ' . ($is_function ? 'yes' : 'no'));
+		error_log('[DA DEBUG] URL configured: ' . (!empty($this->url) ? 'yes' : 'NO'));
+		error_log('[DA DEBUG] Key configured: ' . (!empty($this->key) ? 'yes' : 'NO'));
+		error_log('[DA DEBUG] Service key configured: ' . (!empty($this->service_key) ? 'yes' : 'NO'));
+		error_log('[DA DEBUG] Use service key: ' . ($this->use_service_key ? 'yes' : 'no'));
+
 		if ( empty( $this->url ) || empty( $this->key ) ) {
+			error_log('[DA DEBUG] ERROR: Supabase URL or Key not configured!');
 			return new WP_Error( 'supabase_config_error', 'Supabase URL or Key not configured.' );
 		}
 
 		$url = rtrim( $this->url, '/' ) . '/' . ltrim( $endpoint, '/' );
+		error_log('[DA DEBUG] Full URL: ' . $url);
 
 		// Determinar qué key usar para autenticación
 		$auth_key = $this->key; // Default: ANON_KEY
@@ -168,15 +178,20 @@ class Fraktal_Supabase_Client {
 			$args['body'] = is_string( $body ) ? $body : wp_json_encode( $body );
 		}
 
+		error_log('[DA DEBUG] Making request to: ' . $url);
 		$response = wp_remote_request( $url, $args );
 
 		if ( is_wp_error( $response ) ) {
+			error_log('[DA DEBUG] wp_remote_request ERROR: ' . $response->get_error_message());
 			return $response;
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
 		$data = json_decode( $response_body, true );
+
+		error_log('[DA DEBUG] Response code: ' . $code);
+		error_log('[DA DEBUG] Response body: ' . substr($response_body, 0, 500));
 
 		// Reset flags después de cada petición
 		$this->use_service_key = false;
